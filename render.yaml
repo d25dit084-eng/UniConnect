@@ -2,7 +2,8 @@
 # https://render.com/docs/blueprint-spec
 
 services:
-  # ── Backend Web Service (Node.js + WebSockets) ────────────────────────────
+
+  # ── Backend Web Service (Node.js + WebSockets) ──────────────────────────
   - type: web
     name: uniconnect-backend
     env: node
@@ -10,25 +11,34 @@ services:
     rootDir: backend
     buildCommand: npm install
     startCommand: npm start
+
     envVars:
       - key: NODE_ENV
         value: production
+
       - key: PORT
         value: 10000
+
       - key: MONGO_URI
-        sync: false # Set manually in Render Dashboard (SECRET)
+        sync: false
+
       - key: JWT_SECRET
-        generateValue: true # Render auto-generates a secure 32-char secret
+        generateValue: true
+
       - key: JWT_REFRESH_SECRET
-        generateValue: true # Render auto-generates a secure 32-char secret
+        generateValue: true
+
       - key: JWT_EXPIRE
         value: 15m
+
       - key: JWT_REFRESH_EXPIRE
         value: 7d
-      - key: CLIENT_URL
-        sync: false # Set to frontend Render URL in Render Dashboard
 
-  # ── Frontend Static Site (Vite React SPA) ──────────────────────────────────
+      - key: CLIENT_URL
+        sync: false
+
+
+  # ── Frontend Static Site (Vite React SPA) ───────────────────────────────
   - type: web
     name: uniconnect-frontend
     env: static
@@ -36,12 +46,15 @@ services:
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
+
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
+
     envVars:
       - key: VITE_API_URL
-        sync: false # Set to https://<backend-render-url>/api in Render Dashboard
+        sync: false
+
       - key: VITE_SOCKET_URL
-        sync: false # Set to https://<backend-render-url> in Render Dashboard
+        sync: false
