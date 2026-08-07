@@ -324,7 +324,7 @@ export const PostDetailPage = () => {
         {post.type === 'image' && post.media && post.media.length > 0 && (
           <div style={{ margin: '15px 0', textAlign: 'center' }}>
             <img
-              src={post.media[0].startsWith('http') ? post.media[0] : `http://localhost:5000${post.media[0]}`}
+              src={post.media[0].startsWith('http') ? post.media[0] : `${import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'}${post.media[0]}`}
               alt={post.title}
               className="post-image"
               style={{ maxHeight: '500px', margin: '0 auto' }}

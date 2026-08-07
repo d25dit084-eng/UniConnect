@@ -122,7 +122,7 @@ export const SettingsPage = () => {
           {user?.avatar && (
             <div style={{ margin: '5px 0' }}>
               <img
-                src={user.avatar.startsWith('http') ? user.avatar : `http://localhost:5000${user.avatar}`}
+                src={user.avatar.startsWith('http') ? user.avatar : `${import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'}${user.avatar}`}
                 alt="Avatar Preview"
                 style={{ width: '50px', height: '50px', border: '1px solid #000' }}
               />

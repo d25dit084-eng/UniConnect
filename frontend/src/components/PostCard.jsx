@@ -102,7 +102,7 @@ export const PostCard = ({ post: initialPost, onPostDeleted }) => {
       {post.type === 'image' && post.media && post.media.length > 0 && (
         <div style={{ margin: '10px 0' }}>
           <img
-            src={post.media[0].startsWith('http') ? post.media[0] : `http://localhost:5000${post.media[0]}`}
+            src={post.media[0].startsWith('http') ? post.media[0] : `${import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'}${post.media[0]}`}
             alt={post.title}
             style={{ maxWidth: '100%', maxHeight: '400px', border: '1px solid #e2e0db' }}
           />
