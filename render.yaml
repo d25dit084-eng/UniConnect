@@ -1,5 +1,4 @@
-# Render Blueprint Configuration for UniConnect
-# Deploy Backend (Node.js + Express + Socket.IO) and Frontend (Vite Static Site)
+# Render Blueprint Spec — UniConnect Deployment
 # https://render.com/docs/blueprint-spec
 
 services:
@@ -7,7 +6,6 @@ services:
   - type: web
     name: uniconnect-backend
     env: node
-    region: singapore
     plan: free
     rootDir: backend
     buildCommand: npm install
@@ -18,26 +16,22 @@ services:
       - key: PORT
         value: 10000
       - key: MONGO_URI
-        sync: false # User enters MongoDB Atlas URI in Render dashboard
+        sync: false # Set manually in Render Dashboard (SECRET)
       - key: JWT_SECRET
-        generateValue: true # Render automatically generates a 32-char secure secret
+        generateValue: true # Render auto-generates a secure 32-char secret
       - key: JWT_REFRESH_SECRET
-        generateValue: true
+        generateValue: true # Render auto-generates a secure 32-char secret
       - key: JWT_EXPIRE
         value: 15m
       - key: JWT_REFRESH_EXPIRE
         value: 7d
       - key: CLIENT_URL
-        fromService:
-          type: web
-          name: uniconnect-frontend
-          property: url
+        sync: false # Set to frontend Render URL in Render Dashboard
 
   # ── Frontend Static Site (Vite React SPA) ──────────────────────────────────
   - type: web
     name: uniconnect-frontend
     env: static
-    region: singapore
     plan: free
     rootDir: frontend
     buildCommand: npm install && npm run build
@@ -48,13 +42,6 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: uniconnect-backend
-          property: url
-          append: /api
+        sync: false # Set to https://<backend-render-url>/api in Render Dashboard
       - key: VITE_SOCKET_URL
-        fromService:
-          type: web
-          name: uniconnect-backend
-          property: url
+        sync: false # Set to https://<backend-render-url> in Render Dashboard
