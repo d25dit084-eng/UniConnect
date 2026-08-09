@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const mongoose = require('mongoose');
 
 const errorHandler = require('./middleware/errorMiddleware');
 const ApiError = require('./utils/ApiError');
@@ -43,7 +44,17 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'UniConnect API is running' });
+  const dbState = mongoose.connection.readyState;
+  const dbStatusMap = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+  const dbStatus = dbStatusMap[dbState] || 'unknown';
+
+  res.json({
+    success: true,
+    server: 'running',
+    database: dbStatus,
+    environment: process.env.NODE_ENV || 'development',
+    uptime: `${Math.floor(process.uptime())}s`,
+  });
 });
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
