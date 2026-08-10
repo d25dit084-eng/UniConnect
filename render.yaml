@@ -1,12 +1,8 @@
-# Render Blueprint Spec — UniConnect Backend Deployment
+# Render Blueprint Spec — UniConnect Deployment (Backend Only)
 # https://render.com/docs/blueprint-spec
-#
-# NOTE: The React frontend is deployed separately on Vercel.
-# This file only configures the Node.js backend on Render.
 
 services:
-
-  # ── Backend Web Service (Node.js + Express + Socket.IO) ──────────────────────
+  # ── Backend Web Service (Node.js + WebSockets) ──────────────────────────
   - type: web
     name: uniconnect-backend
     env: node
@@ -16,27 +12,17 @@ services:
     startCommand: npm start
 
     envVars:
-      # ── Server ───────────────────────────────────────────────────────────────
       - key: NODE_ENV
         value: production
 
-      # PORT is injected automatically by Render; no need to set it manually.
-
-      # ── MongoDB Atlas ────────────────────────────────────────────────────────
-      # Set this in the Render dashboard — NEVER commit the actual value.
-      # Format: mongodb+srv://USER:PASS@cluster.mongodb.net/uniconnect?retryWrites=true&w=majority
-      # IMPORTANT: URL-encode any special characters in the password
-      #   @ → %40  |  # → %23  |  ! → %21  |  $ → %24  |  : → %3A
       - key: MONGO_URI
-        sync: false
+        sync: false # Entered manually in Render dashboard
 
-      # ── JWT Secrets ──────────────────────────────────────────────────────────
-      # Render auto-generates secure random values for these.
       - key: JWT_SECRET
-        generateValue: true
+        generateValue: true # Render auto-generates secure 32-char secret
 
       - key: JWT_REFRESH_SECRET
-        generateValue: true
+        generateValue: true # Render auto-generates secure 32-char secret
 
       - key: JWT_EXPIRE
         value: 15m
@@ -44,19 +30,25 @@ services:
       - key: JWT_REFRESH_EXPIRE
         value: 7d
 
-      # ── CORS ─────────────────────────────────────────────────────────────────
-      # Set to your actual Vercel production URL — NEVER commit the actual value.
-      # Example: https://uniconnect-abc123.vercel.app
       - key: CLIENT_URL
+        sync: false # Set to Vercel frontend URL in Render dashboard
+
+      # ── Cloudinary (Optional Image Uploads) ───────────────────────────────
+      - key: CLOUDINARY_CLOUD_NAME
         sync: false
 
-      # ── Email / SMTP (optional — for password reset emails) ──────────────────
-      # If not set, reset tokens are logged to the Render console instead.
+      - key: CLOUDINARY_API_KEY
+        sync: false
+
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      # ── Email SMTP (Optional Verification/Password Reset) ─────────────────
       - key: EMAIL_HOST
         sync: false
 
       - key: EMAIL_PORT
-        value: 587
+        sync: false
 
       - key: EMAIL_USER
         sync: false
@@ -65,15 +57,4 @@ services:
         sync: false
 
       - key: EMAIL_FROM
-        value: noreply@uniconnect.dev
-
-      # ── Cloudinary (optional — for cloud image uploads) ──────────────────────
-      # Leave unset to use local disk uploads (not persistent on Render free tier).
-      - key: CLOUDINARY_CLOUD_NAME
-        sync: false
-
-      - key: CLOUDINARY_API_KEY
-        sync: false
-
-      - key: CLOUDINARY_API_SECRET
         sync: false
