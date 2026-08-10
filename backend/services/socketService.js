@@ -18,9 +18,31 @@ const broadcastPresence = () => {
 };
 
 const initializeSocket = (server) => {
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+  ];
+
+  if (process.env.CLIENT_URL) {
+    try {
+      const parsedUrl = new URL(process.env.CLIENT_URL);
+      allowedOrigins.push(parsedUrl.origin);
+    } catch (e) {
+      allowedOrigins.push(process.env.CLIENT_URL.replace(/\/$/, ''));
+    }
+  }
+
   io = new Server(server, {
     cors: {
-      origin: process.env.CLIENT_URL || 'http://localhost:5173',
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        const cleanOrigin = origin.replace(/\/$/, '');
+        if (allowedOrigins.includes(cleanOrigin)) {
+          callback(null, true);
+        } else {
+          callback(new Error(`Origin ${origin} not allowed by CORS`));
+        }
+      },
       credentials: true,
       methods: ['GET', 'POST'],
     },
