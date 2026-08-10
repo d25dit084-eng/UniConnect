@@ -32,29 +32,3 @@ services:
 
       - key: CLIENT_URL
         sync: false # Set to Vercel frontend URL in Render dashboard
-
-      # ── Cloudinary (Optional Image Uploads) ───────────────────────────────
-      - key: CLOUDINARY_CLOUD_NAME
-        sync: false
-
-      - key: CLOUDINARY_API_KEY
-        sync: false
-
-      - key: CLOUDINARY_API_SECRET
-        sync: false
-
-      # ── Email SMTP (Optional Verification/Password Reset) ─────────────────
-      - key: EMAIL_HOST
-        sync: false
-
-      - key: EMAIL_PORT
-        sync: false
-
-      - key: EMAIL_USER
-        sync: false
-
-      - key: EMAIL_PASS
-        sync: false
-
-      - key: EMAIL_FROM
-        sync: false
