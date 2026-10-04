@@ -189,6 +189,15 @@
   - Configured backend ESLint 9 (`backend/eslint.config.js`) with `@eslint/js` for Node.js/CommonJS. Resolved missing imports (`SavedPost` in `postController.js`, `typingTimers` in `socketService.js`). Achieved 0 ESLint errors.
   - Configured frontend ESLint 9 (`frontend/eslint.config.js`) for React 18, React hooks, and Vite. Resolved missing context definitions (`useMemo`, `PresenceContext`, `TypingContext` in `SocketContext.jsx`, render-safe ref handling in `useFeedSWR.js`). Achieved 0 ESLint errors.
   - Added `lint`, `lint:fix`, and `format` npm scripts to both `frontend/package.json` and `backend/package.json`. Formatted all source files with Prettier.
+- [x] **Q4.1b — Automated Test Suites with Jest**:
+  - Configured backend Jest runner (`backend/jest.config.js`, `testEnvironment: 'node'`, coverage collection across controllers, middleware, services, utils).
+  - Built test lifecycle environment harness (`backend/tests/setup.js`) connecting to dev MongoDB test database, tearing down safely after completion.
+  - Built 4 comprehensive test suites:
+    - `health.test.js`: Validates `/api/health` 200 OK, database connected, event-loop lag metrics, and Helmet security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy`).
+    - `auth.test.js`: Validates Zod request validation rejection, user registration, JWT access token and cookie generation on login, and 5-attempt brute-force account lockout.
+    - `votes.test.js`: Validates atomic upvote, post score increment, author karma increment, vote flipping (+1 -> -1), and idempotent vote undoing.
+    - `anonymity.test.js`: Validates anonymous post creation, zero-leak author suppression for third-party viewers (`author.alias` present, `username`/`email`/`_id` stripped), and OP author viewing privileges.
+  - Added `test` and `test:coverage` scripts. 100% tests passing (10/10 tests across 4 suites).
 
 ---
 
@@ -357,7 +366,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 
 ### Q4: Engineering Base
 - [x] 4.1a Code style: ESLint & Prettier configuration across frontend and backend.
-- [ ] 4.1b Automated test suites: Jest integration & unit test suite with coverage scripts.
+- [x] 4.1b Automated test suites: Jest integration & unit test suite with coverage scripts.
 - [ ] 4.1c CI/CD pipeline: GitHub Actions workflow (`.github/workflows/ci.yml`) for lint, tests, and build.
 - [ ] 4.1d Containerization: Multi-stage Dockerfiles for backend and frontend + `docker-compose.yml`.
 - [ ] 4.1e Observability: Structured logging, enhanced health check (`/api/health`) with dependency monitoring.
