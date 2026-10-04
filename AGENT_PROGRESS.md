@@ -154,6 +154,12 @@
   - Implemented optimistic save toggle in `PostCard.jsx` and `PostDetailPage.jsx`: flips `isSaved` instantly, rolls back on API error.
   - Implemented optimistic voting in `PostDetailPage.jsx` with identical delta-and-rollback pattern.
   - Verified: frontend build 0 errors, all 3 test suites pass.
+- [x] **Q2.11 — Web-Vitals Logging (CLS, INP, LCP)**:
+  - Created `frontend/src/utils/webVitals.js` with `initWebVitals()`: registers `onCLS`, `onINP`, `onLCP`, `onFCP`, `onTTFB` listeners via the `web-vitals` library (dev-only dynamic import, no-op in production).
+  - Budget thresholds: CLS < 0.05, INP < 200ms, LCP < 2500ms, FCP < 1800ms, TTFB < 800ms. Logs ✅/⚠️/❌ icons to console with actual values vs budget.
+  - Persists running baseline to `sessionStorage["uniconnect_web_vitals_baseline"]` across navigation for comparison.
+  - Initialized in `frontend/src/main.jsx`. Production builds are unaffected (dynamic import tree-shaken by Vite).
+  - Verified: frontend build 0 errors (162→165 modules, bundle size unchanged in prod).
 
 ---
 
@@ -313,7 +319,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 2.8 Layout shift: fixed-size avatars, aspect ratios, skeletons (CLS < 0.05).
 - [x] 2.9 Render storms: React.memo message rows, split SocketContext.
 - [x] 2.10 Feed smoothness: stale-while-revalidate, optimistic vote/save with rollback.
-- [ ] 2.11 Web-vitals logging (CLS, INP, LCP).
+- [x] 2.11 Web-vitals logging (CLS, INP, LCP).
 
 ### Q3: Frontend Anonymity & Hardening
 - [ ] 3.1 Frontend anonymity UI: post anonymously toggle, alias + OP badge, profile links disabled.
