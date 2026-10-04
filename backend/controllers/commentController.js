@@ -11,6 +11,7 @@ const sendResponse = require('../utils/sendResponse');
 const { serializeAuthor } = require('../helpers/authorSerializer');
 const { encryptAuthor } = require('../utils/encryption');
 const { sanitizeContent } = require('../utils/sanitizer');
+const { calculateHotRank } = require('../services/rankingService');
 
 const MAX_DEPTH = 8;
 
@@ -106,8 +107,22 @@ const createComment = asyncHandler(async (req, res) => {
   // Add 1 comment karma to the author
   await updateKarma(authorId, 'comment', 1);
 
-  // Increment post commentCount atomically
-  await Post.findByIdAndUpdate(postId, { $inc: { commentCount: 1 } });
+  // Increment post commentCount atomically and update hotRank
+  const updatedPost = await Post.findByIdAndUpdate(
+    postId,
+    { $inc: { commentCount: 1 } },
+    { returnDocument: 'after' }
+  );
+
+  if (updatedPost) {
+    const hotRank = calculateHotRank(
+      updatedPost.upvoteCount || 0,
+      updatedPost.downvoteCount || 0,
+      updatedPost.commentCount || 1,
+      updatedPost.createdAt
+    );
+    await Post.updateOne({ _id: postId }, { $set: { hotRank } });
+  }
 
   // Trigger Notification to post owner (if not self-interaction)
   if (post.author.toString() !== authorId.toString()) {
@@ -177,9 +192,23 @@ const replyToComment = asyncHandler(async (req, res) => {
   // Add 1 comment karma to the author
   await updateKarma(authorId, 'comment', 1);
 
-  // Increment counters atomically
+  // Increment counters atomically and update post hotRank
   await Comment.findByIdAndUpdate(parentCommentId, { $inc: { replyCount: 1 } });
-  await Post.findByIdAndUpdate(parentComment.post, { $inc: { commentCount: 1 } });
+  const updatedPost = await Post.findByIdAndUpdate(
+    parentComment.post,
+    { $inc: { commentCount: 1 } },
+    { returnDocument: 'after' }
+  );
+
+  if (updatedPost) {
+    const hotRank = calculateHotRank(
+      updatedPost.upvoteCount || 0,
+      updatedPost.downvoteCount || 0,
+      updatedPost.commentCount || 1,
+      updatedPost.createdAt
+    );
+    await Post.updateOne({ _id: parentComment.post }, { $set: { hotRank } });
+  }
 
   // Trigger Notification to parent comment owner (if not self-interaction)
   if (parentComment.author.toString() !== authorId.toString()) {

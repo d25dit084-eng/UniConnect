@@ -269,6 +269,12 @@
   - Implemented interactive resource cards with file type badges, tag links, download action with automatic count increment, author profile / anonymous alias display, and author/admin deletion control.
   - Built resource upload modal with fields for title, course code, category, semester, file format, URL, tags, description, and "Share anonymously" toggle.
   - Mounted `/resources` route in `App.jsx` and added `📚 Resources` link to `LeftSidebar.jsx`. Verified with clean ESLint (0 errors) and production Vite build (1.18s, 0 errors).
+- [x] **Q5.4 — Collegiate Engagement & Hot Ranking Algorithm**:
+  - Upgraded `rankingService.js` with discussion-weighted engagement signals (`effectiveScore = voteNet + (commentCount * 2)`), logarithmic scoring, and 12.5-hour half-life exponential time decay while preserving backwards-compatible signatures.
+  - Added `calculateRisingRank` (velocity decay over recent windows) and `calculateControversialRank` (polarization metric for split opinions).
+  - Enhanced `feedController.js` to support `hot`, `new`, `top`, `controversial` sorting and `timeframe` filtering (`today`, `week`, `month`, `year`, `all`).
+  - Hooked real-time post `hotRank` recalculation on comment creation and replies in `commentController.js`, so lively campus discussions dynamically surge to the top of feeds.
+  - Built Jest test suite (`backend/tests/ranking.test.js`) verifying mathematical formulas, comment weighting, decay over time, controversy balance, and feed integration (9/9 suites passing, 37/37 tests).
 
 ---
 
@@ -451,7 +457,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 5.2b Polls in posts (Frontend: Poll creation UI in CreatePost, interactive poll cards in PostCard & PostDetailPage with animated progress bars)
 - [x] 5.3a Resource library (Backend: Resource model, course linkage, resourceController, download tracker, anonymity support, and Jest test suite)
 - [x] 5.3b Resource library (Frontend: ResourceLibraryPage, search & filter by course/type, upload modal, and navigation)
-- [ ] 5.4 Hot ranking
+- [x] 5.4 Hot ranking
 - [ ] 5.5 Mentions & autocomplete
 - [ ] 5.6 Study groups
 - [ ] 5.7 Campus events & RSVP

@@ -1,6 +1,7 @@
 const Post = require('../models/Post');
 const CommunityMember = require('../models/CommunityMember');
 const { enrichPosts } = require('../helpers/feedEnricher');
+const { getTimeframeDate } = require('../services/rankingService');
 const asyncHandler = require('../utils/asyncHandler');
 const sendResponse = require('../utils/sendResponse');
 
@@ -10,10 +11,12 @@ const getSortQuery = (sortType) => {
     case 'new':
       return { createdAt: -1 };
     case 'top':
-      return { score: -1 };
+      return { score: -1, createdAt: -1 };
+    case 'controversial':
+      return { commentCount: -1, score: 1 };
     case 'hot':
     default:
-      return { hotRank: -1 };
+      return { hotRank: -1, createdAt: -1 };
   }
 };
 
@@ -21,10 +24,10 @@ const getSortQuery = (sortType) => {
 // Scoped to posts from communities the user has joined.
 // Fallback to all popular posts if they have not joined any community.
 const getHomeFeed = asyncHandler(async (req, res) => {
-  const { sort = 'hot', page = 1, limit = 10 } = req.query;
+  const { sort = 'hot', timeframe = 'all', page = 1, limit = 10 } = req.query;
   const userId = req.user ? req.user._id : null;
 
-  let filter = { status: 'active' };
+  const filter = { status: 'active' };
 
   if (userId) {
     // Find communities the user has joined
@@ -32,6 +35,14 @@ const getHomeFeed = asyncHandler(async (req, res) => {
     if (memberships.length > 0) {
       const communityIds = memberships.map((m) => m.community);
       filter.community = { $in: communityIds };
+    }
+  }
+
+  // Apply time window constraint if sorting by top
+  if (sort === 'top' && timeframe) {
+    const sinceDate = getTimeframeDate(timeframe);
+    if (sinceDate) {
+      filter.createdAt = { $gte: sinceDate };
     }
   }
 
@@ -90,15 +101,23 @@ const getLatestFeed = asyncHandler(async (req, res) => {
 
 // ─── Popular Feed (Hot Ranking) ────────────────────────────────────────────────
 const getPopularFeed = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10 } = req.query;
+  const { sort = 'hot', timeframe = 'all', page = 1, limit = 10 } = req.query;
   const userId = req.user ? req.user._id : null;
 
   const filter = { status: 'active' };
+
+  if (sort === 'top' && timeframe) {
+    const sinceDate = getTimeframeDate(timeframe);
+    if (sinceDate) {
+      filter.createdAt = { $gte: sinceDate };
+    }
+  }
+
+  const sortQuery = getSortQuery(sort);
   const skip = (Number(page) - 1) * Number(limit);
 
-  // Sorted by hotRank descending (pre-calculated with time decay and score)
   const posts = await Post.find(filter)
-    .sort({ hotRank: -1 })
+    .sort(sortQuery)
     .skip(skip)
     .limit(Number(limit))
     .populate('author', 'username avatar bio karma')

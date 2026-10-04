@@ -89,7 +89,12 @@ const votePost = asyncHandler(async (req, res) => {
   // Calculate hot rank without overwriting atomic counts
   const safeUpvotes = Math.max(0, updatedPost.upvoteCount);
   const safeDownvotes = Math.max(0, updatedPost.downvoteCount);
-  const hotRank = calculateHotRank(safeUpvotes, safeDownvotes, updatedPost.createdAt);
+  const hotRank = calculateHotRank(
+    safeUpvotes,
+    safeDownvotes,
+    updatedPost.commentCount || 0,
+    updatedPost.createdAt
+  );
 
   // Update hotRank atomically (do not touch counts or score)
   await Post.updateOne({ _id: postId }, { $set: { hotRank } });
