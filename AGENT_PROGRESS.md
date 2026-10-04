@@ -282,6 +282,12 @@
   - Created `GET /api/users/autocomplete?q=query` endpoint returning matching safe user profiles (`_id`, `username`, `avatar`) without sensitive fields.
   - Integrated mention triggers into `postController.createPost`, `commentController.createComment`, and `commentController.replyToComment`.
   - Built Jest test suite (`backend/tests/mentions.test.js`) verifying autocomplete querying, public post mentions, anonymous post mentions with zero author identity leaks, comment mentions, and self-mention suppression (10/10 suites passing, 42/42 tests).
+- [x] **Q5.5b — Mentions & Autocomplete UI (Frontend)**:
+  - Added `autocompleteUsers` in `frontend/src/api/userApi.js` connecting to `/api/users/autocomplete`.
+  - Created `mentionRenderer.jsx`: parses text and renders interactive, clickable `@username` links routing to `/u/username` with styled badges.
+  - Built `MentionTextarea.jsx`: intelligent textarea component with debounced `@query` detection, keyboard navigable popover dropdown (ArrowUp, ArrowDown, Enter, Tab, Escape), avatar preview, and seamless mention insertion.
+  - Integrated `MentionTextarea` and `renderContentWithMentions` into `PostCard.jsx` and `PostDetailPage.jsx` for post bodies, top-level comments, and inline reply forms.
+  - Verified with clean ESLint (0 errors) and production Vite build (1.44s, 0 errors).
 
 ---
 
@@ -466,7 +472,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 5.3b Resource library (Frontend: ResourceLibraryPage, search & filter by course/type, upload modal, and navigation)
 - [x] 5.4 Hot ranking
 - [x] 5.5a Mentions & autocomplete (Backend: @username parsing, zero-leak mention notifications, user autocomplete endpoint, and Jest tests)
-- [ ] 5.5b Mentions & autocomplete (Frontend: @-mention autocomplete dropdown in comments/posts and clickable @username links)
+- [x] 5.5b Mentions & autocomplete (Frontend: @-mention autocomplete dropdown in comments/posts and clickable @username links)
 - [ ] 5.6 Study groups
 - [ ] 5.7 Campus events & RSVP
 - [ ] 5.8 PWA & Web Push

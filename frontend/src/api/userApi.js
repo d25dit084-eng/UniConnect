@@ -45,3 +45,11 @@ export const unblockUser = async (username) => {
   const res = await api.delete(`/users/${username}/block`);
   return res.data;
 };
+
+export const autocompleteUsers = async (q) => {
+  const res = await api.get('/users/autocomplete', {
+    params: { q },
+  });
+  return res.data;
+};
+

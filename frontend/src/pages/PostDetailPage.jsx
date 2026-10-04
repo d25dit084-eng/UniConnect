@@ -12,6 +12,8 @@ import { votePost, voteComment } from '../api/voteApi';
 import { savePost, unsavePost } from '../api/savedApi';
 import { useAuth } from '../context/AuthContext';
 import { PollCard } from '../components/PollCard';
+import { renderContentWithMentions } from '../utils/mentionRenderer';
+import { MentionTextarea } from '../components/MentionTextarea';
 
 // ─── Comment Node Component (Recursive) ──────────────────────────────────────────
 const CommentNode = ({ comment, onCommentAction, depth = 0 }) => {
@@ -157,7 +159,7 @@ const CommentNode = ({ comment, onCommentAction, depth = 0 }) => {
           </div>
         </form>
       ) : (
-        <div className="comment-body">{comment.content}</div>
+        <div className="comment-body">{renderContentWithMentions(comment.content)}</div>
       )}
 
       {!isEditing && (
@@ -258,12 +260,12 @@ const CommentNode = ({ comment, onCommentAction, depth = 0 }) => {
       {/* Inline Reply Form */}
       {isReplying && (
         <form onSubmit={handleReplySubmit} className="reply-form">
-          <textarea
+          <MentionTextarea
             required
-            rows="2"
+            rows={2}
             value={replyContent}
-            onChange={(e) => setReplyContent(e.target.value)}
-            placeholder="Write a reply..."
+            onChange={setReplyContent}
+            placeholder="Write a reply (type @ to mention)..."
           />
           <div style={{ margin: '4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <input
@@ -515,7 +517,7 @@ export const PostDetailPage = () => {
               wordBreak: 'break-word',
             }}
           >
-            {post.content}
+            {renderContentWithMentions(post.content)}
           </div>
         )}
 
@@ -640,12 +642,12 @@ export const PostDetailPage = () => {
           >
             Write a comment
           </label>
-          <textarea
+          <MentionTextarea
             required
-            rows="3"
+            rows={3}
             value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="What are your thoughts on this post?"
+            onChange={setNewComment}
+            placeholder="What are your thoughts on this post? (type @ to mention)"
           />
           <div
             style={{

@@ -5,6 +5,7 @@ import { votePost } from '../api/voteApi';
 import { savePost, unsavePost } from '../api/savedApi';
 import { deletePost } from '../api/postApi';
 import { PollCard } from './PollCard';
+import { renderContentWithMentions } from '../utils/mentionRenderer';
 
 export const PostCard = ({ post: initialPost, onPostDeleted }) => {
   const { user, isAuthenticated } = useAuth();
@@ -178,7 +179,9 @@ export const PostCard = ({ post: initialPost, onPostDeleted }) => {
 
       {post.type === 'text' && post.content && (
         <div className="post-content">
-          {post.content.length > 300 ? `${post.content.slice(0, 300)}...` : post.content}
+          {renderContentWithMentions(
+            post.content.length > 300 ? `${post.content.slice(0, 300)}...` : post.content
+          )}
         </div>
       )}
 
