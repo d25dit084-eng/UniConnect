@@ -65,6 +65,11 @@ export const LeftSidebar = () => {
               👥 Study Groups
             </NavLink>
           </li>
+          <li>
+            <NavLink to="/events" className={({ isActive }) => (isActive ? 'active' : '')}>
+              📅 Events
+            </NavLink>
+          </li>
         </ul>
       </div>
 

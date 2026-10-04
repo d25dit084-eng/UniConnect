@@ -302,8 +302,12 @@
   - Built `Event.js` Mongoose model with category taxonomy (`academic`, `social`, `career`, `sports`, `workshop`, `cultural`, `other`), format (`in_person`, `virtual`, `hybrid`), location & virtual link, start/end dates, capacity cap (`capacity`), and nested attendees list with RSVP status (`going`, `maybe`, `not_going`).
   - Implemented `eventController.js` and `eventRoutes.js`: endpoints for event discovery with timeframes (`upcoming`, `past`) and search (`GET /api/events`), event details (`GET /api/events/:id`), event creation with organizer auto-enrollment (`POST /api/events`), RSVP updates with capacity enforcement (`POST /api/events/:id/rsvp`), RSVP cancellation (`DELETE /api/events/:id/rsvp`), and organizer deletion (`DELETE /api/events/:id`).
   - Integrated notification trigger: organizer receives `event_rsvp` notification when a attendee RSVPs 'going'.
-  - Added `event_rsvp` type and `event` reference field to `Notification.js`.
-  - Built Jest integration test suite (`backend/tests/events.test.js`) verifying creation, timeframe/format filtering, RSVP status shifts, capacity limits, cancellations, and organizer-only deletion (12/12 suites passing, 57/57 tests).
+- [x] **Q5.7b — Campus Events & RSVP System UI (Frontend)**:
+  - Created `frontend/src/api/eventApi.js` connecting to event discovery, details, creation, RSVP update, RSVP cancellation, and deletion endpoints.
+  - Built `frontend/src/pages/EventsPage.jsx` with calendar date badge rendering (month/day/time), category pills (`🎓 Academic`, `🎉 Social`, `💼 Career`, `⚽ Sports`, `🛠 Workshop`, `🎭 Cultural`), format pills, and capacity badges (`FULL`, `X/Y spots`).
+  - Implemented interactive RSVP toggling (`Going`, `Maybe`, `Withdraw`) with instant optimistic attendee count updates and error rollbacks.
+  - Built event hosting modal with validation for title, description, category, format, start/end date-times, venue/link, capacity cap, and tags.
+  - Integrated into navigation: added route `/events` in `App.jsx` and `📅 Events` item in `LeftSidebar.jsx`. Verified with 0 ESLint errors and clean Vite production build.
 
 ---
 
@@ -492,7 +496,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 5.6a Study groups (Backend: StudyGroup model, chat conversation integration, membership join/leave, and Jest tests)
 - [x] 5.6b Study groups (Frontend: StudyGroupsPage, filter by course/meeting type, group creation modal, join/leave UI, and group chat link)
 - [x] 5.7a Campus events & RSVP (Backend: Event model, RSVP tracking, date/time/venue/virtual link, capacity cap, reminder notifications, Jest tests)
-- [ ] 5.7b Campus events & RSVP (Frontend: Events browse view, date/format filters, RSVP toggling with optimistic state, event creation modal)
+- [x] 5.7b Campus events & RSVP (Frontend: Events browse view, date/format filters, RSVP toggling with optimistic state, event creation modal)
 - [ ] 5.8 PWA & Web Push
 - [ ] 5.9 Onboarding
 - [ ] 5.10 Notification preferences & digest

@@ -29,6 +29,7 @@ import AdminPage from './pages/AdminPage';
 import ReviewsPage from './pages/ReviewsPage';
 import ResourceLibraryPage from './pages/ResourceLibraryPage';
 import StudyGroupsPage from './pages/StudyGroupsPage';
+import EventsPage from './pages/EventsPage';
 
 function App() {
   return (
@@ -56,6 +57,7 @@ function App() {
               <Route path="/reviews" element={<ReviewsPage />} />
               <Route path="/resources" element={<ResourceLibraryPage />} />
               <Route path="/study-groups" element={<StudyGroupsPage />} />
+              <Route path="/events" element={<EventsPage />} />
 
               {/* Protected Member routes */}
               <Route element={<ProtectedRoute />}>
