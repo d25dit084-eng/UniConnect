@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { listConversations, getMessages, deleteMessage } from '../api/chatApi';
+import { ConversationSkeleton, MessageSkeleton } from '../components/Skeleton';
 
 const CONVS_CACHE_KEY_PREFIX = 'uniconnect_cached_convs_';
 const MSGS_CACHE_KEY_PREFIX = 'uniconnect_cached_msgs_';
@@ -539,7 +540,12 @@ export const ChatPage = () => {
           <div className="conversation-list-header">Conversations</div>
 
           {loadingConvs ? (
-            <div className="loading-indicator">Loading...</div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <ConversationSkeleton />
+              <ConversationSkeleton />
+              <ConversationSkeleton />
+              <ConversationSkeleton />
+            </div>
           ) : conversations.length > 0 ? (
             conversations.map((conv) => {
               const p = getPartnerInfo(conv);
@@ -627,7 +633,12 @@ export const ChatPage = () => {
                 )}
 
                 {loadingMsgs ? (
-                  <div className="loading-indicator">Loading message history...</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <MessageSkeleton isMine={false} />
+                    <MessageSkeleton isMine={true} />
+                    <MessageSkeleton isMine={false} />
+                    <MessageSkeleton isMine={true} />
+                  </div>
                 ) : error ? (
                   <div className="error-indicator">{error}</div>
                 ) : visibleMessages.length > 0 ? (
@@ -714,21 +725,10 @@ export const ChatPage = () => {
                   </div>
                 )}
 
-                {/* Typing Indicator */}
-                {isTyping && (
-                  <div
-                    style={{
-                      fontSize: '11px',
-                      color: '#777',
-                      fontStyle: 'italic',
-                      alignSelf: 'flex-start',
-                      marginLeft: '5px',
-                      padding: '4px 0',
-                    }}
-                  >
-                    {otherTypingUsernames[0]} is typing...
-                  </div>
-                )}
+                {/* Reserved Line for Typing Indicator (prevents layout shift) */}
+                <div className="chat-typing-slot" aria-live="polite">
+                  {isTyping ? `${otherTypingUsernames[0]} is typing...` : ''}
+                </div>
 
                 <div ref={messageEndRef} className="chat-scroll-anchor" />
               </div>

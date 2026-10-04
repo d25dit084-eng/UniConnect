@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getHomeFeed } from '../api/feedApi';
 import { PostCard } from '../components/PostCard';
+import { PostSkeleton } from '../components/Skeleton';
 
 export const HomeFeed = () => {
   const [posts, setPosts] = useState([]);
@@ -66,7 +67,11 @@ export const HomeFeed = () => {
       </div>
 
       {loading ? (
-        <div className="loading-indicator">Loading posts...</div>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <PostSkeleton />
+          <PostSkeleton />
+          <PostSkeleton />
+        </div>
       ) : error ? (
         <div className="error-indicator">
           {error} <button onClick={fetchFeed}>Try Again</button>

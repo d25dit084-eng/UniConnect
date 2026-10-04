@@ -100,11 +100,14 @@ export const PostCard = ({ post: initialPost, onPostDeleted }) => {
       )}
 
       {post.type === 'image' && post.media && post.media.length > 0 && (
-        <div style={{ margin: '10px 0' }}>
+        <div style={{ margin: '10px 0', width: '100%', aspectRatio: '16/9', maxHeight: '400px', background: '#f5f4f0', overflow: 'hidden', border: '1px solid #e2e0db' }}>
           <img
             src={post.media[0].startsWith('http') ? post.media[0] : `${import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'}${post.media[0]}`}
             alt={post.title}
-            style={{ maxWidth: '100%', maxHeight: '400px', border: '1px solid #e2e0db' }}
+            width="600"
+            height="338"
+            loading="lazy"
+            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
           />
         </div>
       )}

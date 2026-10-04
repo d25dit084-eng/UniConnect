@@ -133,6 +133,13 @@
   - Added CSS `overflow-anchor: auto` to `.chat-messages` and `overflow-anchor: none` to buttons/banners, with dedicated bottom `.chat-scroll-anchor`.
   - Added floating "↓ New messages" pill button when scrolled up, smoothly navigating to latest messages on click.
   - Verified with frontend build and budget benchmark: delivery p50 = 1.33 ms, p95 = 3.82 ms, persist p95 = 26.90 ms, event loop lag p99 = 15.85 ms. All quality gates passed.
+- [x] **Q2.8 — Layout Shift Elimination (CLS < 0.05)**:
+  - Created reusable Skeleton component suite (`frontend/src/components/Skeleton.jsx`) with `PostSkeleton`, `ConversationSkeleton`, `CommentSkeleton`, and `MessageSkeleton`.
+  - Added shimmer animation `@keyframes skeletonShimmer` in `frontend/src/index.css` with dark theme palette tokens.
+  - Implemented fixed dimensions, `aspect-ratio: 16/9`, `width: 100%`, and explicit placeholder container styling on media images across `PostCard.jsx` and `PostDetailPage.jsx` to eliminate layout shifts on image load.
+  - Set fixed tick widths (`.msg-tick`: `display: inline-block; width: 14px; min-width: 14px; text-align: right;`) preventing horizontal text jitter during status transitions (`sending -> sent -> delivered -> read`).
+  - Added reserved 20px typing slot (`.chat-typing-slot`) so typing indicator mounts and unmounts without shifting message scroll height.
+  - Integrated `PostSkeleton` in `HomeFeed.jsx`, `LatestFeed.jsx`, and `PopularFeed.jsx`. Verified with build and budget benchmark suite.
 
 ---
 
@@ -289,7 +296,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 2.5 Upgrade `chat-bench.js` to Budget format (warmup, median of 3 runs, event-loop lag).
 - [x] 2.6 Chat list stability: key rows by `clientMsgId`.
 - [x] 2.7 Scroll behavior: preserve scroll delta on prepending older pages, CSS `overflow-anchor`.
-- [ ] 2.8 Layout shift: fixed-size avatars, aspect ratios, skeletons (CLS < 0.05).
+- [x] 2.8 Layout shift: fixed-size avatars, aspect ratios, skeletons (CLS < 0.05).
 - [ ] 2.9 Render storms: React.memo message rows, split SocketContext.
 - [ ] 2.10 Feed smoothness: stale-while-revalidate, optimistic vote/save with rollback.
 - [ ] 2.11 Web-vitals logging (CLS, INP, LCP).

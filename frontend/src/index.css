@@ -745,6 +745,11 @@ input:focus, textarea:focus, select:focus {
   letter-spacing: -2px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.6);
+  display: inline-block;
+  width: 14px;
+  min-width: 14px;
+  text-align: right;
+  flex-shrink: 0;
 }
 .msg-tick.read {
   color: #00bcd4;
@@ -802,6 +807,20 @@ input:focus, textarea:focus, select:focus {
   background: #f0fff4;
   border-top-color: #b2dfc0;
   color: #1a6b35;
+}
+.chat-typing-slot {
+  height: 20px;
+  min-height: 20px;
+  font-size: 11px;
+  color: #777;
+  font-style: italic;
+  align-self: flex-start;
+  margin-left: 5px;
+  padding: 2px 0;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  overflow: hidden;
 }
 .chat-scroll-anchor {
   overflow-anchor: auto;
@@ -1633,3 +1652,26 @@ tr {
     display: flex;
   }
 }
+
+/* ─── Skeleton Loading Shimmer (CLS < 0.05) ────────────────────────── */
+@keyframes skeletonShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-card {
+  pointer-events: none;
+  user-select: none;
+}
+
+.skeleton-line {
+  background: linear-gradient(90deg, #e8e6e1 25%, #f4f3f0 50%, #e8e6e1 75%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s infinite ease-in-out;
+  border-radius: 4px;
+}
+

@@ -322,12 +322,14 @@ export const PostDetailPage = () => {
         )}
 
         {post.type === 'image' && post.media && post.media.length > 0 && (
-          <div style={{ margin: '15px 0', textAlign: 'center' }}>
+          <div style={{ margin: '15px auto', width: '100%', maxWidth: '800px', aspectRatio: '16/9', maxHeight: '500px', background: '#f5f4f0', overflow: 'hidden', border: '1px solid #e2e0db', textAlign: 'center' }}>
             <img
               src={post.media[0].startsWith('http') ? post.media[0] : `${import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'}${post.media[0]}`}
               alt={post.title}
+              width="800"
+              height="450"
               className="post-image"
-              style={{ maxHeight: '500px', margin: '0 auto' }}
+              style={{ width: '100%', height: '100%', objectFit: 'contain', margin: '0 auto', display: 'block' }}
             />
           </div>
         )}

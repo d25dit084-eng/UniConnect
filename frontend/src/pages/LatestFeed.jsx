@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getLatestFeed } from '../api/feedApi';
 import { PostCard } from '../components/PostCard';
+import { PostSkeleton } from '../components/Skeleton';
 import { useSocket } from '../context/SocketContext';
 
 export const LatestFeed = () => {
@@ -84,7 +85,11 @@ export const LatestFeed = () => {
       )}
 
       {loading ? (
-        <div className="loading-indicator">Loading posts...</div>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <PostSkeleton />
+          <PostSkeleton />
+          <PostSkeleton />
+        </div>
       ) : error ? (
         <div className="error-indicator">
           {error} <button onClick={() => fetchFeed()}>Try Again</button>
