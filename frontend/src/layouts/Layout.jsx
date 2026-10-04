@@ -1,14 +1,15 @@
-import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import { LeftSidebar } from '../components/LeftSidebar';
 import { RightSidebar } from '../components/RightSidebar';
 import { ReportModal } from '../components/ReportModal';
 import { MobileNav } from '../components/MobileNav';
+import OfflineBanner from '../components/OfflineBanner';
 
 export const Layout = () => {
   return (
     <div className="app-container">
+      <OfflineBanner />
       <Navbar />
       <div className="main-layout">
         <LeftSidebar />

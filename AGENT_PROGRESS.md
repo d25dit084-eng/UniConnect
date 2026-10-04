@@ -308,6 +308,12 @@
   - Implemented interactive RSVP toggling (`Going`, `Maybe`, `Withdraw`) with instant optimistic attendee count updates and error rollbacks.
   - Built event hosting modal with validation for title, description, category, format, start/end date-times, venue/link, capacity cap, and tags.
   - Integrated into navigation: added route `/events` in `App.jsx` and `📅 Events` item in `LeftSidebar.jsx`. Verified with 0 ESLint errors and clean Vite production build.
+- [x] **Q5.8a — Progressive Web App (PWA) Foundation & Offline Resilience (Frontend)**:
+  - Created Web App Manifest (`frontend/public/manifest.json`) with app identity, standalone display mode, orientation, brand theme colors (`#faf8f5`), categories, and dynamic quick-action shortcuts (Feed, Study Groups, Events).
+  - Built Service Worker (`frontend/public/sw.js`) with shell pre-caching (`uniconnect-shell-v1`), stale cache eviction on activation, intelligent caching (network-first for navigation, stale-while-revalidate for static assets), background push event listener, and notification click navigation router.
+  - Implemented service worker registration helper (`frontend/src/registerServiceWorker.js`) invoked at application bootstrap in `main.jsx`.
+  - Built sticky `OfflineBanner.jsx` component rendered across `Layout.jsx` listening to browser `online`/`offline` lifecycle events.
+  - Updated `index.html` with mobile app meta tags, apple-touch-icon, theme-color, and manifest link. Verified with 0 ESLint errors and clean Vite build.
 
 ---
 
@@ -497,7 +503,8 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 5.6b Study groups (Frontend: StudyGroupsPage, filter by course/meeting type, group creation modal, join/leave UI, and group chat link)
 - [x] 5.7a Campus events & RSVP (Backend: Event model, RSVP tracking, date/time/venue/virtual link, capacity cap, reminder notifications, Jest tests)
 - [x] 5.7b Campus events & RSVP (Frontend: Events browse view, date/format filters, RSVP toggling with optimistic state, event creation modal)
-- [ ] 5.8 PWA & Web Push
+- [x] 5.8a PWA (Frontend: Web App Manifest, Service Worker caching strategies, offline detection banner, PWA install prompt support)
+- [ ] 5.8b Web Push (Backend & Frontend: VAPID keys, push subscription endpoints, Web Push dispatch service, browser permission toggle and Jest tests)
 - [ ] 5.9 Onboarding
 - [ ] 5.10 Notification preferences & digest
 - [ ] 5.11 Automod & moderation reports
