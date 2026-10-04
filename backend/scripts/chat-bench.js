@@ -116,7 +116,8 @@ const runBenchmark = async () => {
     console.log(`5. Starting benchmark: streaming ${NUM_MESSAGES} messages...`);
 
     const sentTimes = new Map(); // msgSeq -> BigInt (nanoseconds)
-    const latencies = []; // array of milliseconds (float)
+    const deliveryLatencies = []; // array of milliseconds (float)
+    const persistLatencies = []; // array of milliseconds (float)
     let receivedCount = 0;
 
     const completionPromise = new Promise((resolve, reject) => {
@@ -133,7 +134,7 @@ const runBenchmark = async () => {
           if (sendTime) {
             const diffNs = Number(receiveTime - sendTime);
             const diffMs = diffNs / 1e6; // convert to ms
-            latencies.push(diffMs);
+            deliveryLatencies.push(diffMs);
             receivedCount++;
 
             if (receivedCount % 200 === 0 || receivedCount === NUM_MESSAGES) {
@@ -159,7 +160,8 @@ const runBenchmark = async () => {
       if (nextSeq < NUM_MESSAGES) {
         const seq = nextSeq++;
         const content = `bench_msg_${seq}_${Date.now()}`;
-        sentTimes.set(seq, process.hrtime.bigint());
+        const sTime = process.hrtime.bigint();
+        sentTimes.set(seq, sTime);
         senderSocket.emit('send_message', {
           conversationId,
           content,
@@ -167,6 +169,10 @@ const runBenchmark = async () => {
         }, (ack) => {
           if (ack?.error) {
             console.error(`   Message ${seq} error:`, ack.error);
+          } else {
+            const persistTime = process.hrtime.bigint();
+            const diffNs = Number(persistTime - sTime);
+            persistLatencies.push(diffNs / 1e6);
           }
         });
       }
@@ -179,36 +185,48 @@ const runBenchmark = async () => {
     await completionPromise;
     const benchTotalTimeMs = Date.now() - benchStartTime;
 
+    // Small delay to let any final in-flight persist ack arrive
+    await new Promise((r) => setTimeout(r, 200));
+
     senderSocket.disconnect();
     receiverSocket.disconnect();
 
-    latencies.sort((a, b) => a - b);
+    deliveryLatencies.sort((a, b) => a - b);
+    persistLatencies.sort((a, b) => a - b);
 
-    const min = latencies[0].toFixed(2);
-    const max = latencies[latencies.length - 1].toFixed(2);
-    const sum = latencies.reduce((acc, v) => acc + v, 0);
-    const avg = (sum / latencies.length).toFixed(2);
-    const p50 = percentile(latencies, 50).toFixed(2);
-    const p90 = percentile(latencies, 90).toFixed(2);
-    const p95 = percentile(latencies, 95).toFixed(2);
-    const p99 = percentile(latencies, 99).toFixed(2);
+    const calcStats = (arr) => {
+      if (arr.length === 0) return { min: '0', avg: '0', p50: '0', p90: '0', p95: '0', p99: '0', max: '0' };
+      const min = arr[0].toFixed(2);
+      const max = arr[arr.length - 1].toFixed(2);
+      const sum = arr.reduce((acc, v) => acc + v, 0);
+      const avg = (sum / arr.length).toFixed(2);
+      const p50 = percentile(arr, 50).toFixed(2);
+      const p90 = percentile(arr, 90).toFixed(2);
+      const p95 = percentile(arr, 95).toFixed(2);
+      const p99 = percentile(arr, 99).toFixed(2);
+      return { min, avg, p50, p90, p95, p99, max };
+    };
+
+    const deliveryStats = calcStats(deliveryLatencies);
+    const persistStats = calcStats(persistLatencies);
     const throughput = ((NUM_MESSAGES / benchTotalTimeMs) * 1000).toFixed(1);
 
     console.log('\n\n================================================================');
     console.log('📊 BENCHMARK RESULTS');
     console.log('================================================================');
-    console.log(`Total messages sent & verified: ${latencies.length}`);
+    console.log(`Total messages sent & verified: ${deliveryLatencies.length}`);
     console.log(`Total duration:                ${(benchTotalTimeMs / 1000).toFixed(2)} s`);
     console.log(`Throughput:                    ${throughput} msgs/sec`);
     console.log('----------------------------------------------------------------');
-    console.log(`Latency (Min):                 ${min} ms`);
-    console.log(`Latency (Avg):                 ${avg} ms`);
-    console.log(`Latency (p50):                 ${p50} ms`);
-    console.log(`Latency (p90):                 ${p90} ms`);
-    console.log(`Latency (p95):                 ${p95} ms`);
-    console.log(`Latency (p99):                 ${max} ms`);
-    console.log('================================================================\n');
-
+    console.log('🚀 Delivery Latency (Sender -> Receiver WebSocket Relay):');
+    console.log(`   Min: ${deliveryStats.min} ms | Avg: ${deliveryStats.avg} ms`);
+    console.log(`   p50: ${deliveryStats.p50} ms | p90: ${deliveryStats.p90} ms`);
+    console.log(`   p95: ${deliveryStats.p95} ms | p99: ${deliveryStats.p99} ms`);
+    console.log('----------------------------------------------------------------');
+    console.log('💾 Time-to-Persisted (Sender -> MongoDB Async Write Ack):');
+    console.log(`   Min: ${persistStats.min} ms | Avg: ${persistStats.avg} ms`);
+    console.log(`   p50: ${persistStats.p50} ms | p90: ${persistStats.p90} ms`);
+    console.log(`   p95: ${persistStats.p95} ms | p99: ${persistStats.p99} ms`);
     process.exit(0);
   } catch (err) {
     console.error('\n❌ Benchmark error:', err);

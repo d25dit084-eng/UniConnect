@@ -87,6 +87,11 @@ const userSchema = new mongoose.Schema(
       enum: ['student', 'admin'],
       default: 'student',
     },
+    isBanned: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     allowDirectMessages: {
       type: Boolean,
       default: true,

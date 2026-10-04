@@ -15,8 +15,8 @@ const blockCache = new Map();
 // conversationCache: conversationId (string) -> { participants: string[] }
 const conversationCache = new Map();
 
-// socketRateLimits: socketId -> { count: number, resetAt: number }
-const socketRateLimits = new Map();
+// userRateLimits: userId (string) -> { count: number, resetAt: number }
+const userRateLimits = new Map();
 
 // typingTimers: key (`${conversationId}:${userId}`) -> NodeJS.Timeout
 const typingTimers = new Map();
@@ -27,14 +27,17 @@ const processedClientMsgs = new Map();
 // onlineUsers: userId -> Set of socket.ids (supports multiple tabs)
 const onlineUsers = new Map();
 
+// pendingPersistQueue: Set of active async persistence promises for graceful shutdown
+const pendingPersistQueue = new Set();
+
 // Clean up processed dedupe cache every 2 minutes
 setInterval(() => {
   const cutoff = Date.now() - 5 * 60 * 1000;
   for (const [id, time] of processedClientMsgs.entries()) {
     if (time < cutoff) processedClientMsgs.delete(id);
   }
-  for (const [sockId, data] of socketRateLimits.entries()) {
-    if (data.resetAt < Date.now()) socketRateLimits.delete(sockId);
+  for (const [uid, data] of userRateLimits.entries()) {
+    if (data.resetAt < Date.now()) userRateLimits.delete(uid);
   }
 }, 2 * 60 * 1000).unref();
 
@@ -130,48 +133,131 @@ const invalidateUserCache = (userId) => {
   if (userId) userCache.delete(userId.toString());
 };
 
-// ─── Async MongoDB Persistence Queue (Fire-and-Forget with Retries) ───────────
-const persistMessageAsync = async ({ messageId, conversationId, senderId, content, clientMsgId, attachments = [], socketId, retryCount = 0 }) => {
-  try {
-    const Message = require('../models/Message');
-    const Conversation = require('../models/Conversation');
+// ─── Async MongoDB Persistence Queue with Retries & Graceful Flush ─────────────
+const persistMessageAsync = ({
+  messageId,
+  conversationId,
+  senderId,
+  content,
+  clientMsgId,
+  attachments = [],
+  socketId,
+  ackCb = null,
+  createdAt = new Date().toISOString(),
+  retryCount = 0,
+}) => {
+  const task = (async () => {
+    try {
+      const Message = require('../models/Message');
+      const Conversation = require('../models/Conversation');
 
-    // 1. Persist Message to MongoDB
-    await Message.create({
-      _id: messageId,
-      conversation: conversationId,
-      sender: senderId,
-      content,
-      clientMsgId: clientMsgId || null,
-      attachments,
-    });
+      // 1. Persist Message to MongoDB
+      await Message.create({
+        _id: messageId,
+        conversation: conversationId,
+        sender: senderId,
+        content,
+        clientMsgId: clientMsgId || null,
+        attachments,
+      });
 
-    // 2. Denormalize lastMessage onto Conversation in a single atomic update
-    await Conversation.findByIdAndUpdate(conversationId, {
-      $set: {
-        lastMessage: messageId,
-        lastMessageAt: new Date(),
-      },
-    });
-  } catch (err) {
-    console.error(`[AsyncPersist] Error persisting message (attempt ${retryCount + 1}):`, err.message);
-    if (retryCount < 3) {
-      // Exponential backoff retry: 50ms, 150ms, 450ms
-      const delay = Math.pow(3, retryCount) * 50;
-      setTimeout(() => {
-        persistMessageAsync({ messageId, conversationId, senderId, content, clientMsgId, attachments, socketId, retryCount: retryCount + 1 });
-      }, delay);
-    } else {
-      // Emit failure ack to sender if all retries exhausted
-      if (io && socketId) {
-        io.to(socketId).emit('message_failed', {
+      // 2. Denormalize lastMessage onto Conversation in a single atomic update
+      await Conversation.findByIdAndUpdate(conversationId, {
+        $set: {
+          lastMessage: messageId,
+          lastMessageAt: new Date(),
+        },
+      });
+
+      // Sender ack fires ONLY after DB write succeeds
+      if (ackCb) {
+        ackCb({
+          status: 'sent',
           clientMsgId,
           messageId: messageId.toString(),
-          conversationId,
-          error: 'Failed to persist message to database',
+          createdAt,
         });
       }
+    } catch (err) {
+      console.error(`[AsyncPersist] Error persisting message (attempt ${retryCount + 1}):`, err.message);
+      if (retryCount < 3) {
+        // Exponential backoff retry: 50ms, 150ms, 450ms
+        const delay = Math.pow(3, retryCount) * 50;
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return persistMessageAsync({
+          messageId,
+          conversationId,
+          senderId,
+          content,
+          clientMsgId,
+          attachments,
+          socketId,
+          ackCb,
+          createdAt,
+          retryCount: retryCount + 1,
+        });
+      } else {
+        // Emit failure ack to sender if all retries exhausted
+        if (ackCb) {
+          ackCb({
+            error: 'Failed to persist message to database',
+            status: 'failed',
+            clientMsgId,
+            messageId: messageId ? messageId.toString() : null,
+          });
+        }
+        if (io && socketId) {
+          io.to(socketId).emit('message_failed', {
+            clientMsgId,
+            messageId: messageId ? messageId.toString() : null,
+            conversationId,
+            error: 'Failed to persist message to database',
+          });
+        }
+      }
     }
+  })();
+
+  pendingPersistQueue.add(task);
+  task.finally(() => pendingPersistQueue.delete(task));
+  return task;
+};
+
+// ─── Graceful Shutdown: Flush Persist Queue on SIGTERM / SIGINT ──────────────
+const flushPersistQueue = async () => {
+  if (pendingPersistQueue.size > 0) {
+    console.log(`[Socket] Flushing ${pendingPersistQueue.size} pending message persistence tasks...`);
+    await Promise.allSettled(Array.from(pendingPersistQueue));
+    console.log('[Socket] Persist queue flushed completely.');
+  }
+};
+
+process.on('SIGTERM', async () => {
+  console.log('[Socket] Received SIGTERM signal. Flushing persistence queue...');
+  await flushPersistQueue();
+});
+
+process.on('SIGINT', async () => {
+  await flushPersistQueue();
+});
+
+// ─── Disconnect Banned User Live Sockets ─────────────────────────────────────
+const disconnectUserSockets = (userId) => {
+  if (!userId) return;
+  const idStr = userId.toString();
+  invalidateUserCache(idStr);
+
+  const socketIds = onlineUsers.get(idStr);
+  if (socketIds && io) {
+    for (const sId of socketIds) {
+      const sock = io.sockets.sockets.get(sId);
+      if (sock) {
+        sock.emit('error_message', { message: 'Your account has been suspended' });
+        sock.disconnect(true);
+      }
+    }
+    onlineUsers.delete(idStr);
+    broadcastPresence();
   }
 };
 
@@ -342,10 +428,10 @@ const initializeSocket = (server) => {
 
         const now = Date.now();
 
-        // B. Per-Socket Rate Limiting (20 messages per 10 seconds)
+        // B. Per-User Rate Limiting (20 messages per 10 seconds)
         const isBench = socket.handshake.auth?.isBenchmark || process.env.SKIP_CHAT_RATE_LIMIT === 'true';
         if (!isBench) {
-          const rateLimit = socketRateLimits.get(socket.id) || { count: 0, resetAt: now + 10000 };
+          const rateLimit = userRateLimits.get(userId) || { count: 0, resetAt: now + 10000 };
           if (now > rateLimit.resetAt) {
             rateLimit.count = 1;
             rateLimit.resetAt = now + 10000;
@@ -357,7 +443,7 @@ const initializeSocket = (server) => {
               return;
             }
           }
-          socketRateLimits.set(socket.id, rateLimit);
+          userRateLimits.set(userId, rateLimit);
         }
 
         // C. Idempotency & Deduplication
@@ -390,7 +476,7 @@ const initializeSocket = (server) => {
           }
         }
 
-        // F. RELAY FIRST: Construct payload & broadcast IMMEDIATELY
+        // F. RELAY FIRST TO RECIPIENT: Broadcast to room IMMEDIATELY
         const messageId = new mongoose.Types.ObjectId();
         const createdAt = new Date().toISOString();
 
@@ -413,20 +499,11 @@ const initializeSocket = (server) => {
           createdAt,
         };
 
-        // Broadcast to ALL participants in the room right away
+        // Recipient receives message immediately via WebSocket
         io.to(conversationId).emit('new_message', responseMessage);
 
-        // Ack to sender immediately (Optimistic state: sending -> sent)
-        if (ackCb) {
-          ackCb({
-            status: 'sent',
-            clientMsgId: effectiveClientMsgId,
-            messageId: messageId.toString(),
-            createdAt,
-          });
-        }
-
-        // G. PERSIST SECOND: Asynchronous background write to MongoDB
+        // G. PERSIST SECOND: Asynchronous background write to MongoDB.
+        // Sender's "sent" ack fires only AFTER the DB write succeeds.
         persistMessageAsync({
           messageId,
           conversationId,
@@ -435,6 +512,8 @@ const initializeSocket = (server) => {
           clientMsgId: effectiveClientMsgId,
           attachments,
           socketId: socket.id,
+          ackCb,
+          createdAt,
         });
 
       } catch (err) {
@@ -558,13 +637,12 @@ const initializeSocket = (server) => {
 
     // ─── 7. Disconnection ─────────────────────────────────────────────────────
     socket.on('disconnect', () => {
-      socketRateLimits.delete(socket.id);
-
       const sockets = onlineUsers.get(userId);
       if (sockets) {
         sockets.delete(socket.id);
         if (sockets.size === 0) {
           onlineUsers.delete(userId);
+          userRateLimits.delete(userId);
         }
       }
       broadcastPresence();
@@ -602,4 +680,6 @@ module.exports = {
   invalidateConversationCache,
   invalidateBlockCache,
   invalidateUserCache,
+  disconnectUserSockets,
+  flushPersistQueue,
 };
