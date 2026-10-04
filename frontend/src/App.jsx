@@ -27,6 +27,7 @@ import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
 import ReviewsPage from './pages/ReviewsPage';
+import ResourceLibraryPage from './pages/ResourceLibraryPage';
 
 function App() {
   return (
@@ -52,6 +53,7 @@ function App() {
               <Route path="/search" element={<SearchResults />} />
               <Route path="/communities" element={<ExploreCommunities />} />
               <Route path="/reviews" element={<ReviewsPage />} />
+              <Route path="/resources" element={<ResourceLibraryPage />} />
 
               {/* Protected Member routes */}
               <Route element={<ProtectedRoute />}>

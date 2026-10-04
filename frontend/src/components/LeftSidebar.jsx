@@ -55,6 +55,11 @@ export const LeftSidebar = () => {
               🎓 Reviews
             </NavLink>
           </li>
+          <li>
+            <NavLink to="/resources" className={({ isActive }) => (isActive ? 'active' : '')}>
+              📚 Resources
+            </NavLink>
+          </li>
         </ul>
       </div>
 

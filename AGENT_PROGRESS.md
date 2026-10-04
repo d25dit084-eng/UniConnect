@@ -263,6 +263,12 @@
   - Built `resourceController.js` and `resourceRoutes.js`: endpoints for listing/filtering (`GET /api/resources`), details (`GET /api/resources/:id`), upload (`POST /api/resources`), download tracking (`POST /api/resources/:id/download`), voting (`POST /api/resources/:id/vote`), and deletion (`DELETE /api/resources/:id`).
   - Integrated `serializeAuthor` ensuring zero identity leaks for anonymous uploads (`author.alias` present, `_id` null, real username suppressed).
   - Built Jest integration test suite (`backend/tests/resources.test.js`) verifying public uploads, anonymous uploads with identity assertion, filter queries, atomic download counting, and author-only deletion (8/8 suites passing, 29/29 tests).
+- [x] **Q5.3b — Academic Resource Library UI (Frontend)**:
+  - Created `frontend/src/api/resourceApi.js` connecting to resource listing, details, upload, download tracking, upvoting, and deletion endpoints.
+  - Built `frontend/src/pages/ResourceLibraryPage.jsx` with real-time search, course code filter, category pill navigation (`📚 Lecture Notes`, `📝 Past Exams`, `🧠 Cheatsheets`, `📑 Syllabus`, `📋 Assignments`), and sorting (`recent`, `downloads`, `popular`).
+  - Implemented interactive resource cards with file type badges, tag links, download action with automatic count increment, author profile / anonymous alias display, and author/admin deletion control.
+  - Built resource upload modal with fields for title, course code, category, semester, file format, URL, tags, description, and "Share anonymously" toggle.
+  - Mounted `/resources` route in `App.jsx` and added `📚 Resources` link to `LeftSidebar.jsx`. Verified with clean ESLint (0 errors) and production Vite build (1.18s, 0 errors).
 
 ---
 
@@ -444,7 +450,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 5.2a Polls in posts (Backend: Post.poll schema, PollVote model, atomic vote controller & routes, expiry validation, and Jest tests)
 - [x] 5.2b Polls in posts (Frontend: Poll creation UI in CreatePost, interactive poll cards in PostCard & PostDetailPage with animated progress bars)
 - [x] 5.3a Resource library (Backend: Resource model, course linkage, resourceController, download tracker, anonymity support, and Jest test suite)
-- [ ] 5.3b Resource library (Frontend: ResourceLibraryPage, search & filter by course/type, upload modal, and navigation)
+- [x] 5.3b Resource library (Frontend: ResourceLibraryPage, search & filter by course/type, upload modal, and navigation)
 - [ ] 5.4 Hot ranking
 - [ ] 5.5 Mentions & autocomplete
 - [ ] 5.6 Study groups
