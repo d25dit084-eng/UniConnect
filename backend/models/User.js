@@ -56,6 +56,10 @@ const userSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    isOnboarded: {
+      type: Boolean,
+      default: false,
+    },
     karma: {
       post: {
         type: Number,

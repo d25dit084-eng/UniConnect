@@ -322,6 +322,15 @@
   - Built `frontend/src/api/pushApi.js` and `frontend/src/utils/pushManager.js` with browser feature detection, VAPID base64 conversion, and background service worker push registration.
   - Added push subscription banner and toggle button in `frontend/src/pages/Notifications.jsx`.
   - Built Jest test suite (`backend/tests/webPush.test.js`) verifying key retrieval, subscription upsert, unsubscribe, and service dispatch (13/13 suites passing, 62/62 tests).
+- [x] **Q5.9 — Collegiate Onboarding Flow (Backend & Frontend)**:
+  - Added `isOnboarded` boolean flag to `User` schema (default `false`) and exposed via `getProfile` (`/api/users/profile`, `/api/users/me`).
+  - Implemented `completeOnboarding` in `userController.js` and mounted `POST /api/users/onboarding`: saves department, year, interests, bio, automatically joins selected communities via `CommunityMember` records, increments `membersCount`, and marks `isOnboarded: true`.
+  - Built interactive 3-step wizard in `frontend/src/pages/OnboardingPage.jsx`:
+    - Step 1 (Academic Profile): Department/major selector, academic year, and bio.
+    - Step 2 (Interests & Passions): Multi-select pill cards for AI, coding, hackathons, startups, gaming, sports, arts, music, and research.
+    - Step 3 (Campus Communities): Live community recommendations with one-tap auto-join checkmarks.
+  - Linked onboarding route `/onboarding` in `App.jsx` and updated `Login.jsx` to seamlessly redirect un-onboarded users to `/onboarding`.
+  - Built Jest test suite (`backend/tests/onboarding.test.js`) verifying profile initialization, auto-joining communities, and profile persistence (14/14 suites passing, 65/65 tests).
 
 ---
 
@@ -513,7 +522,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 5.7b Campus events & RSVP (Frontend: Events browse view, date/format filters, RSVP toggling with optimistic state, event creation modal)
 - [x] 5.8a PWA (Frontend: Web App Manifest, Service Worker caching strategies, offline detection banner, PWA install prompt support)
 - [x] 5.8b Web Push (Backend & Frontend: VAPID keys, push subscription endpoints, Web Push dispatch service, browser permission toggle and Jest tests)
-- [ ] 5.9 Onboarding
+- [x] 5.9 Onboarding
 - [ ] 5.10 Notification preferences & digest
 - [ ] 5.11 Automod & moderation reports
 - [ ] 5.12 Lost & Found and marketplace

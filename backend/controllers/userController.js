@@ -34,6 +34,9 @@ const getProfile = asyncHandler(async (req, res) => {
     showOnlineStatus: user.showOnlineStatus !== false,
     profileVisibility: user.profileVisibility !== false,
     interests: user.interests || [],
+    department: user.department || '',
+    year: user.year || null,
+    isOnboarded: user.isOnboarded || false,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
@@ -336,6 +339,55 @@ const autocompleteUsers = asyncHandler(async (req, res) => {
   sendResponse(res, 200, 'Autocomplete results retrieved successfully', { users: formatted });
 });
 
+// ─── Complete Onboarding Flow ────────────────────────────────────────────────
+const completeOnboarding = asyncHandler(async (req, res) => {
+  const { department, year, interests, bio, communities } = req.body;
+  const user = await User.findById(req.user._id);
+
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  if (department !== undefined) user.department = String(department).trim();
+  if (year !== undefined) user.year = parseInt(year, 10) || null;
+  if (Array.isArray(interests)) {
+    user.interests = interests.map((i) => String(i).trim()).filter(Boolean);
+  }
+  if (bio !== undefined) user.bio = String(bio).trim();
+  user.isOnboarded = true;
+
+  await user.save();
+
+  // If user selected communities to join, add them
+  if (Array.isArray(communities) && communities.length > 0) {
+    const CommunityMember = require('../models/CommunityMember');
+    const Community = require('../models/Community');
+    await Promise.all(
+      communities.map(async (commId) => {
+        try {
+          const exists = await CommunityMember.findOne({ community: commId, user: user._id });
+          if (!exists) {
+            await CommunityMember.create({ community: commId, user: user._id, role: 'member' });
+            await Community.findByIdAndUpdate(commId, { $inc: { membersCount: 1 } });
+          }
+        } catch (_) {}
+      })
+    );
+  }
+
+  sendResponse(res, 200, 'Onboarding completed successfully', {
+    user: {
+      _id: user._id,
+      username: user.username,
+      department: user.department,
+      year: user.year,
+      interests: user.interests,
+      bio: user.bio,
+      isOnboarded: user.isOnboarded,
+    },
+  });
+});
+
 module.exports = {
   getProfile,
   getPublicProfile,
@@ -348,5 +400,6 @@ module.exports = {
   verifyEmail,
   uploadProfileImage,
   autocompleteUsers,
+  completeOnboarding,
 };
 

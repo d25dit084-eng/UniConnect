@@ -17,8 +17,12 @@ export const Login = () => {
     setError('');
 
     try {
-      await login(email, password);
-      navigate('/home');
+      const loggedUser = await login(email, password);
+      if (loggedUser && loggedUser.isOnboarded === false) {
+        navigate('/onboarding');
+      } else {
+        navigate('/home');
+      }
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Login failed');
     } finally {

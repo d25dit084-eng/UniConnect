@@ -30,6 +30,7 @@ import ReviewsPage from './pages/ReviewsPage';
 import ResourceLibraryPage from './pages/ResourceLibraryPage';
 import StudyGroupsPage from './pages/StudyGroupsPage';
 import EventsPage from './pages/EventsPage';
+import OnboardingPage from './pages/OnboardingPage';
 
 function App() {
   return (
@@ -70,6 +71,7 @@ function App() {
                 <Route path="/chat/:conversationId" element={<ChatPage />} />
                 <Route path="/profile" element={<SettingsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/onboarding" element={<OnboardingPage />} />
               </Route>
 
               {/* Protected Platform Admin routes */}

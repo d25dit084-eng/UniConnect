@@ -13,6 +13,7 @@ const {
   verifyEmail,
   uploadProfileImage,
   autocompleteUsers,
+  completeOnboarding,
 } = require('../controllers/userController');
 
 const { protect, optionalAuth } = require('../middleware/authMiddleware');
@@ -23,6 +24,7 @@ const { validateUpdateProfile } = require('../validators/userValidator');
 router.get('/profile', protect, getProfile);
 router.get('/me', protect, getProfile); // /me alias
 router.put('/profile', protect, validateUpdateProfile, updateProfile);
+router.post('/onboarding', protect, completeOnboarding);
 
 // Verification
 router.post('/verify', protect, requestVerification);

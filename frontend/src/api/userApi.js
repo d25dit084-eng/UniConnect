@@ -53,3 +53,8 @@ export const autocompleteUsers = async (q) => {
   return res.data;
 };
 
+export const completeOnboarding = async (data) => {
+  const res = await api.post('/users/onboarding', data);
+  return res.data;
+};
+
