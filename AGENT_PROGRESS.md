@@ -217,6 +217,13 @@
   - `backend/middleware/errorMiddleware.js`: Integrates structured logger for 500 errors with request correlation context and stack traces.
   - Enhanced `GET /api/health`: Executes live MongoDB database ping with round-trip latency measurement (`dbLatencyMs`), monitors memory footprint (`rssMB`, `heapUsedMB`, `heapPercent`), reports system process details (`nodeVersion`, `uptime`, `pid`), tracks Redis cache state, and returns HTTP 503 if primary database connection fails.
   - Test suite (`health.test.js`) updated and verified (11/11 tests passing).
+- [x] **Q4.1f — Data Seeding: Idempotent Campus Communities & Rich Activity**:
+  - Built robust, idempotent campus seed engine (`backend/scripts/seed.js`) with host safety check (`MONGO_URI` host verified localhost / 127.0.0.1; aborts on external hosts).
+  - Supports `--fresh` / `--clean` flag for intentional dev purge, while default run operates 100% idempotently using find-or-create patterns.
+  - Seeds 9 campus persona accounts with hashed credentials (`Password@123`), bio, and karma (`quietfalcon`, `quietowl`, `bytefox`, `randompixel`, `nightshift`, `voidwalker`, `campus_dean`, `prof_turing`, `sysadm`).
+  - Seeds 7 core campus communities: `c/campus-life`, `c/cs-department`, `c/career-advice`, `c/courses-professors`, `c/housing-roommates`, `c/chaos`, `c/play-round`.
+  - Seeds 12 campus posts across categories, including anonymous posts with encrypted author references (`encryptAuthor`), calculated hot ranks, and threaded nested comment replies.
+  - Seeds direct conversations and realistic notifications. Verified with double-run idempotency check.
 
 ---
 
@@ -389,7 +396,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 4.1c CI/CD pipeline: GitHub Actions workflow (`.github/workflows/ci.yml`) for lint, tests, and build.
 - [x] 4.1d Containerization: Multi-stage Dockerfiles for backend and frontend + `docker-compose.yml`.
 - [x] 4.1e Observability: Structured logging, enhanced health check (`/api/health`) with dependency monitoring.
-- [ ] 4.1f Data seeding: Idempotent campus communities, demo users, posts, and topics seed script.
+- [x] 4.1f Data seeding: Idempotent campus communities, demo users, posts, and topics seed script.
 - [ ] 4.1g API documentation: OpenAPI 3.0 specification & Swagger UI at `/api/docs`.
 
 ### Q5: High-Value Features
