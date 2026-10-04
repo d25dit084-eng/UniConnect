@@ -229,6 +229,14 @@
   - Mounted interactive Swagger UI at `/api/docs` with tailored CSP headers to permit UI rendering without weakening API security.
   - Exposed raw machine-readable JSON specification at `/api/docs/json`.
   - Created automated test suite (`backend/tests/docs.test.js`) verifying spec compliance and route availability (5/5 suites passing, 13/13 tests).
+- [x] **Q5.1a — Course & Professor Reviews Engine (Backend)**:
+  - Created `Course` model with code uniqueness, department indexing, and cached `avgRating`, `avgDifficulty`, and `reviewsCount`.
+  - Created `Professor` model with department, courses taught, and cached `avgRating`, `avgDifficulty`, `wouldTakeAgainPercent`, and `reviewsCount`.
+  - Created `Review` model with duplicate review prevention (`{ author: 1, targetType: 1, course: 1, professor: 1 }` unique compound index), grade received, tags, helpfulness counters, and seamless integration with Phase 2 Anonymity Engine (`isAnonymous` flag, AES-256-GCM encrypted author reference).
+  - Built `reviewController.js` and `reviewRoutes.js`: endpoints for courses (`GET /api/courses`, `POST /api/courses`, `GET /api/courses/:id`), professors (`GET /api/professors`, `POST /api/professors`, `GET /api/professors/:id`), reviews submission (`POST /api/reviews`), and voting (`POST /api/reviews/:id/vote`).
+  - Implemented atomic aggregate calculation (`syncAggregateMetrics`) updating target averages on review creation.
+  - Author serialization via `serializeAuthor` guarantees zero author identity leaks for anonymous course/professor reviews.
+  - Built Jest integration test suite (`backend/tests/reviews.test.js`) covering public reviews, anonymous reviews with leak assertions, aggregate metric updates, duplicate rejection, and voting (6/6 suites passing, 18/18 tests).
 
 ---
 
@@ -405,7 +413,8 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 4.1g API documentation: OpenAPI 3.0 specification & Swagger UI at `/api/docs`.
 
 ### Q5: High-Value Features
-- [ ] 5.1 Course & professor reviews
+- [x] 5.1a Course & professor reviews (Backend: Course, Professor, Review models, atomic aggregate score sync, anonymity support, API endpoints & Jest test suite)
+- [ ] 5.1b Course & professor reviews (Frontend: Reviews browse view, course/professor profile modal, rating metrics, anonymous submission toggle)
 - [ ] 5.2 Polls in posts
 - [ ] 5.3 Resource library
 - [ ] 5.4 Hot ranking
