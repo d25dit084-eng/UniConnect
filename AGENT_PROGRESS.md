@@ -351,7 +351,13 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 3.3 Security: Helmet, rate limiting, zod validation, markdown sanitization, login lockout, image upload validation.
 
 ### Q4: Engineering Base
-- [ ] 4.1 ESLint + Prettier, Jest tests, GitHub Actions CI, Dockerfile + docker-compose, structured logging, health checks, seed script, OpenAPI docs.
+- [ ] 4.1a Code style: ESLint & Prettier configuration across frontend and backend.
+- [ ] 4.1b Automated test suites: Jest integration & unit test suite with coverage scripts.
+- [ ] 4.1c CI/CD pipeline: GitHub Actions workflow (`.github/workflows/ci.yml`) for lint, tests, and build.
+- [ ] 4.1d Containerization: Multi-stage Dockerfiles for backend and frontend + `docker-compose.yml`.
+- [ ] 4.1e Observability: Structured logging, enhanced health check (`/api/health`) with dependency monitoring.
+- [ ] 4.1f Data seeding: Idempotent campus communities, demo users, posts, and topics seed script.
+- [ ] 4.1g API documentation: OpenAPI 3.0 specification & Swagger UI at `/api/docs`.
 
 ### Q5: High-Value Features
 - [ ] 5.1 Course & professor reviews
