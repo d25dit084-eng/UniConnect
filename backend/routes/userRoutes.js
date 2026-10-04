@@ -14,6 +14,9 @@ const {
   uploadProfileImage,
   autocompleteUsers,
   completeOnboarding,
+  getNotificationPreferences,
+  updateNotificationPreferences,
+  triggerDigest,
 } = require('../controllers/userController');
 
 const { protect, optionalAuth } = require('../middleware/authMiddleware');
@@ -25,6 +28,11 @@ router.get('/profile', protect, getProfile);
 router.get('/me', protect, getProfile); // /me alias
 router.put('/profile', protect, validateUpdateProfile, updateProfile);
 router.post('/onboarding', protect, completeOnboarding);
+
+// Notification preferences & Digest
+router.get('/preferences/notifications', protect, getNotificationPreferences);
+router.put('/preferences/notifications', protect, updateNotificationPreferences);
+router.post('/preferences/notifications/digest', protect, triggerDigest);
 
 // Verification
 router.post('/verify', protect, requestVerification);

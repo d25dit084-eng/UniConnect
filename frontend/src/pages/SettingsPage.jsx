@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   getProfile,
@@ -6,6 +6,9 @@ import {
   uploadAvatar,
   getBlockedUsers,
   unblockUser,
+  getNotificationPreferences,
+  updateNotificationPreferences,
+  triggerEmailDigest,
 } from '../api/userApi';
 
 export const SettingsPage = () => {
@@ -21,6 +24,18 @@ export const SettingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [notifPrefs, setNotifPrefs] = useState({
+    emailNotifications: true,
+    pushNotifications: true,
+    mentions: true,
+    replies: true,
+    eventRsvp: true,
+    studyGroups: true,
+    emailDigest: 'daily',
+  });
+  const [savingPrefs, setSavingPrefs] = useState(false);
+  const [prefsMessage, setPrefsMessage] = useState('');
+  const [digestStatus, setDigestStatus] = useState('');
 
   const fetchSettings = async () => {
     try {
@@ -34,6 +49,11 @@ export const SettingsPage = () => {
 
       const blocksRes = await getBlockedUsers();
       setBlockedUsers(blocksRes.data.blockedUsers || []);
+
+      const prefsRes = await getNotificationPreferences();
+      if (prefsRes.data?.preferences) {
+        setNotifPrefs((prev) => ({ ...prev, ...prefsRes.data.preferences }));
+      }
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to load settings');
     } finally {
@@ -214,6 +234,184 @@ export const SettingsPage = () => {
         ) : (
           <p style={{ fontSize: '12px', fontStyle: 'italic', color: '#888' }}>No blocked users.</p>
         )}
+      </div>
+
+      {/* Notification Preferences & Email Digest Section */}
+      <div className="settings-section" style={{ marginTop: '24px' }}>
+        <h4>🔔 Notification Preferences & Campus Digest</h4>
+        <p style={{ fontSize: '12px', color: '#666', marginBottom: '16px' }}>
+          Choose how and when UniConnect alerts you about campus discussions and events.
+        </p>
+
+        {prefsMessage && (
+          <div
+            style={{
+              padding: '8px 12px',
+              backgroundColor: '#f0fdf4',
+              color: '#15803d',
+              borderRadius: '6px',
+              fontSize: '13px',
+              marginBottom: '14px',
+            }}
+          >
+            {prefsMessage}
+          </div>
+        )}
+
+        {digestStatus && (
+          <div
+            style={{
+              padding: '8px 12px',
+              backgroundColor: '#eff6ff',
+              color: '#1e40af',
+              borderRadius: '6px',
+              fontSize: '13px',
+              marginBottom: '14px',
+            }}
+          >
+            {digestStatus}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={notifPrefs.emailNotifications}
+              onChange={(e) => setNotifPrefs({ ...notifPrefs, emailNotifications: e.target.checked })}
+            />
+            <span>✉️ Receive critical updates via college email</span>
+          </label>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={notifPrefs.pushNotifications}
+              onChange={(e) => setNotifPrefs({ ...notifPrefs, pushNotifications: e.target.checked })}
+            />
+            <span>🔔 Browser push notifications for real-time messages</span>
+          </label>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={notifPrefs.mentions}
+              onChange={(e) => setNotifPrefs({ ...notifPrefs, mentions: e.target.checked })}
+            />
+            <span>💬 Notify me when tagged or mentioned (@username)</span>
+          </label>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={notifPrefs.replies}
+              onChange={(e) => setNotifPrefs({ ...notifPrefs, replies: e.target.checked })}
+            />
+            <span>↩️ Notify me when someone replies to my post or comment</span>
+          </label>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={notifPrefs.eventRsvp}
+              onChange={(e) => setNotifPrefs({ ...notifPrefs, eventRsvp: e.target.checked })}
+            />
+            <span>📅 Campus event reminders and host RSVP updates</span>
+          </label>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={notifPrefs.studyGroups}
+              onChange={(e) => setNotifPrefs({ ...notifPrefs, studyGroups: e.target.checked })}
+            />
+            <span>👥 Study group schedules and member joins</span>
+          </label>
+        </div>
+
+        {/* Email Digest Frequency */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px' }}>
+            📬 Campus Email Digest Frequency
+          </label>
+          <select
+            value={notifPrefs.emailDigest}
+            onChange={(e) => setNotifPrefs({ ...notifPrefs, emailDigest: e.target.value })}
+            style={{
+              padding: '8px 12px',
+              borderRadius: '6px',
+              border: '1px solid #d4d2cc',
+              fontSize: '13px',
+              backgroundColor: '#faf8f5',
+            }}
+          >
+            <option value="daily">Daily Morning Digest (Highlights & Upcoming Events)</option>
+            <option value="weekly">Weekly Sunday Digest</option>
+            <option value="none">Never (Disabled)</option>
+          </select>
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            disabled={savingPrefs}
+            onClick={async () => {
+              try {
+                setSavingPrefs(true);
+                setPrefsMessage('');
+                await updateNotificationPreferences(notifPrefs);
+                setPrefsMessage('✓ Notification preferences saved!');
+                setTimeout(() => setPrefsMessage(''), 3000);
+              } catch (err) {
+                alert(err.response?.data?.message || err.message || 'Failed to update preferences');
+              } finally {
+                setSavingPrefs(false);
+              }
+            }}
+            style={{
+              padding: '8px 18px',
+              backgroundColor: '#1a1a1a',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '6px',
+              fontWeight: '600',
+              fontSize: '13px',
+              cursor: savingPrefs ? 'wait' : 'pointer',
+            }}
+          >
+            {savingPrefs ? 'Saving...' : 'Save Preferences'}
+          </button>
+
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                setDigestStatus('Sending test digest email...');
+                const res = await triggerEmailDigest();
+                if (res.data?.sent) {
+                  setDigestStatus('✓ Test digest sent to your college email!');
+                } else {
+                  setDigestStatus('⚠️ Digest compiled but email could not be sent.');
+                }
+                setTimeout(() => setDigestStatus(''), 4000);
+              } catch (err) {
+                setDigestStatus(`Failed: ${err.message}`);
+              }
+            }}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#f3f2ee',
+              color: '#1a1a1a',
+              border: '1px solid #d4d2cc',
+              borderRadius: '6px',
+              fontWeight: '600',
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            Send Test Digest ✉️
+          </button>
+        </div>
       </div>
     </div>
   );

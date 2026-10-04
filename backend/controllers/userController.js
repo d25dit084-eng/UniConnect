@@ -388,6 +388,52 @@ const completeOnboarding = asyncHandler(async (req, res) => {
   });
 });
 
+// ─── Notification Preferences & Digest ───────────────────────────────────────
+const getNotificationPreferences = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).select('notificationPreferences');
+  if (!user) throw new ApiError(404, 'User not found');
+
+  sendResponse(res, 200, 'Notification preferences retrieved', {
+    preferences: user.notificationPreferences || {},
+  });
+});
+
+const updateNotificationPreferences = asyncHandler(async (req, res) => {
+  const allowed = [
+    'emailNotifications',
+    'pushNotifications',
+    'mentions',
+    'replies',
+    'eventRsvp',
+    'studyGroups',
+    'emailDigest',
+  ];
+  const user = await User.findById(req.user._id);
+  if (!user) throw new ApiError(404, 'User not found');
+
+  if (!user.notificationPreferences) {
+    user.notificationPreferences = {};
+  }
+
+  allowed.forEach((key) => {
+    if (req.body[key] !== undefined) {
+      user.notificationPreferences[key] = req.body[key];
+    }
+  });
+
+  await user.save();
+  sendResponse(res, 200, 'Notification preferences updated successfully', {
+    preferences: user.notificationPreferences,
+  });
+});
+
+const triggerDigest = asyncHandler(async (req, res) => {
+  const { sendUserDigestEmail, compileUserDigest } = require('../services/digestService');
+  const digest = await compileUserDigest(req.user._id);
+  const sent = await sendUserDigestEmail(req.user._id);
+  sendResponse(res, 200, 'Digest compiled and triggered successfully', { sent, digest });
+});
+
 module.exports = {
   getProfile,
   getPublicProfile,
@@ -401,5 +447,8 @@ module.exports = {
   uploadProfileImage,
   autocompleteUsers,
   completeOnboarding,
+  getNotificationPreferences,
+  updateNotificationPreferences,
+  triggerDigest,
 };
 

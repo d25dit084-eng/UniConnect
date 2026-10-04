@@ -108,6 +108,19 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    notificationPreferences: {
+      emailNotifications: { type: Boolean, default: true },
+      pushNotifications: { type: Boolean, default: true },
+      mentions: { type: Boolean, default: true },
+      replies: { type: Boolean, default: true },
+      eventRsvp: { type: Boolean, default: true },
+      studyGroups: { type: Boolean, default: true },
+      emailDigest: {
+        type: String,
+        enum: ['none', 'daily', 'weekly'],
+        default: 'daily',
+      },
+    },
     resetPasswordToken: {
       type: String,
       select: false,

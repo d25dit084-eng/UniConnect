@@ -330,7 +330,12 @@
     - Step 2 (Interests & Passions): Multi-select pill cards for AI, coding, hackathons, startups, gaming, sports, arts, music, and research.
     - Step 3 (Campus Communities): Live community recommendations with one-tap auto-join checkmarks.
   - Linked onboarding route `/onboarding` in `App.jsx` and updated `Login.jsx` to seamlessly redirect un-onboarded users to `/onboarding`.
-  - Built Jest test suite (`backend/tests/onboarding.test.js`) verifying profile initialization, auto-joining communities, and profile persistence (14/14 suites passing, 65/65 tests).
+- [x] **Q5.10 — Notification Preferences & Email Digest (Backend & Frontend)**:
+  - Extended `User` model with `notificationPreferences` schema: granular category toggles (`emailNotifications`, `pushNotifications`, `mentions`, `replies`, `eventRsvp`, `studyGroups`) and `emailDigest` schedule (`daily`, `weekly`, `none`).
+  - Created `backend/services/digestService.js`: compiles personalized campus digests including trending hot posts, unread notifications count, upcoming events, and active study groups, dispatching formatted HTML emails via `emailService.js`.
+  - Added user preference endpoints in `userController.js` and `userRoutes.js`: `GET /api/users/preferences/notifications`, `PUT /api/users/preferences/notifications`, and `POST /api/users/preferences/notifications/test-digest`.
+  - Built frontend API client methods in `frontend/src/api/userApi.js` and responsive preference management cards in `frontend/src/pages/SettingsPage.jsx` with category toggles, digest frequency selection, optimistic updates, and manual test digest trigger.
+  - Created automated test suite `backend/tests/notificationPreferences.test.js` validating preference retrieval, persistence, and digest generation (15/15 test suites passing, 68/68 tests).
 
 ---
 
@@ -523,7 +528,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 5.8a PWA (Frontend: Web App Manifest, Service Worker caching strategies, offline detection banner, PWA install prompt support)
 - [x] 5.8b Web Push (Backend & Frontend: VAPID keys, push subscription endpoints, Web Push dispatch service, browser permission toggle and Jest tests)
 - [x] 5.9 Onboarding
-- [ ] 5.10 Notification preferences & digest
+- [x] 5.10 Notification preferences & digest
 - [ ] 5.11 Automod & moderation reports
 - [ ] 5.12 Lost & Found and marketplace
 

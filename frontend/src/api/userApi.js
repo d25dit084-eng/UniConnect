@@ -58,3 +58,18 @@ export const completeOnboarding = async (data) => {
   return res.data;
 };
 
+export const getNotificationPreferences = async () => {
+  const res = await api.get('/users/preferences/notifications');
+  return res.data;
+};
+
+export const updateNotificationPreferences = async (data) => {
+  const res = await api.put('/users/preferences/notifications', data);
+  return res.data;
+};
+
+export const triggerEmailDigest = async () => {
+  const res = await api.post('/users/preferences/notifications/digest');
+  return res.data;
+};
+
