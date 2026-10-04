@@ -13,7 +13,9 @@ export const CreatePost = () => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [url, setUrl] = useState('');
-  const [mediaUrl, setMediaUrl] = useState(''); // text entry fallback for image url for ease of wireframe testing
+  const [mediaUrl, setMediaUrl] = useState('');
+  const [pollOptions, setPollOptions] = useState(['', '']);
+  const [pollDurationDays, setPollDurationDays] = useState(7);
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -39,6 +41,24 @@ export const CreatePost = () => {
     fetchJoined();
   }, [location]);
 
+  const handlePollOptionChange = (index, value) => {
+    const updated = [...pollOptions];
+    updated[index] = value;
+    setPollOptions(updated);
+  };
+
+  const addPollOption = () => {
+    if (pollOptions.length < 6) {
+      setPollOptions([...pollOptions, '']);
+    }
+  };
+
+  const removePollOption = (index) => {
+    if (pollOptions.length > 2) {
+      setPollOptions(pollOptions.filter((_, i) => i !== index));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -60,6 +80,20 @@ export const CreatePost = () => {
     if (type === 'text') payload.content = content.trim();
     if (type === 'link') payload.url = url.trim();
     if (type === 'image') payload.media = [mediaUrl.trim() || '/uploads/placeholder.png'];
+    if (type === 'poll') {
+      const validOptions = pollOptions.map((o) => o.trim()).filter(Boolean);
+      if (validOptions.length < 2) {
+        setError('Poll requires at least 2 non-empty options.');
+        setLoading(false);
+        return;
+      }
+      payload.poll = {
+        question: title.trim(),
+        options: validOptions,
+        durationDays: Number(pollDurationDays),
+      };
+      if (content.trim()) payload.content = content.trim();
+    }
 
     try {
       const res = await createPost(payload);
@@ -126,11 +160,18 @@ export const CreatePost = () => {
             >
               Image Post
             </button>
+            <button
+              type="button"
+              className={type === 'poll' ? 'active' : ''}
+              onClick={() => setType('poll')}
+            >
+              📊 Poll Post
+            </button>
           </div>
         </div>
 
         <div className="form-group">
-          <label>Title</label>
+          <label>{type === 'poll' ? 'Poll Question / Title' : 'Title'}</label>
           <input
             type="text"
             required
@@ -138,7 +179,9 @@ export const CreatePost = () => {
             max={200}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="An interesting title..."
+            placeholder={
+              type === 'poll' ? 'Ask a question for campus votes...' : 'An interesting title...'
+            }
           />
         </div>
 
@@ -176,6 +219,101 @@ export const CreatePost = () => {
               onChange={(e) => setMediaUrl(e.target.value)}
               placeholder="/uploads/sample.jpg"
             />
+          </div>
+        )}
+
+        {type === 'poll' && (
+          <div className="form-group">
+            <label style={{ marginBottom: '6px', display: 'block' }}>Poll Options (2 to 6)</label>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                marginBottom: '10px',
+              }}
+            >
+              {pollOptions.map((opt, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    required
+                    maxLength={100}
+                    value={opt}
+                    onChange={(e) => handlePollOptionChange(idx, e.target.value)}
+                    placeholder={`Option ${idx + 1}`}
+                    style={{ flex: 1 }}
+                  />
+                  {pollOptions.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => removePollOption(idx)}
+                      style={{
+                        padding: '6px 12px',
+                        border: '1px solid #dcdcdc',
+                        background: '#fff',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        color: '#d32f2f',
+                        fontSize: '13px',
+                      }}
+                      title="Remove option"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {pollOptions.length < 6 && (
+              <button
+                type="button"
+                onClick={addPollOption}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '13px',
+                  border: '1px dashed #3b82f6',
+                  color: '#3b82f6',
+                  background: '#eff6ff',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  marginBottom: '14px',
+                  fontWeight: 500,
+                }}
+              >
+                + Add Option
+              </button>
+            )}
+
+            <div style={{ marginTop: '10px' }}>
+              <label style={{ display: 'block', fontSize: '13px', marginBottom: '4px' }}>
+                Voting Duration
+              </label>
+              <select
+                value={pollDurationDays}
+                onChange={(e) => setPollDurationDays(Number(e.target.value))}
+                style={{ width: 'auto', minWidth: '160px' }}
+              >
+                <option value={1}>1 Day</option>
+                <option value={3}>3 Days</option>
+                <option value={7}>7 Days (Recommended)</option>
+                <option value={14}>14 Days</option>
+                <option value={30}>30 Days</option>
+              </select>
+            </div>
+
+            <div style={{ marginTop: '14px' }}>
+              <label style={{ display: 'block', fontSize: '13px', marginBottom: '4px' }}>
+                Context / Additional Notes (Optional)
+              </label>
+              <textarea
+                rows="3"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Provide more context or instructions for your poll..."
+              />
+            </div>
           </div>
         )}
 

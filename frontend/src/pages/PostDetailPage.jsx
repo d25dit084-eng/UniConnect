@@ -11,6 +11,7 @@ import {
 import { votePost, voteComment } from '../api/voteApi';
 import { savePost, unsavePost } from '../api/savedApi';
 import { useAuth } from '../context/AuthContext';
+import { PollCard } from '../components/PollCard';
 
 // ─── Comment Node Component (Recursive) ──────────────────────────────────────────
 const CommentNode = ({ comment, onCommentAction, depth = 0 }) => {
@@ -560,6 +561,13 @@ export const PostDetailPage = () => {
               }}
             />
           </div>
+        )}
+
+        {(post.type === 'poll' || post.poll) && (
+          <PollCard
+            post={post}
+            onPollUpdated={(updated) => setPost((prev) => ({ ...prev, ...updated }))}
+          />
         )}
 
         <div className="post-detail-actions">

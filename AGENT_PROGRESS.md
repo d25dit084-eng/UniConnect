@@ -252,6 +252,12 @@
   - Implemented atomic lock-free `$inc` updates for both option `voteCount` and post `poll.totalVotes`, with expiration verification.
   - Enhanced `feedEnricher.js` to batch query user poll votes and enrich posts with `userVotedOptionId`.
   - Built Jest integration test suite (`backend/tests/polls.test.js`) verifying poll creation, atomic vote casting, duplicate rejection, and expiration handling (7/7 suites passing, 23/23 tests).
+- [x] **Q5.2b — Interactive Polls in Posts UI (Frontend)**:
+  - Built `PollCard.jsx`: interactive poll rendering with radio selection in voting mode, instant optimistic vote dispatch, animated CSS percentage fill bars in results mode, user vote checkmark indicator (`✓ Your vote`), and live countdown or closed expiration badge.
+  - Integrated `PollCard` into both `PostCard.jsx` (feed stream) and `PostDetailPage.jsx` (single post view).
+  - Added `votePoll` API call in `frontend/src/api/postApi.js`.
+  - Extended `CreatePost.jsx` with dedicated "Poll Post" tab, dynamic option adding/removal (2-6 options), and duration selector (1, 3, 7, 14, 30 days).
+  - Verified with clean ESLint (0 errors) and production Vite build (1.66s, 0 errors).
 
 ---
 
@@ -431,7 +437,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 5.1a Course & professor reviews (Backend: Course, Professor, Review models, atomic aggregate score sync, anonymity support, API endpoints & Jest test suite)
 - [x] 5.1b Course & professor reviews (Frontend: Reviews browse view, course/professor profile modal, rating metrics, anonymous submission toggle)
 - [x] 5.2a Polls in posts (Backend: Post.poll schema, PollVote model, atomic vote controller & routes, expiry validation, and Jest tests)
-- [ ] 5.2b Polls in posts (Frontend: Poll creation UI in CreatePost, interactive poll cards in PostCard & PostDetailPage with animated progress bars)
+- [x] 5.2b Polls in posts (Frontend: Poll creation UI in CreatePost, interactive poll cards in PostCard & PostDetailPage with animated progress bars)
 - [ ] 5.3 Resource library
 - [ ] 5.4 Hot ranking
 - [ ] 5.5 Mentions & autocomplete

@@ -26,3 +26,9 @@ export const searchPosts = async (q, sort = 'hot', page = 1, limit = 10) => {
   });
   return res.data;
 };
+
+export const votePoll = async (postId, optionId) => {
+  const res = await api.post(`/posts/${postId}/poll/vote`, { optionId });
+  return res.data;
+};
+

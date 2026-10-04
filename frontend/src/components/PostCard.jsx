@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { votePost } from '../api/voteApi';
 import { savePost, unsavePost } from '../api/savedApi';
 import { deletePost } from '../api/postApi';
+import { PollCard } from './PollCard';
 
 export const PostCard = ({ post: initialPost, onPostDeleted }) => {
   const { user, isAuthenticated } = useAuth();
@@ -214,6 +215,13 @@ export const PostCard = ({ post: initialPost, onPostDeleted }) => {
             style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
           />
         </div>
+      )}
+
+      {(post.type === 'poll' || post.poll) && (
+        <PollCard
+          post={post}
+          onPollUpdated={(updated) => setPost((prev) => ({ ...prev, ...updated }))}
+        />
       )}
 
       <div className="post-actions">
