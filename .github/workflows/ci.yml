@@ -1,0 +1,91 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - hardening
+      - main
+  pull_request:
+    branches:
+      - hardening
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-checks:
+    name: Backend Lint & Tests
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd mongosh
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run Jest test suite with coverage
+        run: npm run test:coverage
+        env:
+          PORT: 5000
+          NODE_ENV: test
+          MONGO_URI: mongodb://127.0.0.1:27017/uniconnect_ci
+          JWT_SECRET: ci_test_jwt_secret_key_minimum_32_characters_long_for_security_123456
+          REFRESH_SECRET: ci_test_refresh_jwt_secret_key_minimum_32_characters_123456
+          SESSION_SECRET: ci_test_session_secret_key_1234567890_abcdef
+          ANONYMOUS_KEY_HEX: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
+  frontend-checks:
+    name: Frontend Lint & Build
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Build frontend production bundle
+        run: npm run build

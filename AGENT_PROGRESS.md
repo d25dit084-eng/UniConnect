@@ -198,6 +198,11 @@
     - `votes.test.js`: Validates atomic upvote, post score increment, author karma increment, vote flipping (+1 -> -1), and idempotent vote undoing.
     - `anonymity.test.js`: Validates anonymous post creation, zero-leak author suppression for third-party viewers (`author.alias` present, `username`/`email`/`_id` stripped), and OP author viewing privileges.
   - Added `test` and `test:coverage` scripts. 100% tests passing (10/10 tests across 4 suites).
+- [x] **Q4.1c — CI/CD Pipeline (GitHub Actions)**:
+  - Created `.github/workflows/ci.yml` with parallel `backend-checks` and `frontend-checks` jobs.
+  - Configured triggers on push and pull request against `hardening` and `main`, with concurrency group auto-cancelling stale runs.
+  - Backend job provisions a containerized MongoDB 6.0 service with health checks, sets up Node.js 20 with npm caching, installs dependencies (`npm ci`), runs ESLint (`npm run lint`), and executes Jest tests with coverage reporting (`npm run test:coverage`).
+  - Frontend job sets up Node.js 20 with npm caching, installs dependencies (`npm ci`), runs ESLint (`npm run lint`), and compiles the production Vite bundle (`npm run build`).
 
 ---
 
@@ -367,7 +372,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 ### Q4: Engineering Base
 - [x] 4.1a Code style: ESLint & Prettier configuration across frontend and backend.
 - [x] 4.1b Automated test suites: Jest integration & unit test suite with coverage scripts.
-- [ ] 4.1c CI/CD pipeline: GitHub Actions workflow (`.github/workflows/ci.yml`) for lint, tests, and build.
+- [x] 4.1c CI/CD pipeline: GitHub Actions workflow (`.github/workflows/ci.yml`) for lint, tests, and build.
 - [ ] 4.1d Containerization: Multi-stage Dockerfiles for backend and frontend + `docker-compose.yml`.
 - [ ] 4.1e Observability: Structured logging, enhanced health check (`/api/health`) with dependency monitoring.
 - [ ] 4.1f Data seeding: Idempotent campus communities, demo users, posts, and topics seed script.
