@@ -224,6 +224,11 @@
   - Seeds 7 core campus communities: `c/campus-life`, `c/cs-department`, `c/career-advice`, `c/courses-professors`, `c/housing-roommates`, `c/chaos`, `c/play-round`.
   - Seeds 12 campus posts across categories, including anonymous posts with encrypted author references (`encryptAuthor`), calculated hot ranks, and threaded nested comment replies.
   - Seeds direct conversations and realistic notifications. Verified with double-run idempotency check.
+- [x] **Q4.1g — API Documentation: OpenAPI 3.0 & Interactive Swagger UI**:
+  - Authored OpenAPI 3.0.3 specification (`backend/docs/swagger.js`) covering schemas (`User`, `Post`, `Comment`, `HealthResponse`, `ErrorResponse`), security schemes (`bearerAuth`, `cookieAuth`), and endpoints for health, authentication, feeds, posts, atomic votes, communities, and accountability de-anonymization.
+  - Mounted interactive Swagger UI at `/api/docs` with tailored CSP headers to permit UI rendering without weakening API security.
+  - Exposed raw machine-readable JSON specification at `/api/docs/json`.
+  - Created automated test suite (`backend/tests/docs.test.js`) verifying spec compliance and route availability (5/5 suites passing, 13/13 tests).
 
 ---
 
@@ -397,7 +402,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 4.1d Containerization: Multi-stage Dockerfiles for backend and frontend + `docker-compose.yml`.
 - [x] 4.1e Observability: Structured logging, enhanced health check (`/api/health`) with dependency monitoring.
 - [x] 4.1f Data seeding: Idempotent campus communities, demo users, posts, and topics seed script.
-- [ ] 4.1g API documentation: OpenAPI 3.0 specification & Swagger UI at `/api/docs`.
+- [x] 4.1g API documentation: OpenAPI 3.0 specification & Swagger UI at `/api/docs`.
 
 ### Q5: High-Value Features
 - [ ] 5.1 Course & professor reviews
