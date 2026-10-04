@@ -8,12 +8,20 @@ const {
   markAllAsRead,
   deleteNotification,
   clearAllNotifications,
+  getVapidPublicKey,
+  subscribePush,
+  unsubscribePush,
 } = require('../controllers/notificationController');
 const { protect } = require('../middleware/authMiddleware');
 const validateObjectId = require('../middleware/validateObjectId');
 
 // All notification endpoints require authentication
 router.use(protect);
+
+// Web Push Endpoints
+router.get('/push/vapid-key', getVapidPublicKey);
+router.post('/push/subscribe', subscribePush);
+router.post('/push/unsubscribe', unsubscribePush);
 
 // IMPORTANT: specific routes before /:id
 router.get('/', getNotifications);

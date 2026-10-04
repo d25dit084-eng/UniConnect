@@ -105,6 +105,47 @@ const clearAllNotifications = asyncHandler(async (req, res) => {
   sendResponse(res, 200, 'All notifications cleared');
 });
 
+// ─── Web Push Subscriptions ──────────────────────────────────────────────────
+
+const getVapidPublicKey = asyncHandler(async (req, res) => {
+  const { getPublicKey } = require('../config/webPush');
+  sendResponse(res, 200, 'VAPID public key retrieved', {
+    publicKey: getPublicKey(),
+  });
+});
+
+const subscribePush = asyncHandler(async (req, res) => {
+  const { endpoint, keys } = req.body;
+  if (!endpoint || !keys || !keys.p256dh || !keys.auth) {
+    throw new ApiError(400, 'Invalid push subscription payload');
+  }
+
+  const PushSubscription = require('../models/PushSubscription');
+  await PushSubscription.findOneAndUpdate(
+    { endpoint },
+    {
+      user: req.user._id,
+      endpoint,
+      keys,
+      userAgent: req.headers['user-agent'] || '',
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  sendResponse(res, 201, 'Push subscription saved successfully');
+});
+
+const unsubscribePush = asyncHandler(async (req, res) => {
+  const { endpoint } = req.body;
+  if (!endpoint) {
+    throw new ApiError(400, 'Endpoint is required to unsubscribe');
+  }
+
+  const PushSubscription = require('../models/PushSubscription');
+  await PushSubscription.findOneAndDelete({ endpoint, user: req.user._id });
+  sendResponse(res, 200, 'Push subscription removed successfully');
+});
+
 module.exports = {
   getNotifications,
   getUnreadCount,
@@ -112,4 +153,7 @@ module.exports = {
   markAllAsRead,
   deleteNotification,
   clearAllNotifications,
+  getVapidPublicKey,
+  subscribePush,
+  unsubscribePush,
 };

@@ -314,6 +314,14 @@
   - Implemented service worker registration helper (`frontend/src/registerServiceWorker.js`) invoked at application bootstrap in `main.jsx`.
   - Built sticky `OfflineBanner.jsx` component rendered across `Layout.jsx` listening to browser `online`/`offline` lifecycle events.
   - Updated `index.html` with mobile app meta tags, apple-touch-icon, theme-color, and manifest link. Verified with 0 ESLint errors and clean Vite build.
+- [x] **Q5.8b — Web Push Notifications (Backend & Frontend)**:
+  - Installed `web-push` and configured VAPID key lifecycle management in `backend/config/webPush.js`.
+  - Created `PushSubscription.js` model with multi-device tracking, `{ user: 1, createdAt: -1 }` indexing, and endpoint deduplication.
+  - Built `pushService.js` with automated stale endpoint pruning (handling HTTP 410 Gone / 404 Not Found status codes).
+  - Mounted push endpoints in `notificationRoutes.js`: `GET /api/notifications/push/vapid-key`, `POST /api/notifications/push/subscribe`, and `POST /api/notifications/push/unsubscribe`.
+  - Built `frontend/src/api/pushApi.js` and `frontend/src/utils/pushManager.js` with browser feature detection, VAPID base64 conversion, and background service worker push registration.
+  - Added push subscription banner and toggle button in `frontend/src/pages/Notifications.jsx`.
+  - Built Jest test suite (`backend/tests/webPush.test.js`) verifying key retrieval, subscription upsert, unsubscribe, and service dispatch (13/13 suites passing, 62/62 tests).
 
 ---
 
@@ -504,7 +512,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 5.7a Campus events & RSVP (Backend: Event model, RSVP tracking, date/time/venue/virtual link, capacity cap, reminder notifications, Jest tests)
 - [x] 5.7b Campus events & RSVP (Frontend: Events browse view, date/format filters, RSVP toggling with optimistic state, event creation modal)
 - [x] 5.8a PWA (Frontend: Web App Manifest, Service Worker caching strategies, offline detection banner, PWA install prompt support)
-- [ ] 5.8b Web Push (Backend & Frontend: VAPID keys, push subscription endpoints, Web Push dispatch service, browser permission toggle and Jest tests)
+- [x] 5.8b Web Push (Backend & Frontend: VAPID keys, push subscription endpoints, Web Push dispatch service, browser permission toggle and Jest tests)
 - [ ] 5.9 Onboarding
 - [ ] 5.10 Notification preferences & digest
 - [ ] 5.11 Automod & moderation reports

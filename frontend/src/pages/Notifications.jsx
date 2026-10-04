@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getNotifications,
@@ -7,6 +7,12 @@ import {
   deleteNotification,
   clearAllNotifications,
 } from '../api/notificationApi';
+import {
+  isPushSupported,
+  getCurrentPushSubscription,
+  subscribeUserToPush,
+  unsubscribeUserFromPush,
+} from '../utils/pushManager';
 
 export const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
@@ -15,6 +21,33 @@ export const Notifications = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+
+  useEffect(() => {
+    if (isPushSupported()) {
+      getCurrentPushSubscription().then((sub) => {
+        setPushSubscribed(!!sub);
+      });
+    }
+  }, []);
+
+  const handleTogglePush = async () => {
+    try {
+      setPushLoading(true);
+      if (pushSubscribed) {
+        await unsubscribeUserFromPush();
+        setPushSubscribed(false);
+      } else {
+        await subscribeUserToPush();
+        setPushSubscribed(true);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to update push notification subscription');
+    } finally {
+      setPushLoading(false);
+    }
+  };
 
   const fetchNotifications = async () => {
     setLoading(true);
@@ -92,6 +125,54 @@ export const Notifications = () => {
           </button>
         </div>
       </div>
+
+      {isPushSupported() && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 14px',
+            backgroundColor: pushSubscribed ? '#f0fdf4' : '#faf8f5',
+            border: '1px solid',
+            borderColor: pushSubscribed ? '#bbf7d0' : '#e2e0db',
+            borderRadius: '8px',
+            marginBottom: '16px',
+            fontSize: '13px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>{pushSubscribed ? '🔔' : '🔕'}</span>
+            <span>
+              {pushSubscribed
+                ? 'Browser Web Push notifications are active.'
+                : 'Enable browser push notifications to get real-time campus alerts.'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleTogglePush}
+            disabled={pushLoading}
+            style={{
+              padding: '5px 12px',
+              backgroundColor: pushSubscribed ? '#ffffff' : '#1a1a1a',
+              color: pushSubscribed ? '#15803d' : '#ffffff',
+              border: '1px solid',
+              borderColor: pushSubscribed ? '#15803d' : '#1a1a1a',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: '600',
+              cursor: pushLoading ? 'wait' : 'pointer',
+            }}
+          >
+            {pushLoading
+              ? 'Updating...'
+              : pushSubscribed
+              ? 'Disable Push'
+              : 'Enable Push'}
+          </button>
+        </div>
+      )}
 
       <div style={{ marginBottom: '15px' }}>
         <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}>
