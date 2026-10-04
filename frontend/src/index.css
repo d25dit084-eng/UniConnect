@@ -688,6 +688,7 @@ input:focus, textarea:focus, select:focus {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  overflow-anchor: auto;
 }
 .message-bubble {
   max-width: 70%;
@@ -780,6 +781,7 @@ input:focus, textarea:focus, select:focus {
   cursor: pointer;
   margin-bottom: 8px;
   transition: all 0.15s;
+  overflow-anchor: none;
 }
 .chat-load-earlier-btn:hover {
   background: #f0f0f0;
@@ -801,18 +803,34 @@ input:focus, textarea:focus, select:focus {
   border-top-color: #b2dfc0;
   color: #1a6b35;
 }
+.chat-scroll-anchor {
+  overflow-anchor: auto;
+  height: 1px;
+}
 .chat-new-messages-btn {
   position: sticky;
-  bottom: 8px;
+  bottom: 12px;
   align-self: center;
-  background: #1a1a1a;
+  background: #ff4500;
   color: #ffffff;
   border-radius: 20px;
   font-size: 11px;
-  padding: 5px 14px;
+  font-weight: 600;
+  padding: 6px 16px;
   cursor: pointer;
   border: none;
-  z-index: 5;
+  z-index: 10;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-anchor: none;
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.chat-new-messages-btn:hover {
+  background: #e03d00;
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.25);
 }
 
 .chat-input-area {

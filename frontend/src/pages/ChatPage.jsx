@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -68,6 +68,7 @@ export const ChatPage = () => {
   const typingTimeoutRef = useRef(null);
   const messageEndRef = useRef(null);
   const chatMessagesRef = useRef(null);
+  const scrollSnapshotRef = useRef(null);
 
   // ─── Deduplication Helper ────────────────────────────────────────────────────
   const addMessageDeduped = useCallback((newMsg) => {
@@ -353,12 +354,12 @@ export const ChatPage = () => {
     }
   }, [loadingMsgs, messages.length]);
 
-  // Track scroll position to decide whether to auto-scroll
+  // Track scroll position: stick to bottom only when within ~80px of it
   const handleScroll = useCallback(() => {
     const el = chatMessagesRef.current;
     if (!el) return;
-    const threshold = 100;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+    const threshold = 80;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
     isNearBottom.current = atBottom;
     if (atBottom) setShowNewMsgBtn(false);
   }, []);
@@ -498,8 +499,27 @@ export const ChatPage = () => {
   const hasEarlierMessages = messages.length > visibleCount;
 
   const handleLoadEarlier = () => {
+    const el = chatMessagesRef.current;
+    if (el) {
+      scrollSnapshotRef.current = {
+        scrollHeight: el.scrollHeight,
+        scrollTop: el.scrollTop,
+      };
+    }
     setVisibleCount((prev) => prev + WINDOW_PAGE_SIZE);
   };
+
+  // Preserve scroll position when prepending older pages (scrollHeight delta)
+  useLayoutEffect(() => {
+    if (scrollSnapshotRef.current && chatMessagesRef.current) {
+      const el = chatMessagesRef.current;
+      const delta = el.scrollHeight - scrollSnapshotRef.current.scrollHeight;
+      if (delta > 0) {
+        el.scrollTop = scrollSnapshotRef.current.scrollTop + delta;
+      }
+      scrollSnapshotRef.current = null;
+    }
+  }, [visibleCount]);
 
   const renderReconnectBanner = () => {
     if (socketStatus === 'reconnecting') {
@@ -710,20 +730,23 @@ export const ChatPage = () => {
                   </div>
                 )}
 
-                <div ref={messageEndRef} />
+                <div ref={messageEndRef} className="chat-scroll-anchor" />
               </div>
 
               {/* Jump to New Messages Button */}
+              {/* Floating New Messages Pill when scrolled up */}
               {showNewMsgBtn && (
                 <button
                   type="button"
                   className="chat-new-messages-btn"
                   onClick={() => {
-                    messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                    isNearBottom.current = true;
                     setShowNewMsgBtn(false);
+                    messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
                   }}
+                  aria-label="Scroll to new messages"
                 >
-                  New messages ↓
+                  ↓ New messages
                 </button>
               )}
 

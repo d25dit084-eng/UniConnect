@@ -127,6 +127,12 @@
   - Preserved optimistic array index position in `addMessageDeduped` and `handleSend` until ack, preventing reorder jumps.
   - Preserved `clientMsgId` across server background message history refreshes via `existingMap`.
   - Verified with frontend build and budget benchmark: delivery p50 = 1.40 ms, p95 = 3.69 ms, persist p95 = 26.27 ms, event loop lag p99 = 16.07 ms. All quality gates passed.
+- [x] **Q2.7 — Chat Scroll Stability & Overflow Anchor**:
+  - Stick to bottom only when user scroll offset is within $\le 80\text{px}$ of bottom (`handleScroll`).
+  - Implemented `scrollSnapshotRef` and `useLayoutEffect` to measure and compensate `scrollHeight` delta when prepending older message pages (`handleLoadEarlier`), preserving exact viewport position without visual jumps.
+  - Added CSS `overflow-anchor: auto` to `.chat-messages` and `overflow-anchor: none` to buttons/banners, with dedicated bottom `.chat-scroll-anchor`.
+  - Added floating "↓ New messages" pill button when scrolled up, smoothly navigating to latest messages on click.
+  - Verified with frontend build and budget benchmark: delivery p50 = 1.33 ms, p95 = 3.82 ms, persist p95 = 26.90 ms, event loop lag p99 = 15.85 ms. All quality gates passed.
 
 ---
 
@@ -282,7 +288,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 2.4 Reconnect storms: exponential backoff with jitter (`randomizationFactor: 0.5`).
 - [x] 2.5 Upgrade `chat-bench.js` to Budget format (warmup, median of 3 runs, event-loop lag).
 - [x] 2.6 Chat list stability: key rows by `clientMsgId`.
-- [ ] 2.7 Scroll behavior: preserve scroll delta on prepending older pages, CSS `overflow-anchor`.
+- [x] 2.7 Scroll behavior: preserve scroll delta on prepending older pages, CSS `overflow-anchor`.
 - [ ] 2.8 Layout shift: fixed-size avatars, aspect ratios, skeletons (CLS < 0.05).
 - [ ] 2.9 Render storms: React.memo message rows, split SocketContext.
 - [ ] 2.10 Feed smoothness: stale-while-revalidate, optimistic vote/save with rollback.
