@@ -665,23 +665,22 @@ const initializeSocket = (server) => {
           avatar: socket.user.avatar,
         };
 
-        const responseMessage = {
+        const messagePayload = {
           _id: messageId.toString(),
           clientMsgId: effectiveClientMsgId || null,
-          tempId: effectiveClientMsgId || null,
           conversation: convIdStr,
           sender: publicSender,
           content: trimmed,
-          attachments,
+          attachments: attachments && attachments.length > 0 ? attachments : [],
           isRead: false,
           status: 'sent',
           createdAt,
         };
 
         // Recipient receives message immediately via WebSocket
-        io.to(convIdStr).emit('new_message', responseMessage);
+        io.to(convIdStr).emit('new_message', messagePayload);
 
-        // G. PERSIST SECOND: Buffer into batched flush queue (<= 25ms or 50 messages)
+        // G. PERSIST SECOND: Buffer into batched flush queue reusing prebuilt payload
         // Sender's "sent" ack fires only AFTER the batched bulkWrite succeeds.
         queueMessagePersist({
           messageId,
@@ -689,7 +688,7 @@ const initializeSocket = (server) => {
           senderId: socket.user._id,
           content: trimmed,
           clientMsgId: effectiveClientMsgId,
-          attachments,
+          attachments: messagePayload.attachments,
           socketId: socket.id,
           ackCb,
           msgDate,
