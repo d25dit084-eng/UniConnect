@@ -203,6 +203,13 @@
   - Configured triggers on push and pull request against `hardening` and `main`, with concurrency group auto-cancelling stale runs.
   - Backend job provisions a containerized MongoDB 6.0 service with health checks, sets up Node.js 20 with npm caching, installs dependencies (`npm ci`), runs ESLint (`npm run lint`), and executes Jest tests with coverage reporting (`npm run test:coverage`).
   - Frontend job sets up Node.js 20 with npm caching, installs dependencies (`npm ci`), runs ESLint (`npm run lint`), and compiles the production Vite bundle (`npm run build`).
+- [x] **Q4.1d — Containerization: Multi-Stage Dockerfiles & Docker Compose**:
+  - `backend/Dockerfile`: Multi-stage build (Node.js 20 Alpine). Compiles native C++ dependencies in builder, creates lean unprivileged `node` runner image, and configures container `HEALTHCHECK` against `http://localhost:5000/api/health`.
+  - `backend/.dockerignore`: Prevents `node_modules`, secrets, tests, coverage, and git tracking from inflating the build context.
+  - `frontend/Dockerfile`: Multi-stage build (Node 20 Alpine builder -> Nginx 1.27 Alpine runtime) serving optimized Vite static bundles.
+  - `frontend/nginx.conf`: Production Nginx config featuring client SPA routing (`try_files $uri $uri/ /index.html;`), gzip compression, long-term static asset caching (`immutable`), and transparent reverse proxying for `/api/` and `/socket.io/` to backend.
+  - `frontend/.dockerignore`: Excludes host `node_modules` and local artifacts.
+  - `docker-compose.yml`: Fully orchestrated local and production environment linking `mongo:6.0` (with persistent volume and `mongosh` health check), `backend`, and `frontend` across a unified bridge network (`uniconnect-network`). Validated with `docker compose config`.
 
 ---
 
@@ -373,7 +380,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 4.1a Code style: ESLint & Prettier configuration across frontend and backend.
 - [x] 4.1b Automated test suites: Jest integration & unit test suite with coverage scripts.
 - [x] 4.1c CI/CD pipeline: GitHub Actions workflow (`.github/workflows/ci.yml`) for lint, tests, and build.
-- [ ] 4.1d Containerization: Multi-stage Dockerfiles for backend and frontend + `docker-compose.yml`.
+- [x] 4.1d Containerization: Multi-stage Dockerfiles for backend and frontend + `docker-compose.yml`.
 - [ ] 4.1e Observability: Structured logging, enhanced health check (`/api/health`) with dependency monitoring.
 - [ ] 4.1f Data seeding: Idempotent campus communities, demo users, posts, and topics seed script.
 - [ ] 4.1g API documentation: OpenAPI 3.0 specification & Swagger UI at `/api/docs`.
