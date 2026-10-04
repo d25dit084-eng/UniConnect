@@ -14,6 +14,7 @@ export const CreatePost = () => {
   const [content, setContent] = useState('');
   const [url, setUrl] = useState('');
   const [mediaUrl, setMediaUrl] = useState(''); // text entry fallback for image url for ease of wireframe testing
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -53,6 +54,7 @@ export const CreatePost = () => {
       communityId: selectedCommunityId,
       type,
       title: title.trim(),
+      isAnonymous,
     };
 
     if (type === 'text') payload.content = content.trim();
@@ -177,12 +179,32 @@ export const CreatePost = () => {
           </div>
         )}
 
+        <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
+          <label htmlFor="post-anonymous-toggle" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none', margin: 0 }}>
+            <input
+              id="post-anonymous-toggle"
+              type="checkbox"
+              checked={isAnonymous}
+              onChange={(e) => setIsAnonymous(e.target.checked)}
+              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '12px', color: isAnonymous ? '#4f8ef7' : '#666' }}>
+              Post anonymously
+              {isAnonymous && (
+                <span style={{ marginLeft: '6px', fontSize: '11px', fontStyle: 'italic', color: '#888' }}>
+                  — your name is hidden; you can see your own post.
+                </span>
+              )}
+            </span>
+          </label>
+        </div>
+
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px' }}>
           <button type="button" onClick={() => navigate(-1)} disabled={loading}>
             Cancel
           </button>
           <button type="submit" style={{ background: '#000', color: '#fff' }} disabled={loading}>
-            {loading ? 'Publishing...' : 'Publish Post'}
+            {loading ? 'Publishing...' : isAnonymous ? '👻 Publish Anonymously' : 'Publish Post'}
           </button>
         </div>
       </form>

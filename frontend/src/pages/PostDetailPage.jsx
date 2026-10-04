@@ -11,6 +11,7 @@ const CommentNode = ({ comment, onCommentAction, depth = 0 }) => {
   const { user, isAuthenticated } = useAuth();
   const [isReplying, setIsReplying] = useState(false);
   const [replyContent, setReplyContent] = useState('');
+  const [replyIsAnonymous, setReplyIsAnonymous] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
 
@@ -28,8 +29,9 @@ const CommentNode = ({ comment, onCommentAction, depth = 0 }) => {
     e.preventDefault();
     if (!replyContent.trim()) return;
     try {
-      await replyToComment(comment._id, replyContent.trim());
+      await replyToComment(comment._id, replyContent.trim(), replyIsAnonymous);
       setReplyContent('');
+      setReplyIsAnonymous(false);
       setIsReplying(false);
       onCommentAction(); // refresh
     } catch (err) {
@@ -59,15 +61,65 @@ const CommentNode = ({ comment, onCommentAction, depth = 0 }) => {
     }
   };
 
-  const isOwner = user && comment.author && user._id === (comment.author._id || comment.author);
+  const isOwner = user && comment.author && (user._id === (comment.author._id || comment.author) || comment.author?.isMine);
   const isAdmin = user && user.role === 'admin';
+  const isAnonymous = Boolean(comment.isAnonymous);
+  const authorDisplay = isAnonymous ? (comment.author?.alias || 'Anonymous') : (comment.author?.username || '[deleted]');
+  const isOP = Boolean(comment.author?.isOP);
+  const isMine = Boolean(comment.author?.isMine) || isOwner;
 
   return (
     <div className="comment-item" style={{ marginLeft: depth > 0 ? `${Math.min(depth, 3) * 14}px` : '0' }}>
       <div className="comment-author-meta">
-        <Link to={`/u/${comment.author?.username?.replace('u/', '') || 'deleted'}`}>
-          {comment.author?.username || '[deleted]'}
-        </Link>{' '}
+        {isAnonymous ? (
+          <span style={{ fontStyle: 'italic', color: '#888' }}>
+            {authorDisplay}
+            {isOP && (
+              <span
+                style={{
+                  marginLeft: '4px',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  color: '#4f8ef7',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                [OP]
+              </span>
+            )}
+            {isMine && (
+              <span
+                style={{
+                  marginLeft: '4px',
+                  fontSize: '10px',
+                  color: '#6c6',
+                  fontWeight: 700,
+                }}
+              >
+                [you]
+              </span>
+            )}
+          </span>
+        ) : (
+          <>
+            <Link to={`/u/${comment.author?.username?.replace('u/', '') || 'deleted'}`}>
+              {authorDisplay}
+            </Link>
+            {isOP && (
+              <span
+                style={{
+                  marginLeft: '4px',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  color: '#4f8ef7',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                [OP]
+              </span>
+            )}
+          </>
+        )}{' '}
         • {new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       </div>
 
@@ -170,6 +222,18 @@ const CommentNode = ({ comment, onCommentAction, depth = 0 }) => {
             onChange={(e) => setReplyContent(e.target.value)}
             placeholder="Write a reply..."
           />
+          <div style={{ margin: '4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <input
+              type="checkbox"
+              id={`anon-reply-${comment._id}`}
+              checked={replyIsAnonymous}
+              onChange={(e) => setReplyIsAnonymous(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+            <label htmlFor={`anon-reply-${comment._id}`} style={{ fontSize: '11px', color: '#666', cursor: 'pointer' }}>
+              Reply anonymously
+            </label>
+          </div>
           <div className="form-btn-row">
             <button type="button" onClick={() => setIsReplying(false)}>Cancel</button>
             <button type="submit" style={{ background: '#000', color: '#fff' }}>Submit Reply</button>
@@ -203,6 +267,7 @@ export const PostDetailPage = () => {
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
+  const [commentIsAnonymous, setCommentIsAnonymous] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [commentsLoading, setCommentsLoading] = useState(true);
@@ -306,8 +371,9 @@ export const PostDetailPage = () => {
     if (!newComment.trim()) return;
 
     try {
-      await createComment(post._id, newComment.trim());
+      await createComment(post._id, newComment.trim(), commentIsAnonymous);
       setNewComment('');
+      setCommentIsAnonymous(false);
       // Reload comments
       const commentsRes = await getPostComments(post._id);
       setComments(commentsRes.data.comments || []);
@@ -320,8 +386,12 @@ export const PostDetailPage = () => {
   if (error) return <div className="error-indicator">{error}</div>;
   if (!post) return <div className="empty-indicator">Post not found.</div>;
 
-  const isOwner = user && post.author && user._id === (post.author._id || post.author);
+  const isOwner = user && post.author && (user._id === (post.author._id || post.author) || post.author?.isMine);
   const isAdmin = user && user.role === 'admin';
+  const isPostAnonymous = Boolean(post.isAnonymous);
+  const postAuthorDisplay = isPostAnonymous ? (post.author?.alias || 'Anonymous') : (post.author?.username || '[deleted]');
+  const isPostOP = Boolean(post.author?.isOP);
+  const isPostMine = Boolean(post.author?.isMine) || isOwner;
 
   return (
     <div>
@@ -334,9 +404,40 @@ export const PostDetailPage = () => {
             </Link>
           )}
           {' • '}Posted by{' '}
-          <Link to={`/u/${post.author?.username?.replace('u/', '') || 'deleted'}`}>
-            {post.author?.username || '[deleted]'}
-          </Link>{' '}
+          {isPostAnonymous ? (
+            <span style={{ fontStyle: 'italic', color: '#888' }}>
+              {postAuthorDisplay}
+              {isPostOP && (
+                <span
+                  style={{
+                    marginLeft: '4px',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    color: '#4f8ef7',
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  [OP]
+                </span>
+              )}
+              {isPostMine && (
+                <span
+                  style={{
+                    marginLeft: '4px',
+                    fontSize: '10px',
+                    color: '#6c6',
+                    fontWeight: 700,
+                  }}
+                >
+                  [you]
+                </span>
+              )}
+            </span>
+          ) : (
+            <Link to={`/u/${post.author?.username?.replace('u/', '') || 'deleted'}`}>
+              {postAuthorDisplay}
+            </Link>
+          )}{' '}
           • {new Date(post.createdAt).toLocaleString()}
         </div>
 
@@ -427,9 +528,20 @@ export const PostDetailPage = () => {
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="What are your thoughts on this post?"
           />
-          <button type="submit" style={{ background: '#000', color: '#fff', marginTop: '8px' }}>
-            Submit Comment
-          </button>
+          <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: '#666' }}>
+              <input
+                type="checkbox"
+                checked={commentIsAnonymous}
+                onChange={(e) => setCommentIsAnonymous(e.target.checked)}
+                style={{ cursor: 'pointer' }}
+              />
+              Comment anonymously
+            </label>
+            <button type="submit" style={{ background: '#000', color: '#fff' }}>
+              {commentIsAnonymous ? '👻 Submit Anonymously' : 'Submit Comment'}
+            </button>
+          </div>
         </form>
       ) : (
         <div style={{ padding: '10px', border: '1px dashed #000', textAlign: 'center', fontSize: '13px' }}>

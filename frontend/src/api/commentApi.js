@@ -1,7 +1,7 @@
 import api from './axios';
 
-export const createComment = async (postId, content) => {
-  const res = await api.post('/comments', { postId, content });
+export const createComment = async (postId, content, isAnonymous = false) => {
+  const res = await api.post('/comments', { postId, content, isAnonymous });
   return res.data;
 };
 
@@ -10,8 +10,8 @@ export const getPostComments = async (postId) => {
   return res.data;
 };
 
-export const replyToComment = async (commentId, content) => {
-  const res = await api.post(`/comments/${commentId}/reply`, { content });
+export const replyToComment = async (commentId, content, isAnonymous = false) => {
+  const res = await api.post(`/comments/${commentId}/reply`, { content, isAnonymous });
   return res.data;
 };
 

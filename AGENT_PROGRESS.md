@@ -160,6 +160,15 @@
   - Persists running baseline to `sessionStorage["uniconnect_web_vitals_baseline"]` across navigation for comparison.
   - Initialized in `frontend/src/main.jsx`. Production builds are unaffected (dynamic import tree-shaken by Vite).
   - Verified: frontend build 0 errors (162→165 modules, bundle size unchanged in prod).
+- [x] **Q3.1 — Frontend Anonymity UI: Toggle, Alias + OP Badge, Disabled Profile Links**:
+  - `CreatePost.jsx`: Added "Post anonymously" checkbox toggle with dynamic submit button text (`👻 Publish Anonymously`), passed `isAnonymous` in payload.
+  - `PostCard.jsx`: Updated author header to display anonymous alias (`Anon-xxxx` / `Anonymous`), rendered `[OP]` badge (blue) and `[you]` badge (green) when viewing own post, disabled clickable profile link for anonymous posts.
+  - `PostDetailPage.jsx`:
+    - Updated post header with same alias, `[OP]` and `[you]` badges, and disabled profile link.
+    - Updated `CommentNode`: displays alias, `[OP]` badge, `[you]` badge, disables profile link, and added "Reply anonymously" checkbox for nested replies.
+    - Added "Comment anonymously" checkbox to top-level comment form with `👻 Submit Anonymously` button.
+  - `commentApi.js`: Added `isAnonymous` argument to `createComment` and `replyToComment`.
+  - Verified: frontend build 0 errors, all 18 anonymity leak endpoints pass with zero identity leaks.
 
 ---
 
@@ -322,7 +331,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 2.11 Web-vitals logging (CLS, INP, LCP).
 
 ### Q3: Frontend Anonymity & Hardening
-- [ ] 3.1 Frontend anonymity UI: post anonymously toggle, alias + OP badge, profile links disabled.
+- [x] 3.1 Frontend anonymity UI: post anonymously toggle, alias + OP badge, profile links disabled.
 - [ ] 3.2 Atomic votes and incremental karma.
 - [ ] 3.3 Security: Helmet, rate limiting, zod validation, markdown sanitization, login lockout, image upload validation.
 

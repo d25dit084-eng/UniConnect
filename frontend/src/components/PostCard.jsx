@@ -109,8 +109,12 @@ export const PostCard = ({ post: initialPost, onPostDeleted }) => {
     return new Date(dateStr).toLocaleDateString();
   };
 
-  const isOwner = user && post.author && user._id === (post.author._id || post.author);
+  const isOwner = user && post.author && (user._id === (post.author._id || post.author) || post.author?.isMine);
   const isAdmin = user && user.role === 'admin';
+  const isAnonymous = Boolean(post.isAnonymous);
+  const authorDisplay = isAnonymous ? (post.author?.alias || 'Anonymous') : (post.author?.username || '[deleted]');
+  const isOP = Boolean(post.author?.isOP);
+  const isMine = Boolean(post.author?.isMine) || isOwner;
 
   return (
     <div className="post-card">
@@ -124,9 +128,40 @@ export const PostCard = ({ post: initialPost, onPostDeleted }) => {
           </>
         )}
         Posted by{' '}
-        <Link to={`/u/${post.author?.username?.replace('u/', '') || 'deleted'}`}>
-          {post.author?.username || '[deleted]'}
-        </Link>{' '}
+        {isAnonymous ? (
+          <span style={{ fontStyle: 'italic', color: '#888' }}>
+            {authorDisplay}
+            {isOP && (
+              <span
+                style={{
+                  marginLeft: '4px',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  color: '#4f8ef7',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                [OP]
+              </span>
+            )}
+            {isMine && (
+              <span
+                style={{
+                  marginLeft: '4px',
+                  fontSize: '10px',
+                  color: '#6c6',
+                  fontWeight: 700,
+                }}
+              >
+                [you]
+              </span>
+            )}
+          </span>
+        ) : (
+          <Link to={`/u/${post.author?.username?.replace('u/', '') || 'deleted'}`}>
+            {authorDisplay}
+          </Link>
+        )}{' '}
         • {formatTime(post.createdAt)}
       </div>
 
