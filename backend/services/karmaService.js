@@ -10,12 +10,15 @@ const delayedKarmaBuffer = new Map();
  * @param {string} type - 'post' or 'comment'
  * @param {number} change - The net vote change (e.g. +1, -1, +2, -2)
  */
-const updateKarma = async (userId, type, change) => {
+const updateKarma = async (userId, type, change, session = null) => {
   if (!userId || change === 0) return;
 
   const karmaField = type === 'post' ? 'karma.post' : 'karma.comment';
 
   // Atomically increment the specific field and total karma
+  const options = { returnDocument: 'before' };
+  if (session) options.session = session;
+
   await User.findByIdAndUpdate(
     userId,
     {
@@ -24,7 +27,7 @@ const updateKarma = async (userId, type, change) => {
         'karma.total': change,
       },
     },
-    { new: false } // We don't need the returned document
+    options
   );
 };
 

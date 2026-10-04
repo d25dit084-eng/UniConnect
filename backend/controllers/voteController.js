@@ -3,6 +3,7 @@ const Post = require('../models/Post');
 const Comment = require('../models/Comment');
 const Notification = require('../models/Notification');
 const { updateKarma, queueDelayedKarma } = require('../services/karmaService');
+const { calculateHotRank } = require('../services/rankingService');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
 const sendResponse = require('../utils/sendResponse');
@@ -30,31 +31,49 @@ const votePost = asyncHandler(async (req, res) => {
 
   const oldValue = existingVote ? existingVote.value : 0;
   let newValue = value;
+  let upvoteDiff = 0;
+  let downvoteDiff = 0;
+  let scoreDiff = 0;
 
   if (oldValue === value) {
     // Undo vote if user clicks the same vote again
     newValue = 0;
     await Vote.deleteOne({ _id: existingVote._id });
+    upvoteDiff = oldValue === 1 ? -1 : 0;
+    downvoteDiff = oldValue === -1 ? -1 : 0;
+    scoreDiff = -oldValue;
   } else if (existingVote) {
     // Switch vote direction (1 -> -1 or -1 -> 1)
-    existingVote.value = value;
-    await existingVote.save();
+    await Vote.updateOne({ _id: existingVote._id }, { $set: { value } });
+    upvoteDiff = value === 1 ? 1 : -1;
+    downvoteDiff = value === -1 ? 1 : -1;
+    scoreDiff = value - oldValue; // +2 or -2
   } else {
     // Create new vote
-    await Vote.create({
-      user: userId,
-      targetType: 'post',
-      targetId: postId,
-      value,
-    });
+    try {
+      await Vote.create({
+        user: userId,
+        targetType: 'post',
+        targetId: postId,
+        value,
+      });
+      upvoteDiff = value === 1 ? 1 : 0;
+      downvoteDiff = value === -1 ? 1 : 0;
+      scoreDiff = value;
+    } catch (err) {
+      if (err.code === 11000) {
+        // Race condition: concurrent vote already registered
+        const currentPost = await Post.findById(postId);
+        return sendResponse(res, 200, 'Vote recorded', {
+          score: currentPost.score,
+          voteStatus: value,
+        });
+      }
+      throw err;
+    }
   }
 
-  // Calculate vote count differences
-  const upvoteDiff = (newValue === 1 ? 1 : 0) - (oldValue === 1 ? 1 : 0);
-  const downvoteDiff = (newValue === -1 ? 1 : 0) - (oldValue === -1 ? 1 : 0);
-  const scoreDiff = newValue - oldValue;
-
-  // Update post counts atomically
+  // Atomically update post counts
   const updatedPost = await Post.findByIdAndUpdate(
     postId,
     {
@@ -64,26 +83,18 @@ const votePost = asyncHandler(async (req, res) => {
         score: scoreDiff,
       },
     },
-    { new: true }
+    { returnDocument: 'after' }
   );
 
-  // Safety checks to prevent negative counts
-  if (updatedPost.upvoteCount < 0 || updatedPost.downvoteCount < 0) {
-    await Post.findByIdAndUpdate(postId, {
-      $set: {
-        upvoteCount: Math.max(0, updatedPost.upvoteCount),
-        downvoteCount: Math.max(0, updatedPost.downvoteCount),
-      },
-    });
-    updatedPost.upvoteCount = Math.max(0, updatedPost.upvoteCount);
-    updatedPost.downvoteCount = Math.max(0, updatedPost.downvoteCount);
-  }
-  const { calculateHotRank } = require('../services/rankingService');
-  updatedPost.score = updatedPost.upvoteCount - updatedPost.downvoteCount;
-  updatedPost.hotRank = calculateHotRank(updatedPost.upvoteCount, updatedPost.downvoteCount, updatedPost.createdAt);
-  await updatedPost.save();
+  // Calculate hot rank without overwriting atomic counts
+  const safeUpvotes = Math.max(0, updatedPost.upvoteCount);
+  const safeDownvotes = Math.max(0, updatedPost.downvoteCount);
+  const hotRank = calculateHotRank(safeUpvotes, safeDownvotes, updatedPost.createdAt);
 
-  // Sync author karma (score change equals karma change)
+  // Update hotRank atomically (do not touch counts or score)
+  await Post.updateOne({ _id: postId }, { $set: { hotRank } });
+
+  // Sync author karma (score change equals karma change; delayed for anonymous)
   if (post.author.toString() !== userId.toString()) {
     if (post.isAnonymous) {
       queueDelayedKarma(post.author, 'post', scoreDiff);
@@ -101,13 +112,22 @@ const votePost = asyncHandler(async (req, res) => {
       type: 'post_vote',
       post: post._id,
       message: formattedMessage,
-    });
+    }).catch((err) => console.error('[Notification] Failed:', err.message));
   }
 
-  sendResponse(res, 200, newValue === 0 ? 'Vote removed' : newValue === 1 ? 'Post upvoted' : 'Post downvoted', {
-    score: updatedPost.score,
-    voteStatus: newValue,
-  });
+  sendResponse(
+    res,
+    200,
+    newValue === 0
+      ? 'Vote removed'
+      : newValue === 1
+      ? 'Post upvoted'
+      : 'Post downvoted',
+    {
+      score: updatedPost.score,
+      voteStatus: newValue,
+    }
+  );
 });
 
 // ─── Vote on Comment ──────────────────────────────────────────────────────────
@@ -133,25 +153,43 @@ const voteComment = asyncHandler(async (req, res) => {
 
   const oldValue = existingVote ? existingVote.value : 0;
   let newValue = value;
+  let upvoteDiff = 0;
+  let downvoteDiff = 0;
+  let scoreDiff = 0;
 
   if (oldValue === value) {
     newValue = 0;
     await Vote.deleteOne({ _id: existingVote._id });
+    upvoteDiff = oldValue === 1 ? -1 : 0;
+    downvoteDiff = oldValue === -1 ? -1 : 0;
+    scoreDiff = -oldValue;
   } else if (existingVote) {
-    existingVote.value = value;
-    await existingVote.save();
+    await Vote.updateOne({ _id: existingVote._id }, { $set: { value } });
+    upvoteDiff = value === 1 ? 1 : -1;
+    downvoteDiff = value === -1 ? 1 : -1;
+    scoreDiff = value - oldValue;
   } else {
-    await Vote.create({
-      user: userId,
-      targetType: 'comment',
-      targetId: commentId,
-      value,
-    });
+    try {
+      await Vote.create({
+        user: userId,
+        targetType: 'comment',
+        targetId: commentId,
+        value,
+      });
+      upvoteDiff = value === 1 ? 1 : 0;
+      downvoteDiff = value === -1 ? 1 : 0;
+      scoreDiff = value;
+    } catch (err) {
+      if (err.code === 11000) {
+        const currentComment = await Comment.findById(commentId);
+        return sendResponse(res, 200, 'Vote recorded', {
+          score: currentComment.score,
+          voteStatus: value,
+        });
+      }
+      throw err;
+    }
   }
-
-  const upvoteDiff = (newValue === 1 ? 1 : 0) - (oldValue === 1 ? 1 : 0);
-  const downvoteDiff = (newValue === -1 ? 1 : 0) - (oldValue === -1 ? 1 : 0);
-  const scoreDiff = newValue - oldValue;
 
   const updatedComment = await Comment.findByIdAndUpdate(
     commentId,
@@ -162,22 +200,8 @@ const voteComment = asyncHandler(async (req, res) => {
         score: scoreDiff,
       },
     },
-    { new: true }
+    { returnDocument: 'after' }
   );
-
-  // Safety checks
-  if (updatedComment.upvoteCount < 0 || updatedComment.downvoteCount < 0) {
-    await Comment.findByIdAndUpdate(commentId, {
-      $set: {
-        upvoteCount: Math.max(0, updatedComment.upvoteCount),
-        downvoteCount: Math.max(0, updatedComment.downvoteCount),
-      },
-    });
-    updatedComment.upvoteCount = Math.max(0, updatedComment.upvoteCount);
-    updatedComment.downvoteCount = Math.max(0, updatedComment.downvoteCount);
-  }
-  updatedComment.score = updatedComment.upvoteCount - updatedComment.downvoteCount;
-  await updatedComment.save();
 
   // Sync author karma (delayed for anonymous comments)
   if (comment.author.toString() !== userId.toString()) {
@@ -198,13 +222,22 @@ const voteComment = asyncHandler(async (req, res) => {
       post: comment.post,
       comment: comment._id,
       message: formattedMessage,
-    });
+    }).catch((err) => console.error('[Notification] Failed:', err.message));
   }
 
-  sendResponse(res, 200, newValue === 0 ? 'Vote removed' : newValue === 1 ? 'Comment upvoted' : 'Comment downvoted', {
-    score: updatedComment.score,
-    voteStatus: newValue,
-  });
+  sendResponse(
+    res,
+    200,
+    newValue === 0
+      ? 'Vote removed'
+      : newValue === 1
+      ? 'Comment upvoted'
+      : 'Comment downvoted',
+    {
+      score: updatedComment.score,
+      voteStatus: newValue,
+    }
+  );
 });
 
 module.exports = { votePost, voteComment };

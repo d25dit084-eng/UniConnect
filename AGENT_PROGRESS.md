@@ -169,6 +169,13 @@
     - Added "Comment anonymously" checkbox to top-level comment form with `👻 Submit Anonymously` button.
   - `commentApi.js`: Added `isAnonymous` argument to `createComment` and `replyToComment`.
   - Verified: frontend build 0 errors, all 18 anonymity leak endpoints pass with zero identity leaks.
+- [x] **Q3.2 — Atomic Votes & Incremental Karma**:
+  - Refactored `voteController.js` to execute lock-free, atomic `$inc` updates for `upvoteCount`, `downvoteCount`, and `score` without overwriting concurrent writes.
+  - Added race condition handling for `E11000` duplicate key on `Vote` unique index `{ user: 1, targetType: 1, targetId: 1 }`.
+  - Hot rank is updated atomically via `$set: { hotRank }` without touching count fields.
+  - Author karma increments atomically using `$inc: { 'karma.post': change, 'karma.total': change }`. Self-votes are excluded.
+  - Anonymous posts and comments use `queueDelayedKarma` + jittered periodic batch flushing to prevent timing de-anonymization attacks.
+  - Created `backend/scripts/testAtomicVotes.js`: verifies 20 simultaneous concurrent upvotes, vote flips (+1 -> -1), vote undo, comment voting & karma, and anonymous delayed karma. All 5 tests pass with 100% precision.
 
 ---
 
@@ -332,7 +339,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 
 ### Q3: Frontend Anonymity & Hardening
 - [x] 3.1 Frontend anonymity UI: post anonymously toggle, alias + OP badge, profile links disabled.
-- [ ] 3.2 Atomic votes and incremental karma.
+- [x] 3.2 Atomic votes and incremental karma.
 - [ ] 3.3 Security: Helmet, rate limiting, zod validation, markdown sanitization, login lockout, image upload validation.
 
 ### Q4: Engineering Base
