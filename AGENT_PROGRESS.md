@@ -176,6 +176,14 @@
   - Author karma increments atomically using `$inc: { 'karma.post': change, 'karma.total': change }`. Self-votes are excluded.
   - Anonymous posts and comments use `queueDelayedKarma` + jittered periodic batch flushing to prevent timing de-anonymization attacks.
   - Created `backend/scripts/testAtomicVotes.js`: verifies 20 simultaneous concurrent upvotes, vote flips (+1 -> -1), vote undo, comment voting & karma, and anonymous delayed karma. All 5 tests pass with 100% precision.
+- [x] **Q3.3 — Security Hardening (Helmet, Rate Limiting, Zod, Sanitization, Lockout, Uploads)**:
+  - **Helmet**: Integrated `helmet` with `crossOriginResourcePolicy: { policy: "cross-origin" }` in `app.js` to enable secure resource sharing with media/avatars.
+  - **Rate Limiting**: Built `backend/middleware/rateLimiter.js` with `generalLimiter` (300 req/15m), `authLimiter` (15 req/15m on auth routes), and `createLimiter` (40 req/15m on posts/comments).
+  - **Zod Validation**: Created `backend/middleware/validate.js` and comprehensive schemas (`authValidation.js`, `postValidation.js`, `commentValidation.js`). Validates requests and returns structured 400 Bad Request with field-level errors.
+  - **Markdown Sanitization**: Created `backend/utils/sanitizer.js` with `sanitize-html`. Strips `<script>`, inline event handlers (`onerror`, `onload`), and `javascript:` URIs from post titles, body, and comments while enforcing `rel="noopener noreferrer nofollow"` on links.
+  - **Login Lockout**: Added `failedLoginAttempts` and `lockUntil` to `User` schema. Locks accounts for 15 minutes after 5 consecutive failed login attempts (returns 429), preventing credential brute-forcing. Resets cleanly on successful login.
+  - **Image Upload Validation**: Enhanced `uploadMiddleware.js` with MIME whitelist (`image/jpeg`, `image/png`, `image/webp`, `image/gif`), extension matching, 5MB limit, and binary magic byte verification on disk (`validateUploadedImage`) that unlinks and rejects disguised scripts.
+  - Created `backend/scripts/testSecurityHardening.js`: verified all 5 security pillars with 100% pass rate.
 
 ---
 
@@ -340,7 +348,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 ### Q3: Frontend Anonymity & Hardening
 - [x] 3.1 Frontend anonymity UI: post anonymously toggle, alias + OP badge, profile links disabled.
 - [x] 3.2 Atomic votes and incremental karma.
-- [ ] 3.3 Security: Helmet, rate limiting, zod validation, markdown sanitization, login lockout, image upload validation.
+- [x] 3.3 Security: Helmet, rate limiting, zod validation, markdown sanitization, login lockout, image upload validation.
 
 ### Q4: Engineering Base
 - [ ] 4.1 ESLint + Prettier, Jest tests, GitHub Actions CI, Dockerfile + docker-compose, structured logging, health checks, seed script, OpenAPI docs.

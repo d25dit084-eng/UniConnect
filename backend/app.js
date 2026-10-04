@@ -22,7 +22,17 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 
+const helmet = require('helmet');
+const { generalLimiter } = require('./middleware/rateLimiter');
+
 const app = express();
+
+// ─── Security Headers (Helmet) ───────────────────────────────────────────────
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allows uploaded images to be loaded by frontend
+  })
+);
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 const allowedOrigins = [
@@ -57,6 +67,7 @@ app.use(
 );
 
 // ─── Core Middleware ──────────────────────────────────────────────────────────
+app.use('/api', generalLimiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());

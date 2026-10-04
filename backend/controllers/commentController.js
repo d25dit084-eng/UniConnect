@@ -10,6 +10,7 @@ const sendResponse = require('../utils/sendResponse');
 
 const { serializeAuthor } = require('../helpers/authorSerializer');
 const { encryptAuthor } = require('../utils/encryption');
+const { sanitizeContent } = require('../utils/sanitizer');
 
 const MAX_DEPTH = 8;
 
@@ -84,7 +85,7 @@ const createComment = asyncHandler(async (req, res) => {
   const comment = await Comment.create({
     post: postId,
     author: authorId,
-    content: content.trim(),
+    content: sanitizeContent(content),
     parentComment: null,
     depth: 0,
     isAnonymous: Boolean(isAnonymous),
@@ -157,7 +158,7 @@ const replyToComment = asyncHandler(async (req, res) => {
     author: authorId,
     parentComment: parentCommentId,
     depth: newDepth,
-    content: content.trim(),
+    content: sanitizeContent(content),
     isAnonymous: Boolean(isAnonymous),
     encryptedAuthor: isAnonymous ? encryptAuthor(authorId.toString()) : null,
     upvoteCount: 1,
@@ -275,7 +276,7 @@ const updateComment = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Cannot edit a deleted comment');
   }
 
-  comment.content = content.trim();
+  comment.content = sanitizeContent(content);
   comment.edited = true;
   await comment.save();
 

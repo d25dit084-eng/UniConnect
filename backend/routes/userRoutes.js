@@ -15,7 +15,7 @@ const {
 } = require('../controllers/userController');
 
 const { protect, optionalAuth } = require('../middleware/authMiddleware');
-const { uploadProfileImage: uploadMiddleware } = require('../middleware/uploadMiddleware');
+const { uploadProfileImage: uploadMiddleware, validateUploadedImage } = require('../middleware/uploadMiddleware');
 const { validateUpdateProfile } = require('../validators/userValidator');
 
 // Specific paths must be declared before parameterized paths
@@ -28,7 +28,7 @@ router.post('/verify', protect, requestVerification);
 router.post('/verify/confirm', protect, verifyEmail);
 
 // Profile image upload
-router.post('/profile/image', protect, uploadMiddleware, uploadProfileImage);
+router.post('/profile/image', protect, uploadMiddleware, validateUploadedImage, uploadProfileImage);
 
 // Blocking
 router.get('/blocked', protect, getBlockedUsers);

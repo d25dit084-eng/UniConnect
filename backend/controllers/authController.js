@@ -60,16 +60,45 @@ const register = asyncHandler(async (req, res) => {
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  // Include password for comparison (excluded by default via select:false)
-  const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');
+  // Include password, failedLoginAttempts, and lockUntil
+  const user = await User.findOne({ email: email.toLowerCase().trim() })
+    .select('+password +failedLoginAttempts +lockUntil');
 
   // Generic error — don't reveal if email exists
   const invalidCredentials = new ApiError(401, 'Invalid email or password');
 
   if (!user) throw invalidCredentials;
 
+  // Check account lockout
+  if (user.lockUntil && user.lockUntil.getTime() > Date.now()) {
+    const remainingMins = Math.ceil((user.lockUntil.getTime() - Date.now()) / 60000);
+    throw new ApiError(
+      429,
+      `Account is temporarily locked due to excessive failed attempts. Please try again in ${remainingMins} minute(s).`
+    );
+  }
+
   const passwordMatch = await user.comparePassword(password);
-  if (!passwordMatch) throw invalidCredentials;
+  if (!passwordMatch) {
+    user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+    if (user.failedLoginAttempts >= 5) {
+      user.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 min lock
+      await user.save();
+      throw new ApiError(
+        429,
+        'Account locked for 15 minutes due to 5 consecutive failed login attempts.'
+      );
+    }
+    await user.save();
+    throw invalidCredentials;
+  }
+
+  // Successful login: reset attempts and lock
+  if (user.failedLoginAttempts > 0 || user.lockUntil) {
+    user.failedLoginAttempts = 0;
+    user.lockUntil = null;
+    await user.save();
+  }
 
   const accessToken = generateAccessToken(user);
   const refreshToken = await generateRefreshToken(user, req);

@@ -12,6 +12,9 @@ const {
 
 const { protect, optionalAuth } = require('../middleware/authMiddleware');
 const validateObjectId = require('../middleware/validateObjectId');
+const validate = require('../middleware/validate');
+const { createLimiter } = require('../middleware/rateLimiter');
+const { createPostSchema } = require('../validations/postValidation');
 const {
   validateCreatePost,
   validateUpdatePost,
@@ -24,7 +27,7 @@ router.get('/search', validateSearchQuery, validatePaginationQuery, optionalAuth
 router.get('/community/:slug', optionalAuth, getCommunityPosts);
 
 // Core POST
-router.post('/', protect, validateCreatePost, createPost);
+router.post('/', protect, createLimiter, validate(createPostSchema), createPost);
 
 // Parameterized last
 router.get('/:id', optionalAuth, validateObjectId('id'), getPostById);

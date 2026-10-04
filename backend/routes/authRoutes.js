@@ -10,18 +10,20 @@ const {
   resetPassword,
 } = require('../controllers/authController');
 
+const validate = require('../middleware/validate');
+const { authLimiter } = require('../middleware/rateLimiter');
 const {
-  validateRegister,
-  validateLogin,
-  validateForgotPassword,
-  validateResetPassword,
-} = require('../validators/authValidator');
+  registerSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} = require('../validations/authValidation');
 
-router.post('/register', validateRegister, register);
-router.post('/login', validateLogin, login);
+router.post('/register', authLimiter, validate(registerSchema), register);
+router.post('/login', authLimiter, validate(loginSchema), login);
 router.post('/logout', logout);
 router.post('/refresh-token', refreshToken);
-router.post('/forgot-password', validateForgotPassword, forgotPassword);
-router.post('/reset-password/:token', validateResetPassword, resetPassword);
+router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), forgotPassword);
+router.post('/reset-password/:token', authLimiter, validate(resetPasswordSchema), resetPassword);
 
 module.exports = router;

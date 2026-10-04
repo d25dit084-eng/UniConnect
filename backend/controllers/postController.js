@@ -11,6 +11,8 @@ const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const sendResponse = require('../utils/sendResponse');
 
+const { sanitizeContent, sanitizeTitle } = require('../utils/sanitizer');
+
 // ─── Create Post ──────────────────────────────────────────────────────────────
 const createPost = asyncHandler(async (req, res) => {
   const { communityId, type = 'text', title, content, url, media, isAnonymous = false } = req.body;
@@ -41,13 +43,16 @@ const createPost = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Content is required for text posts');
   }
 
+  const cleanTitle = sanitizeTitle(title);
+  const cleanContent = content ? sanitizeContent(content) : '';
+
   // 4. Create the post (Starts with 1 upvote from the author)
   const post = await Post.create({
     author: authorId,
     community: communityId,
     type,
-    title: title.trim(),
-    content: content ? content.trim() : '',
+    title: cleanTitle,
+    content: cleanContent,
     url: type === 'link' ? url.trim() : null,
     media: type === 'image' ? (Array.isArray(media) ? media : [media]) : [],
     isAnonymous: Boolean(isAnonymous),
