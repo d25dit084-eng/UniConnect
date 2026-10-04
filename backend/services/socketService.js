@@ -419,13 +419,18 @@ const disconnectUserSockets = (userId) => {
   }
 };
 
-// ─── Presence Broadcasting (Memory Only) ──────────────────────────────────────
+// ─── Presence Broadcasting (Memory Only, Debounced to coalesce reconnect bursts) ─
+let presenceBroadcastTimer = null;
 const broadcastPresence = () => {
-  if (io) {
-    io.emit('presence_change', {
-      onlineUsers: Array.from(onlineUsers.keys()),
-    });
-  }
+  if (presenceBroadcastTimer) return;
+  presenceBroadcastTimer = setTimeout(() => {
+    presenceBroadcastTimer = null;
+    if (io) {
+      io.emit('presence_change', {
+        onlineUsers: Array.from(onlineUsers.keys()),
+      });
+    }
+  }, 200).unref();
 };
 
 // ─── Socket Server Initialization ─────────────────────────────────────────────

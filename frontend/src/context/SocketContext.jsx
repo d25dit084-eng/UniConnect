@@ -38,9 +38,10 @@ export const SocketProvider = ({ children }) => {
       },
       transports: ['websocket'],
       reconnection: true,
-      reconnectionAttempts: 15,
+      reconnectionAttempts: 25,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000, // Exponential backoff max 5s
+      randomizationFactor: 0.5, // Random jitter (+/- 50%) to prevent reconnect storms
       timeout: 10000,
     });
 

@@ -105,6 +105,11 @@
   - Prebuilt single lean message payload object once (`messagePayload`) and reused it directly across both the WebSocket broadcast and the batched persistence queue.
   - Dropped redundant/dead `tempId` and unneeded internal properties from WebSocket payloads, reducing payload byte size and serialization overhead.
   - Re-benchmarked with 1,000 messages: delivery p50 = 0.50 ms, p95 = 3.30 ms; persist p50 = 18.73 ms, p95 = 37.37 ms. All quality gates passed.
+- [x] **Q2.4 — Reconnect Storm Protection**:
+  - Configured client reconnect exponential backoff with random jitter (`randomizationFactor: 0.5`, `reconnectionDelay: 1000`, `reconnectionDelayMax: 5000`) in `SocketContext.jsx` to prevent thundering herd reconnect storms.
+  - Ensured server never executes heavy DB work on connection handler: uses in-memory `userCache` for fast handshake auth.
+  - Debounced presence broadcasting (`broadcastPresence`) by 200ms to coalesce burst reconnections into single updates, preventing $O(N^2)$ socket broadcast storms.
+  - Verified with benchmark: delivery p50 = 0.37 ms, p95 = 2.27 ms; persist p50 = 18.01 ms, p95 = 37.47 ms. All quality gates passed.
 
 ---
 
@@ -257,7 +262,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 2.1 Persist batching: buffer writes with `bulkWrite` every $\le 25\text{ ms}$ or 50 messages. Coalesce `lastMessage`.
 - [x] 2.2 Event-loop health: `monitorEventLoopDelay`, expose p99 lag in `/api/health`, tune Mongo `maxPoolSize`, `TCP_NODELAY`.
 - [x] 2.3 Prebuild message payload once; drop unneeded socket fields.
-- [ ] 2.4 Reconnect storms: exponential backoff with jitter (`randomizationFactor: 0.5`).
+- [x] 2.4 Reconnect storms: exponential backoff with jitter (`randomizationFactor: 0.5`).
 - [ ] 2.5 Upgrade `chat-bench.js` to Budget format (warmup, median of 3 runs, event-loop lag).
 - [ ] 2.6 Chat list stability: key rows by `clientMsgId`.
 - [ ] 2.7 Scroll behavior: preserve scroll delta on prepending older pages, CSS `overflow-anchor`.
