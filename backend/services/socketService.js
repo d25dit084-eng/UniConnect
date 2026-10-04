@@ -179,6 +179,18 @@ const persistMessageAsync = ({
         });
       }
     } catch (err) {
+      if (err.code === 11000) {
+        // Idempotent duplicate: message with same sender and clientMsgId already persisted
+        if (ackCb) {
+          ackCb({
+            status: 'sent',
+            clientMsgId,
+            messageId: messageId ? messageId.toString() : null,
+            createdAt,
+          });
+        }
+        return;
+      }
       console.error(`[AsyncPersist] Error persisting message (attempt ${retryCount + 1}):`, err.message);
       if (retryCount < 3) {
         // Exponential backoff retry: 50ms, 150ms, 450ms

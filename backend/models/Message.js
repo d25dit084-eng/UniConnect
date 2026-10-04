@@ -40,7 +40,10 @@ const messageSchema = new mongoose.Schema(
 // High-performance compound indexes for cursor pagination & history
 messageSchema.index({ conversation: 1, createdAt: -1 });
 messageSchema.index({ conversation: 1, isRead: 1 });
-messageSchema.index({ clientMsgId: 1 }, { sparse: true });
+messageSchema.index(
+  { sender: 1, clientMsgId: 1 },
+  { unique: true, partialFilterExpression: { clientMsgId: { $type: 'string' } } }
+);
 
 const Message = mongoose.model('Message', messageSchema);
 
