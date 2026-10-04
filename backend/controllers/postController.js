@@ -3,6 +3,7 @@ const Community = require('../models/Community');
 const CommunityMember = require('../models/CommunityMember');
 const Vote = require('../models/Vote');
 const SavedPost = require('../models/SavedPost');
+const PollVote = require('../models/PollVote');
 const { enrichPosts } = require('../helpers/feedEnricher');
 const { calculateHotRank } = require('../services/rankingService');
 const { updateKarma } = require('../services/karmaService');
@@ -47,6 +48,25 @@ const createPost = asyncHandler(async (req, res) => {
   const cleanTitle = sanitizeTitle(title);
   const cleanContent = content ? sanitizeContent(content) : '';
 
+  let pollPayload = null;
+  if (type === 'poll') {
+    if (!req.body.poll || !Array.isArray(req.body.poll.options) || req.body.poll.options.length < 2) {
+      throw new ApiError(400, 'Poll must contain at least 2 options');
+    }
+    const durationDays = Number(req.body.poll.durationDays) || 3;
+    const expiresAt = new Date(Date.now() + durationDays * 86400000);
+    const options = req.body.poll.options.map((opt) => ({
+      text: typeof opt === 'string' ? opt.trim() : (opt.text || '').trim(),
+      voteCount: 0,
+    }));
+    pollPayload = {
+      question: req.body.poll.question ? sanitizeTitle(req.body.poll.question) : cleanTitle,
+      options,
+      expiresAt,
+      totalVotes: 0,
+    };
+  }
+
   // 4. Create the post (Starts with 1 upvote from the author)
   const post = await Post.create({
     author: authorId,
@@ -56,6 +76,7 @@ const createPost = asyncHandler(async (req, res) => {
     content: cleanContent,
     url: type === 'link' ? url.trim() : null,
     media: type === 'image' ? (Array.isArray(media) ? media : [media]) : [],
+    poll: pollPayload,
     isAnonymous: Boolean(isAnonymous),
     encryptedAuthor: isAnonymous ? encryptAuthor(authorId.toString()) : null,
     upvoteCount: 1,
@@ -286,6 +307,64 @@ const searchPosts = asyncHandler(async (req, res) => {
   });
 });
 
+// ─── Vote on a Poll ──────────────────────────────────────────────────────────
+const votePoll = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { optionId } = req.body;
+  const userId = req.user._id;
+
+  if (!optionId) {
+    throw new ApiError(400, 'optionId is required to vote in a poll');
+  }
+
+  const post = await Post.findById(id);
+  if (!post) {
+    throw new ApiError(404, 'Post not found');
+  }
+
+  if (post.type !== 'poll' || !post.poll || !Array.isArray(post.poll.options)) {
+    throw new ApiError(400, 'This post does not contain an active poll');
+  }
+
+  if (post.poll.expiresAt && new Date() > new Date(post.poll.expiresAt)) {
+    throw new ApiError(400, 'This poll has ended');
+  }
+
+  const validOption = post.poll.options.find((opt) => opt._id.toString() === optionId.toString());
+  if (!validOption) {
+    throw new ApiError(400, 'Invalid poll option ID');
+  }
+
+  try {
+    await PollVote.create({
+      user: userId,
+      post: post._id,
+      optionId: validOption._id,
+    });
+  } catch (err) {
+    if (err.code === 11000) {
+      throw new ApiError(409, 'You have already voted in this poll');
+    }
+    throw err;
+  }
+
+  const updatedPost = await Post.findOneAndUpdate(
+    { _id: post._id, 'poll.options._id': validOption._id },
+    {
+      $inc: {
+        'poll.options.$.voteCount': 1,
+        'poll.totalVotes': 1,
+      },
+    },
+    { new: true }
+  ).lean();
+
+  sendResponse(res, 200, 'Poll vote recorded successfully', {
+    poll: updatedPost.poll,
+    userVotedOptionId: validOption._id,
+  });
+});
+
 module.exports = {
   createPost,
   getPostById,
@@ -293,4 +372,5 @@ module.exports = {
   deletePost,
   getCommunityPosts,
   searchPosts,
+  votePoll,
 };

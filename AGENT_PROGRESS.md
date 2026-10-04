@@ -244,6 +244,14 @@
   - Built course and professor detail modal with aggregate metrics, review history, tags, helpfulness voting, and review submission.
   - Integrated "Post anonymously" checkbox toggle for review submission, allowing students to submit candid elective/professor reviews with zero risk of identity disclosure.
   - Mounted `/reviews` route in `App.jsx` and added `🎓 Reviews` link to `LeftSidebar.jsx`. Verified with clean Vite build.
+- [x] **Q5.2a — Interactive Polls in Posts Engine (Backend)**:
+  - Extended `Post` schema with `poll` type and subdocument (`question`, `options` array with `voteCount`, `expiresAt`, `totalVotes`).
+  - Created `PollVote` model with `{ user: 1, post: 1 }` compound unique index to prevent duplicate votes per user per poll post.
+  - Extended Zod validation in `postValidation.js` with poll question, option constraints (2-6 options), and duration limits (1-30 days).
+  - Built `votePoll` controller in `postController.js` and mounted `POST /api/posts/:id/poll/vote` in `postRoutes.js`.
+  - Implemented atomic lock-free `$inc` updates for both option `voteCount` and post `poll.totalVotes`, with expiration verification.
+  - Enhanced `feedEnricher.js` to batch query user poll votes and enrich posts with `userVotedOptionId`.
+  - Built Jest integration test suite (`backend/tests/polls.test.js`) verifying poll creation, atomic vote casting, duplicate rejection, and expiration handling (7/7 suites passing, 23/23 tests).
 
 ---
 
@@ -422,7 +430,8 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 ### Q5: High-Value Features
 - [x] 5.1a Course & professor reviews (Backend: Course, Professor, Review models, atomic aggregate score sync, anonymity support, API endpoints & Jest test suite)
 - [x] 5.1b Course & professor reviews (Frontend: Reviews browse view, course/professor profile modal, rating metrics, anonymous submission toggle)
-- [ ] 5.2 Polls in posts
+- [x] 5.2a Polls in posts (Backend: Post.poll schema, PollVote model, atomic vote controller & routes, expiry validation, and Jest tests)
+- [ ] 5.2b Polls in posts (Frontend: Poll creation UI in CreatePost, interactive poll cards in PostCard & PostDetailPage with animated progress bars)
 - [ ] 5.3 Resource library
 - [ ] 5.4 Hot ranking
 - [ ] 5.5 Mentions & autocomplete

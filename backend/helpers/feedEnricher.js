@@ -1,5 +1,6 @@
 const Vote = require('../models/Vote');
 const SavedPost = require('../models/SavedPost');
+const PollVote = require('../models/PollVote');
 const { serializeAuthor } = require('./authorSerializer');
 
 /**
@@ -39,6 +40,7 @@ const enrichPosts = async (posts, userId) => {
 
   const votesMap = new Map(); // postID -> vote value (1 / -1)
   const savedSet = new Set(); // set of saved postIDs
+  const pollVoteMap = new Map(); // postID -> optionId string
 
   if (userId) {
     // 1. Bulk query all user votes on these posts
@@ -59,14 +61,24 @@ const enrichPosts = async (posts, userId) => {
     saved.forEach((s) => {
       savedSet.add(s.post.toString());
     });
+
+    // 3. Bulk query user poll votes on these posts
+    const pollVotes = await PollVote.find({
+      user: userId,
+      post: { $in: postIds },
+    });
+    pollVotes.forEach((pv) => {
+      pollVoteMap.set(pv.post.toString(), pv.optionId.toString());
+    });
   }
 
-  // 3. Inject flags
+  // 4. Inject flags
   postObjects.forEach((p) => {
     const postIdStr = p._id.toString();
     p.voteStatus = votesMap.get(postIdStr) || 0; // 1 (upvoted), -1 (downvoted), 0 (none)
     p.savedByMe = savedSet.has(postIdStr);
     p.isOwner = p.author ? Boolean(p.author.isMine) : false;
+    p.userVotedOptionId = pollVoteMap.get(postIdStr) || null;
   });
 
   return postObjects;

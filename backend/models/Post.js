@@ -14,7 +14,7 @@ const postSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['text', 'image', 'link'],
+      enum: ['text', 'image', 'link', 'poll'],
       default: 'text',
       required: true,
     },
@@ -40,6 +40,28 @@ const postSchema = new mongoose.Schema(
       type: [String],
       default: [],
       // Required if type is 'image'
+    },
+    poll: {
+      question: {
+        type: String,
+        trim: true,
+        maxlength: [300, 'Poll question cannot exceed 300 characters'],
+      },
+      options: [
+        {
+          text: { type: String, required: true, trim: true, maxlength: 100 },
+          voteCount: { type: Number, default: 0, min: 0 },
+        },
+      ],
+      expiresAt: {
+        type: Date,
+        default: null,
+      },
+      totalVotes: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
     },
     upvoteCount: {
       type: Number,

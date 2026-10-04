@@ -8,6 +8,7 @@ const {
   deletePost,
   searchPosts,
   getCommunityPosts,
+  votePoll,
 } = require('../controllers/postController');
 
 const { protect, optionalAuth } = require('../middleware/authMiddleware');
@@ -30,6 +31,7 @@ router.get('/community/:slug', optionalAuth, getCommunityPosts);
 router.post('/', protect, createLimiter, validate(createPostSchema), createPost);
 
 // Parameterized last
+router.post('/:id/poll/vote', protect, validateObjectId('id'), votePoll);
 router.get('/:id', optionalAuth, validateObjectId('id'), getPostById);
 router.put('/:id', protect, validateObjectId('id'), validateUpdatePost, updatePost);
 router.delete('/:id', protect, validateObjectId('id'), deletePost);
