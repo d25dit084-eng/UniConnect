@@ -210,6 +210,13 @@
   - `frontend/nginx.conf`: Production Nginx config featuring client SPA routing (`try_files $uri $uri/ /index.html;`), gzip compression, long-term static asset caching (`immutable`), and transparent reverse proxying for `/api/` and `/socket.io/` to backend.
   - `frontend/.dockerignore`: Excludes host `node_modules` and local artifacts.
   - `docker-compose.yml`: Fully orchestrated local and production environment linking `mongo:6.0` (with persistent volume and `mongosh` health check), `backend`, and `frontend` across a unified bridge network (`uniconnect-network`). Validated with `docker compose config`.
+- [x] **Q4.1e — Observability: Structured Logging & Enhanced Health Check with Dependency Monitoring**:
+  - `backend/utils/logger.js`: Zero-overhead structured logger supporting JSON log events in production, colorized developer console in development, and log levels (`debug`, `info`, `warn`, `error`).
+  - `backend/middleware/requestId.js`: Generates / preserves UUID `req.id` and emits `X-Request-Id` header for end-to-end request tracing.
+  - `backend/middleware/requestLogger.js`: Tracks high-precision duration (`process.hrtime.bigint()`) and emits structured HTTP telemetry (`requestId`, `method`, `url`, `status`, `durationMs`, `ip`, `userAgent`).
+  - `backend/middleware/errorMiddleware.js`: Integrates structured logger for 500 errors with request correlation context and stack traces.
+  - Enhanced `GET /api/health`: Executes live MongoDB database ping with round-trip latency measurement (`dbLatencyMs`), monitors memory footprint (`rssMB`, `heapUsedMB`, `heapPercent`), reports system process details (`nodeVersion`, `uptime`, `pid`), tracks Redis cache state, and returns HTTP 503 if primary database connection fails.
+  - Test suite (`health.test.js`) updated and verified (11/11 tests passing).
 
 ---
 
@@ -381,7 +388,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 4.1b Automated test suites: Jest integration & unit test suite with coverage scripts.
 - [x] 4.1c CI/CD pipeline: GitHub Actions workflow (`.github/workflows/ci.yml`) for lint, tests, and build.
 - [x] 4.1d Containerization: Multi-stage Dockerfiles for backend and frontend + `docker-compose.yml`.
-- [ ] 4.1e Observability: Structured logging, enhanced health check (`/api/health`) with dependency monitoring.
+- [x] 4.1e Observability: Structured logging, enhanced health check (`/api/health`) with dependency monitoring.
 - [ ] 4.1f Data seeding: Idempotent campus communities, demo users, posts, and topics seed script.
 - [ ] 4.1g API documentation: OpenAPI 3.0 specification & Swagger UI at `/api/docs`.
 

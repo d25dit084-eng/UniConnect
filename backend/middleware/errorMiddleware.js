@@ -1,4 +1,5 @@
 const ApiError = require('../utils/ApiError');
+const logger = require('../utils/logger');
 
 /**
  * Central error handler middleware.
@@ -50,9 +51,14 @@ const errorHandler = (err, req, res, next) => {
   const statusCode = error.statusCode || 500;
   const message = error.message || 'Internal Server Error';
 
-  // Log unexpected errors in dev/production
+  // Log unexpected errors in dev/production with structured context
   if (statusCode === 500) {
-    console.error('[Server Error]', err);
+    logger.error('[Server Error]', {
+      requestId: req.id,
+      method: req.method,
+      url: req.originalUrl,
+      error: err,
+    });
   }
 
   res.status(statusCode).json({

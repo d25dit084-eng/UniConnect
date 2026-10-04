@@ -24,8 +24,14 @@ const adminRoutes = require('./routes/adminRoutes');
 
 const helmet = require('helmet');
 const { generalLimiter } = require('./middleware/rateLimiter');
+const requestId = require('./middleware/requestId');
+const requestLogger = require('./middleware/requestLogger');
 
 const app = express();
+
+// ─── Request Identification & Structured Telemetry ────────────────────────────
+app.use(requestId);
+app.use(requestLogger);
 
 // ─── Security Headers (Helmet) ───────────────────────────────────────────────
 app.use(
@@ -77,25 +83,71 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const { getEventLoopStats } = require('./utils/eventLoopMonitor');
 
-// ─── Health Check ─────────────────────────────────────────────────────────────
-app.get('/api/health', (req, res) => {
+// ─── Health Check with Dependency Monitoring ──────────────────────────────
+app.get('/api/health', async (req, res) => {
   const dbState = mongoose.connection.readyState;
   const dbStatusMap = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
   const dbStatus = dbStatusMap[dbState] || 'unknown';
   const eventLoop = getEventLoopStats();
 
-  res.json({
-    success: true,
-    server: 'running',
+  let dbLatencyMs = null;
+  let isDbHealthy = false;
+
+  if (dbState === 1 && mongoose.connection.db) {
+    try {
+      const dbStart = process.hrtime.bigint();
+      await mongoose.connection.db.admin().ping();
+      const dbEnd = process.hrtime.bigint();
+      dbLatencyMs = Number((dbEnd - dbStart) / 1000000n);
+      isDbHealthy = true;
+    } catch {
+      isDbHealthy = false;
+    }
+  }
+
+  const mem = process.memoryUsage();
+  const memoryStats = {
+    rssMB: Math.round(mem.rss / 1024 / 1024),
+    heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024),
+    heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
+    heapPercent: Math.round((mem.heapUsed / mem.heapTotal) * 100),
+  };
+
+  const isHealthy = isDbHealthy || dbState === 1;
+  const statusCode = isHealthy ? 200 : 503;
+
+  res.status(statusCode).json({
+    success: isHealthy,
+    status: isHealthy ? 'healthy' : 'degraded',
+    server: isHealthy ? 'running' : 'degraded',
     database: dbStatus,
+    timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
     uptime: `${Math.floor(process.uptime())}s`,
+    process: {
+      pid: process.pid,
+      nodeVersion: process.version,
+      platform: process.platform,
+    },
+    memory: memoryStats,
     eventLoop: {
       p99LagMs: eventLoop.p99LagMs,
       p95LagMs: eventLoop.p95LagMs,
       p50LagMs: eventLoop.p50LagMs,
       maxLagMs: eventLoop.maxLagMs,
       meanLagMs: eventLoop.meanLagMs,
+    },
+    dependencies: {
+      database: {
+        status: isDbHealthy ? 'healthy' : 'unhealthy',
+        type: 'mongodb',
+        readyState: dbStatus,
+        latencyMs: dbLatencyMs,
+      },
+      redis: {
+        status: process.env.REDIS_URL ? 'configured' : 'in-memory-fallback',
+        type: process.env.REDIS_URL ? 'redis-cluster' : 'local-memory',
+      },
     },
   });
 });
