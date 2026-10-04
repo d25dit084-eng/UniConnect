@@ -293,6 +293,12 @@
   - Implemented `studyGroupController.js` and `studyGroupRoutes.js`: endpoints for group discovery (`GET /api/study-groups`), group details (`GET /api/study-groups/:id`), group creation (`POST /api/study-groups`), joining (`POST /api/study-groups/:id/join`), leaving (`POST /api/study-groups/:id/leave`), and deletion (`DELETE /api/study-groups/:id`).
   - Seamlessly linked with Phase 2.5 / Backlog A real-time chat architecture: creating a study group automatically provisions a group conversation; joining/leaving a study group synchronizes the conversation's `participants` list.
   - Built Jest test suite (`backend/tests/studyGroups.test.js`) verifying group creation, chat room initialization, member join/leave, duplicate rejection, and deletion authorization (11/11 suites passing, 48/48 tests).
+- [x] **Q5.6b — Study Groups UI & Real-Time Group Chat Link (Frontend)**:
+  - Created `frontend/src/api/studyGroupApi.js` connecting to study group discovery, details, creation, join/leave, and deletion endpoints.
+  - Built `frontend/src/pages/StudyGroupsPage.jsx` with real-time text search, meeting format filter pills (`all`, `in_person`, `virtual`, `hybrid`), my-groups toggle, and rich group cards.
+  - Implemented capacity badges (`FULL`, `X/Y members`), course code pills, meeting schedule displays, and direct links to live group chat (`/chat/${group.conversation}`) for joined members.
+  - Added group creation modal with name, course code, description, meeting format, venue/link, meeting schedule, and max members cap.
+  - Integrated into navigation: added route `/study-groups` in `App.jsx` and `👥 Study Groups` item in `LeftSidebar.jsx`. Verified with 0 ESLint errors and clean Vite production build.
 
 ---
 
@@ -479,8 +485,9 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 5.5a Mentions & autocomplete (Backend: @username parsing, zero-leak mention notifications, user autocomplete endpoint, and Jest tests)
 - [x] 5.5b Mentions & autocomplete (Frontend: @-mention autocomplete dropdown in comments/posts and clickable @username links)
 - [x] 5.6a Study groups (Backend: StudyGroup model, chat conversation integration, membership join/leave, and Jest tests)
-- [ ] 5.6b Study groups (Frontend: StudyGroupsPage, filter by course/meeting type, group creation modal, join/leave UI, and group chat link)
-- [ ] 5.7 Campus events & RSVP
+- [x] 5.6b Study groups (Frontend: StudyGroupsPage, filter by course/meeting type, group creation modal, join/leave UI, and group chat link)
+- [ ] 5.7a Campus events & RSVP (Backend: Event model, RSVP tracking, date/time/venue/virtual link, capacity cap, reminder notifications, Jest tests)
+- [ ] 5.7b Campus events & RSVP (Frontend: Events browse view, date/format filters, RSVP toggling with optimistic state, event creation modal)
 - [ ] 5.8 PWA & Web Push
 - [ ] 5.9 Onboarding
 - [ ] 5.10 Notification preferences & digest
