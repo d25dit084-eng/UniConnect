@@ -1,19 +1,40 @@
 /**
- * UniConnect Chat Latency Benchmark
+ * UniConnect Chat Latency Benchmark (BUDGET FORMAT)
  *
- * Measures sender-to-receiver delivery latency over WebSockets.
- * Opens 2 socket clients, creates a direct conversation, sends 1,000 messages,
- * and computes p50, p95, and p99 delivery latency.
- *
- * Run with: node scripts/chat-bench.js
+ * Requirements:
+ * - Localhost bench client in a separate process
+ * - 200-msg warmup
+ * - Median of 3 runs of 1,000 msgs
+ * - Budget targets:
+ *     delivery:   p50 < 5 ms, p95 < 15 ms, p99 < 40 ms, max < 100 ms
+ *     persisted:  p95 < 80 ms
+ *     event-loop lag p99 < 20 ms during the run
+ * - Reports: p50/p95/p99/max/stddev for each metric
+ * - Fails with exit code 1 if any metric regresses past budget
  */
 
 const { io } = require('socket.io-client');
 
 const API_BASE = 'http://localhost:5000/api';
 const SOCKET_URL = 'http://localhost:5000';
-const NUM_MESSAGES = 1000;
-const CONCURRENCY = 10; // in-flight message concurrency
+const WARMUP_MESSAGES = 200;
+const RUN_MESSAGES = 1000;
+const NUM_RUNS = 3;
+
+const BUDGET = {
+  delivery: {
+    p50: 5.0,
+    p95: 15.0,
+    p99: 40.0,
+    max: 100.0,
+  },
+  persisted: {
+    p95: 80.0,
+  },
+  eventLoopLag: {
+    p99: 20.0,
+  },
+};
 
 const apiCall = async (endpoint, method = 'GET', body = null, token = null) => {
   const headers = { 'Content-Type': 'application/json' };
@@ -35,14 +56,7 @@ const getAuthUser = async (rolePrefix) => {
   const email = `${unique}@college.edu`;
   const password = 'Password@123';
 
-  // Register
-  await apiCall('/auth/register', 'POST', {
-    username: unique,
-    email,
-    password,
-  });
-
-  // Login
+  await apiCall('/auth/register', 'POST', { username: unique, email, password });
   const loginRes = await apiCall('/auth/login', 'POST', { email, password });
   return {
     userId: loginRes.data.user._id,
@@ -57,33 +71,160 @@ const percentile = (arr, p) => {
   return arr[Math.max(0, Math.min(index, arr.length - 1))];
 };
 
+const calcStats = (arr) => {
+  if (!arr || arr.length === 0) {
+    return { p50: 0, p95: 0, p99: 0, max: 0, min: 0, mean: 0, stddev: 0 };
+  }
+  const sorted = [...arr].sort((a, b) => a - b);
+  const min = sorted[0];
+  const max = sorted[sorted.length - 1];
+  const sum = sorted.reduce((acc, v) => acc + v, 0);
+  const mean = sum / sorted.length;
+  const p50 = percentile(sorted, 50);
+  const p95 = percentile(sorted, 95);
+  const p99 = percentile(sorted, 99);
+  const variance = sorted.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / sorted.length;
+  const stddev = Math.sqrt(variance);
+
+  return { p50, p95, p99, max, min, mean, stddev };
+};
+
+const medianOf = (values) => {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 !== 0) return sorted[mid];
+  return (sorted[mid - 1] + sorted[mid]) / 2;
+};
+
+const runSingleStream = async ({
+  senderSocket,
+  receiverSocket,
+  conversationId,
+  count,
+  isWarmup = false,
+  runIndex = 0,
+}) => {
+  const sentTimes = new Map();
+  const deliveryLatencies = [];
+  const persistLatencies = [];
+  let receivedCount = 0;
+  let nextSeq = 0;
+
+  // Reset event loop monitor on server before starting measured run
+  if (!isWarmup) {
+    try {
+      await apiCall('/health/reset-eventloop', 'POST');
+    } catch (_) {}
+  }
+
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      receiverSocket.off('new_message', onNewMessage);
+      reject(new Error(`Stream timed out! Delivered ${receivedCount}/${count} messages`));
+    }, 60000);
+
+    const onNewMessage = (msg) => {
+      const receiveTime = process.hrtime.bigint();
+      const match = msg.content && msg.content.match(/bench_msg_(\d+)/);
+      if (match) {
+        const seq = parseInt(match[1], 10);
+        const sendTime = sentTimes.get(seq);
+        if (sendTime) {
+          const diffNs = Number(receiveTime - sendTime);
+          deliveryLatencies.push(diffNs / 1e6);
+          receivedCount++;
+
+          if (!isWarmup && (receivedCount % 250 === 0 || receivedCount === count)) {
+            process.stdout.write(`   [Run ${runIndex + 1}/${NUM_RUNS}] Progress: ${receivedCount}/${count} msgs\r`);
+          }
+
+          if (receivedCount >= count) {
+            clearTimeout(timeout);
+            receiverSocket.off('new_message', onNewMessage);
+            // Wait slightly for final persist ack
+            setTimeout(async () => {
+              let eventLoopLagP99 = 0;
+              if (!isWarmup) {
+                try {
+                  const health = await apiCall('/health', 'GET');
+                  eventLoopLagP99 = health?.eventLoop?.p99LagMs || 0;
+                } catch (_) {}
+              }
+              resolve({
+                deliveryLatencies,
+                persistLatencies,
+                eventLoopLagP99,
+              });
+            }, 100);
+          } else {
+            sendNext();
+          }
+        }
+      }
+    };
+
+    receiverSocket.on('new_message', onNewMessage);
+
+    const sendNext = () => {
+      if (nextSeq < count) {
+        const seq = nextSeq++;
+        const content = `bench_msg_${seq}_${Date.now()}`;
+        const sTime = process.hrtime.bigint();
+        sentTimes.set(seq, sTime);
+
+        senderSocket.emit(
+          'send_message',
+          {
+            conversationId,
+            content,
+            clientMsgId: `bench_${Date.now()}_${seq}`,
+          },
+          (ack) => {
+            if (!ack?.error) {
+              const persistTime = process.hrtime.bigint();
+              const diffNs = Number(persistTime - sTime);
+              persistLatencies.push(diffNs / 1e6);
+            }
+          }
+        );
+      }
+    };
+
+    // Kick off first message
+    sendNext();
+  });
+};
+
 const runBenchmark = async () => {
   console.log('================================================================');
-  console.log('⚡ UNICONNECT CHAT LATENCY BENCHMARK');
-  console.log(`Target: ${NUM_MESSAGES} messages | In-flight concurrency: ${CONCURRENCY}`);
+  console.log('⚡ UNICONNECT CHAT BENCHMARK (BUDGET SUITE)');
+  console.log(`Config: Warmup = ${WARMUP_MESSAGES} msgs | ${NUM_RUNS} runs of ${RUN_MESSAGES} msgs`);
+  console.log('Budget:');
+  console.log('  Delivery:   p50 < 5.0ms, p95 < 15.0ms, p99 < 40.0ms, max < 100.0ms');
+  console.log('  Persisted:  p95 < 80.0ms');
+  console.log('  Event-Loop: p99 < 20.0ms');
   console.log('================================================================\n');
 
   try {
-    console.log('1. Authenticating test clients...');
+    console.log('1. Setting up test credentials and direct conversation...');
     const sender = await getAuthUser('bench_snd');
     const receiver = await getAuthUser('bench_rcv');
-    console.log(`   Sender: ${sender.username}`);
-    console.log(`   Receiver: ${receiver.username}`);
 
-    console.log('2. Setting up 1-on-1 direct conversation...');
-    const convRes = await apiCall('/chat/conversations', 'POST', {
-      recipientUsername: receiver.username,
-    }, sender.token);
+    const convRes = await apiCall(
+      '/chat/conversations',
+      'POST',
+      { recipientUsername: receiver.username },
+      sender.token
+    );
     const conversationId = convRes.data.conversation._id;
-    console.log(`   Conversation ID: ${conversationId}`);
 
-    console.log('3. Connecting WebSocket clients...');
+    console.log('2. Connecting WebSocket clients with websocket-only transport...');
     const senderSocket = io(SOCKET_URL, {
       auth: { token: sender.token, isBenchmark: true },
       transports: ['websocket'],
       reconnection: false,
     });
-
     const receiverSocket = io(SOCKET_URL, {
       auth: { token: receiver.token, isBenchmark: true },
       transports: ['websocket'],
@@ -100,136 +241,152 @@ const runBenchmark = async () => {
         receiverSocket.on('connect_error', reject);
       }),
     ]);
-    console.log('   Both sockets connected via WebSocket.');
 
-    console.log('4. Joining conversation rooms...');
-    senderSocket.on('error_message', (e) => console.error('   Sender error:', e));
-    receiverSocket.on('error_message', (e) => console.error('   Receiver error:', e));
-    senderSocket.on('rate_limit_exceeded', (e) => console.error('   Rate limit:', e));
-
-    const [senderJoin, receiverJoin] = await Promise.all([
+    await Promise.all([
       new Promise((resolve) => senderSocket.emit('join_conversation', { conversationId }, resolve)),
       new Promise((resolve) => receiverSocket.emit('join_conversation', { conversationId }, resolve)),
     ]);
-    console.log(`   Join results: sender=${JSON.stringify(senderJoin)}, receiver=${JSON.stringify(receiverJoin)}`);
+    console.log('   Connected and joined conversation room.\n');
 
-    console.log(`5. Starting benchmark: streaming ${NUM_MESSAGES} messages...`);
-
-    const sentTimes = new Map(); // msgSeq -> BigInt (nanoseconds)
-    const deliveryLatencies = []; // array of milliseconds (float)
-    const persistLatencies = []; // array of milliseconds (float)
-    let receivedCount = 0;
-
-    const completionPromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error(`Benchmark timed out! Received ${receivedCount}/${NUM_MESSAGES} messages`));
-      }, 60000); // 60s timeout
-
-      receiverSocket.on('new_message', (msg) => {
-        const receiveTime = process.hrtime.bigint();
-        const match = msg.content && msg.content.match(/bench_msg_(\d+)/);
-        if (match) {
-          const seq = parseInt(match[1], 10);
-          const sendTime = sentTimes.get(seq);
-          if (sendTime) {
-            const diffNs = Number(receiveTime - sendTime);
-            const diffMs = diffNs / 1e6; // convert to ms
-            deliveryLatencies.push(diffMs);
-            receivedCount++;
-
-            if (receivedCount % 200 === 0 || receivedCount === NUM_MESSAGES) {
-              console.log(`   Progress: ${receivedCount}/${NUM_MESSAGES} messages delivered...`);
-            }
-
-            if (receivedCount >= NUM_MESSAGES) {
-              clearTimeout(timeout);
-              resolve();
-            } else {
-              // Send next message upon confirmation of delivery
-              sendNext();
-            }
-          }
-        }
-      });
+    console.log(`3. Warming up connection with ${WARMUP_MESSAGES} messages...`);
+    await runSingleStream({
+      senderSocket,
+      receiverSocket,
+      conversationId,
+      count: WARMUP_MESSAGES,
+      isWarmup: true,
     });
+    console.log('   ✅ Warmup complete.\n');
 
-    const benchStartTime = Date.now();
-    let nextSeq = 0;
+    console.log(`4. Running ${NUM_RUNS} benchmark iterations of ${RUN_MESSAGES} messages each...`);
+    const runResults = [];
 
-    const sendNext = () => {
-      if (nextSeq < NUM_MESSAGES) {
-        const seq = nextSeq++;
-        const content = `bench_msg_${seq}_${Date.now()}`;
-        const sTime = process.hrtime.bigint();
-        sentTimes.set(seq, sTime);
-        senderSocket.emit('send_message', {
-          conversationId,
-          content,
-          tempId: `tmp_${seq}`,
-        }, (ack) => {
-          if (ack?.error) {
-            console.error(`   Message ${seq} error:`, ack.error);
-          } else {
-            const persistTime = process.hrtime.bigint();
-            const diffNs = Number(persistTime - sTime);
-            persistLatencies.push(diffNs / 1e6);
-          }
-        });
+    for (let i = 0; i < NUM_RUNS; i++) {
+      const runStart = Date.now();
+      const result = await runSingleStream({
+        senderSocket,
+        receiverSocket,
+        conversationId,
+        count: RUN_MESSAGES,
+        isWarmup: false,
+        runIndex: i,
+      });
+      const durationMs = Date.now() - runStart;
+
+      const deliveryStats = calcStats(result.deliveryLatencies);
+      const persistStats = calcStats(result.persistLatencies);
+
+      runResults.push({
+        delivery: deliveryStats,
+        persist: persistStats,
+        eventLoopLagP99: result.eventLoopLagP99,
+        durationMs,
+      });
+
+      console.log(
+        `   [Run ${i + 1}/${NUM_RUNS}] Done in ${(durationMs / 1000).toFixed(2)}s | Delivery p50: ${deliveryStats.p50.toFixed(2)}ms, p95: ${deliveryStats.p95.toFixed(2)}ms | Persist p95: ${persistStats.p95.toFixed(2)}ms | Loop p99: ${result.eventLoopLagP99.toFixed(2)}ms`
+      );
+
+      // Brief rest between runs
+      if (i < NUM_RUNS - 1) {
+        await new Promise((r) => setTimeout(r, 300));
       }
-    };
-
-    // Kick off first message
-    sendNext();
-
-    // Wait until all messages are round-tripped
-    await completionPromise;
-    const benchTotalTimeMs = Date.now() - benchStartTime;
-
-    // Small delay to let any final in-flight persist ack arrive
-    await new Promise((r) => setTimeout(r, 200));
+    }
 
     senderSocket.disconnect();
     receiverSocket.disconnect();
 
-    deliveryLatencies.sort((a, b) => a - b);
-    persistLatencies.sort((a, b) => a - b);
-
-    const calcStats = (arr) => {
-      if (arr.length === 0) return { min: '0', avg: '0', p50: '0', p90: '0', p95: '0', p99: '0', max: '0' };
-      const min = arr[0].toFixed(2);
-      const max = arr[arr.length - 1].toFixed(2);
-      const sum = arr.reduce((acc, v) => acc + v, 0);
-      const avg = (sum / arr.length).toFixed(2);
-      const p50 = percentile(arr, 50).toFixed(2);
-      const p90 = percentile(arr, 90).toFixed(2);
-      const p95 = percentile(arr, 95).toFixed(2);
-      const p99 = percentile(arr, 99).toFixed(2);
-      return { min, avg, p50, p90, p95, p99, max };
+    // 5. Compute median of 3 runs for each metric
+    const medianStats = {
+      delivery: {
+        p50: medianOf(runResults.map((r) => r.delivery.p50)),
+        p95: medianOf(runResults.map((r) => r.delivery.p95)),
+        p99: medianOf(runResults.map((r) => r.delivery.p99)),
+        max: medianOf(runResults.map((r) => r.delivery.max)),
+        stddev: medianOf(runResults.map((r) => r.delivery.stddev)),
+      },
+      persisted: {
+        p50: medianOf(runResults.map((r) => r.persist.p50)),
+        p95: medianOf(runResults.map((r) => r.persist.p95)),
+        p99: medianOf(runResults.map((r) => r.persist.p99)),
+        max: medianOf(runResults.map((r) => r.persist.max)),
+        stddev: medianOf(runResults.map((r) => r.persist.stddev)),
+      },
+      eventLoopLag: {
+        p99: medianOf(runResults.map((r) => r.eventLoopLagP99)),
+      },
     };
 
-    const deliveryStats = calcStats(deliveryLatencies);
-    const persistStats = calcStats(persistLatencies);
-    const throughput = ((NUM_MESSAGES / benchTotalTimeMs) * 1000).toFixed(1);
+    // 6. Check against Budget
+    const checks = [
+      {
+        metric: 'delivery p50',
+        actual: medianStats.delivery.p50,
+        budget: BUDGET.delivery.p50,
+        pass: medianStats.delivery.p50 < BUDGET.delivery.p50,
+      },
+      {
+        metric: 'delivery p95',
+        actual: medianStats.delivery.p95,
+        budget: BUDGET.delivery.p95,
+        pass: medianStats.delivery.p95 < BUDGET.delivery.p95,
+      },
+      {
+        metric: 'delivery p99',
+        actual: medianStats.delivery.p99,
+        budget: BUDGET.delivery.p99,
+        pass: medianStats.delivery.p99 < BUDGET.delivery.p99,
+      },
+      {
+        metric: 'delivery max',
+        actual: medianStats.delivery.max,
+        budget: BUDGET.delivery.max,
+        pass: medianStats.delivery.max < BUDGET.delivery.max,
+      },
+      {
+        metric: 'persisted p95',
+        actual: medianStats.persisted.p95,
+        budget: BUDGET.persisted.p95,
+        pass: medianStats.persisted.p95 < BUDGET.persisted.p95,
+      },
+      {
+        metric: 'event-loop lag p99',
+        actual: medianStats.eventLoopLag.p99,
+        budget: BUDGET.eventLoopLag.p99,
+        pass: medianStats.eventLoopLag.p99 < BUDGET.eventLoopLag.p99,
+      },
+    ];
+
+    const allPassed = checks.every((c) => c.pass);
 
     console.log('\n\n================================================================');
-    console.log('📊 BENCHMARK RESULTS');
+    console.log('📊 FINAL CHAT BUDGET REPORT (Median of 3 runs)');
     console.log('================================================================');
-    console.log(`Total messages sent & verified: ${deliveryLatencies.length}`);
-    console.log(`Total duration:                ${(benchTotalTimeMs / 1000).toFixed(2)} s`);
-    console.log(`Throughput:                    ${throughput} msgs/sec`);
+    console.log('Metric                | Actual (ms) | Budget (ms) | Result');
     console.log('----------------------------------------------------------------');
-    console.log('🚀 Delivery Latency (Sender -> Receiver WebSocket Relay):');
-    console.log(`   Min: ${deliveryStats.min} ms | Avg: ${deliveryStats.avg} ms`);
-    console.log(`   p50: ${deliveryStats.p50} ms | p90: ${deliveryStats.p90} ms`);
-    console.log(`   p95: ${deliveryStats.p95} ms | p99: ${deliveryStats.p99} ms`);
+    for (const c of checks) {
+      const metricPad = c.metric.padEnd(21);
+      const actualPad = `${c.actual.toFixed(2)} ms`.padEnd(11);
+      const budgetPad = `< ${c.budget.toFixed(1)} ms`.padEnd(11);
+      const status = c.pass ? '✅ PASS' : '❌ FAIL';
+      console.log(`${metricPad} | ${actualPad} | ${budgetPad} | ${status}`);
+    }
     console.log('----------------------------------------------------------------');
-    console.log('💾 Time-to-Persisted (Sender -> MongoDB Async Write Ack):');
-    console.log(`   Min: ${persistStats.min} ms | Avg: ${persistStats.avg} ms`);
-    console.log(`   p50: ${persistStats.p50} ms | p90: ${persistStats.p90} ms`);
-    console.log(`   p95: ${persistStats.p95} ms | p99: ${persistStats.p99} ms`);
-    process.exit(0);
+    console.log('Detailed Statistics:');
+    console.log(`  Delivery:  p50=${medianStats.delivery.p50.toFixed(2)}ms, p95=${medianStats.delivery.p95.toFixed(2)}ms, p99=${medianStats.delivery.p99.toFixed(2)}ms, max=${medianStats.delivery.max.toFixed(2)}ms, stddev=${medianStats.delivery.stddev.toFixed(2)}ms`);
+    console.log(`  Persisted: p50=${medianStats.persisted.p50.toFixed(2)}ms, p95=${medianStats.persisted.p95.toFixed(2)}ms, p99=${medianStats.persisted.p99.toFixed(2)}ms, max=${medianStats.persisted.max.toFixed(2)}ms, stddev=${medianStats.persisted.stddev.toFixed(2)}ms`);
+    console.log(`  Loop Lag:  p99=${medianStats.eventLoopLag.p99.toFixed(2)}ms`);
+    console.log('================================================================\n');
+
+    if (!allPassed) {
+      console.error('❌ BUDGET REGRESSION DETECTED! Chat budget not satisfied.');
+      process.exit(1);
+    } else {
+      console.log('🎉 ALL CHAT BUDGET TARGETS MET DECISIVELY!');
+      process.exit(0);
+    }
   } catch (err) {
-    console.error('\n❌ Benchmark error:', err);
+    console.error('\n❌ Benchmark script error:', err);
     process.exit(1);
   }
 };

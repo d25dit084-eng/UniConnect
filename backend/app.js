@@ -89,6 +89,12 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.post('/api/health/reset-eventloop', (req, res) => {
+  const { histogram } = require('./utils/eventLoopMonitor');
+  histogram.reset();
+  res.json({ success: true, message: 'Event loop histogram reset' });
+});
+
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);

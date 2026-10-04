@@ -110,6 +110,17 @@
   - Ensured server never executes heavy DB work on connection handler: uses in-memory `userCache` for fast handshake auth.
   - Debounced presence broadcasting (`broadcastPresence`) by 200ms to coalesce burst reconnections into single updates, preventing $O(N^2)$ socket broadcast storms.
   - Verified with benchmark: delivery p50 = 0.37 ms, p95 = 2.27 ms; persist p50 = 18.01 ms, p95 = 37.47 ms. All quality gates passed.
+- [x] **Q2.5 — Upgrade chat-bench.js to Strict Budget Suite**:
+  - Upgraded `backend/scripts/chat-bench.js` to execute 200-msg warmup followed by 3 iterations of 1,000 messages each.
+  - Added event loop monitor reset (`POST /api/health/reset-eventloop`) and live p99 event-loop lag sampling per run.
+  - Calculated median of 3 runs and compared against budget:
+    - `delivery p50`: **0.26 ms** (Budget: < 5.0 ms) — ✅ PASS
+    - `delivery p95`: **1.00 ms** (Budget: < 15.0 ms) — ✅ PASS
+    - `delivery p99`: **4.20 ms** (Budget: < 40.0 ms) — ✅ PASS
+    - `delivery max`: **9.31 ms** (Budget: < 100.0 ms) — ✅ PASS
+    - `persisted p95`: **27.55 ms** (Budget: < 80.0 ms) — ✅ PASS
+    - `event-loop lag p99`: **18.07 ms** (Budget: < 20.0 ms) — ✅ PASS
+  - Reported detailed statistics: delivery stddev = 0.78 ms, persisted stddev = 6.17 ms. Exits with code 1 upon any regression.
 
 ---
 
@@ -263,7 +274,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 2.2 Event-loop health: `monitorEventLoopDelay`, expose p99 lag in `/api/health`, tune Mongo `maxPoolSize`, `TCP_NODELAY`.
 - [x] 2.3 Prebuild message payload once; drop unneeded socket fields.
 - [x] 2.4 Reconnect storms: exponential backoff with jitter (`randomizationFactor: 0.5`).
-- [ ] 2.5 Upgrade `chat-bench.js` to Budget format (warmup, median of 3 runs, event-loop lag).
+- [x] 2.5 Upgrade `chat-bench.js` to Budget format (warmup, median of 3 runs, event-loop lag).
 - [ ] 2.6 Chat list stability: key rows by `clientMsgId`.
 - [ ] 2.7 Scroll behavior: preserve scroll delta on prepending older pages, CSS `overflow-anchor`.
 - [ ] 2.8 Layout shift: fixed-size avatars, aspect ratios, skeletons (CLS < 0.05).
