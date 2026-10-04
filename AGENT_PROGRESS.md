@@ -288,6 +288,11 @@
   - Built `MentionTextarea.jsx`: intelligent textarea component with debounced `@query` detection, keyboard navigable popover dropdown (ArrowUp, ArrowDown, Enter, Tab, Escape), avatar preview, and seamless mention insertion.
   - Integrated `MentionTextarea` and `renderContentWithMentions` into `PostCard.jsx` and `PostDetailPage.jsx` for post bodies, top-level comments, and inline reply forms.
   - Verified with clean ESLint (0 errors) and production Vite build (1.44s, 0 errors).
+- [x] **Q5.6a — Study Groups Engine & Group Chat Linkage (Backend)**:
+  - Built `StudyGroup.js` model with course linkage (`courseCode`), meeting schedules, meeting type (`in_person`, `virtual`, `hybrid`), locations/links, maximum member caps (`maxMembers`), member roles, and linked group chat conversation (`conversation`).
+  - Implemented `studyGroupController.js` and `studyGroupRoutes.js`: endpoints for group discovery (`GET /api/study-groups`), group details (`GET /api/study-groups/:id`), group creation (`POST /api/study-groups`), joining (`POST /api/study-groups/:id/join`), leaving (`POST /api/study-groups/:id/leave`), and deletion (`DELETE /api/study-groups/:id`).
+  - Seamlessly linked with Phase 2.5 / Backlog A real-time chat architecture: creating a study group automatically provisions a group conversation; joining/leaving a study group synchronizes the conversation's `participants` list.
+  - Built Jest test suite (`backend/tests/studyGroups.test.js`) verifying group creation, chat room initialization, member join/leave, duplicate rejection, and deletion authorization (11/11 suites passing, 48/48 tests).
 
 ---
 
@@ -473,7 +478,8 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 5.4 Hot ranking
 - [x] 5.5a Mentions & autocomplete (Backend: @username parsing, zero-leak mention notifications, user autocomplete endpoint, and Jest tests)
 - [x] 5.5b Mentions & autocomplete (Frontend: @-mention autocomplete dropdown in comments/posts and clickable @username links)
-- [ ] 5.6 Study groups
+- [x] 5.6a Study groups (Backend: StudyGroup model, chat conversation integration, membership join/leave, and Jest tests)
+- [ ] 5.6b Study groups (Frontend: StudyGroupsPage, filter by course/meeting type, group creation modal, join/leave UI, and group chat link)
 - [ ] 5.7 Campus events & RSVP
 - [ ] 5.8 PWA & Web Push
 - [ ] 5.9 Onboarding
