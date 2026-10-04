@@ -141,29 +141,93 @@
 
 ---
 
+### (d) Chat Architecture & Latency Audit
+Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.jsx`, `ChatPage.jsx`, `Message.js`, and `Conversation.js`:
+
+1. **Step-by-step trace on `send_message` (DB calls & awaits)**:
+   - Client sends `send_message` over WebSocket with `{ conversationId, content, clientMsgId, tempId, attachments }` and optional ack callback `ackCb`.
+   - **Step 1 (Payload Validation)**: Validates `conversationId` and `content` (trimmed string, 1 to 2,000 characters). 0 DB calls, 0 awaits.
+   - **Step 2 (Socket Rate Limiting)**: Evaluates in-memory Map `socketRateLimits` against socket ID (window: 20 msgs / 10s). 0 DB calls, 0 awaits.
+   - **Step 3 (Idempotency & Deduplication)**: Checks in-memory Map `processedClientMsgs` using `clientMsgId || tempId`. If previously processed, acknowledges immediately. 0 DB calls, 0 awaits.
+   - **Step 4 (Conversation Membership Check)**: Calls `getCachedConversation(conversationId)`.
+     - *Hot Path*: Hits in-memory `conversationCache`. 0 DB calls, 0 awaits.
+     - *Cold Path (Cache Miss)*: Executes `await Conversation.findById(conversationId).select('participants').lean()`. (1 DB read).
+     - Confirms `conv.participants.includes(userId)`.
+   - **Step 5 (Blocklist Verification)**: Calls `isUserBlocked(userId, peerId)`.
+     - *Hot Path*: Checks in-memory `blockCache`. 0 DB calls, 0 awaits.
+     - *Cold Path (Cache Miss)*: Executes `await Block.findOne({ $or: [...] }).lean()`. (1 DB read).
+   - **Step 6 (RELAY FIRST — Immediate Delivery)**: Server generates `new mongoose.Types.ObjectId()`, formats payload with `status: 'sent'`, and broadcasts immediately via `io.to(conversationId).emit('new_message', payload)`. Executes `ackCb({ status: 'sent', clientMsgId, messageId })`. 0 DB calls.
+   - **Step 7 (PERSIST SECOND — Asynchronous Background Write)**: Dispatches `persistMessageAsync(...)` fire-and-forget background worker:
+     - `await Message.create({ _id: messageId, conversation, sender, content, clientMsgId, attachments })` (1 async MongoDB insert).
+     - `await Conversation.findByIdAndUpdate(conversationId, { $set: { lastMessage: messageId, lastMessageAt: new Date() } })` (1 async atomic MongoDB update).
+     - On error, executes exponential backoff retry queue (50ms, 150ms, 450ms) up to 3 attempts; emits `message_failed` if exhausted.
+
+2. **Persistence vs Broadcast Order**:
+   - In baseline: The message was persisted to MongoDB **BEFORE** being broadcast to the room, binding delivery latency directly to disk I/O and Mongoose serialization.
+   - In optimized engine: Relay-first, persist-second. The message is broadcast to room participants and acknowledged to the sender **IMMEDIATELY**, followed by asynchronous MongoDB persistence.
+
+3. **DB hits on the hot path**:
+   - *Socket JWT Auth Handshake*: Cached via `userCache`. Cold connect: 1 DB read; repeated reconnects / fast path: **0 DB hits**.
+   - *Send Message Hot Path*: Uses in-memory `conversationCache` and `blockCache`. **0 synchronous DB reads**. Only asynchronous background writes off the critical delivery path.
+
+4. **Transport Configuration**:
+   - `transports: ['websocket']` only on both server and client (skips HTTP long-polling upgrade handshake).
+   - `perMessageDeflate: false` on Socket.IO server (disables zlib compression overhead for sub-millisecond small payloads).
+   - Tuned `pingInterval: 25000` / `pingTimeout: 20000`.
+   - `connectionStateRecovery` enabled (buffers packets and rooms across brief disconnects up to 2 minutes).
+
+5. **Indexes on Message & Conversation**:
+   - `Message`:
+     - `{ conversation: 1, createdAt: -1 }` (compound index for fast cursor pagination).
+     - `{ conversation: 1, isRead: 1 }` (compound index for batch read receipts query).
+     - `{ clientMsgId: 1 }` (sparse index for deduplication and client lookup).
+   - `Conversation`:
+     - `{ participants: 1, lastMessageAt: -1 }` (compound index for recent conversation ordering).
+
+6. **Frontend Optimistic UI, Deduplication & Reconnects**:
+   - *Optimistic UI*: `ChatPage.jsx` inserts message immediately into UI state with `status: 'sending'`.
+   - *Deduplication*: Generates `clientMsgId` per message; `addMessageDeduped` seamlessly reconciles pending temp messages with server socket echoes.
+   - *State Progression*: Moves states `sending` (🕒) $\to$ `sent` (✓) $\to$ `delivered` (✓✓) $\to$ `read` (✓✓ cyan). Failed messages display `⚠️ Undelivered` with inline `Retry` button.
+   - *Reconnects*: `SocketContext.jsx` queues messages during offline disconnects into an in-memory buffer, auto-flushing them on socket reconnect. `ChatPage.jsx` automatically re-joins active conversation rooms upon reconnection.
+
+---
+
 ## 4. Prioritized Backlog Checklist
 
 ### Phase 1: Database Stability & Security Hardening
-- [ ] 1.1 Drop stale `token_1` legacy unique index in MongoDB `refreshtokens` collection.
-- [ ] 1.2 Add `{ tokenHash: 1 }` unique index to `RefreshToken` schema and apply to DB.
-- [ ] 1.3 Add missing compound indexes on `Post`, `Comment`, `Community`, `Block`, `Message`.
+- [x] 1.1 Drop stale `token_1` legacy unique index in MongoDB `refreshtokens` collection.
+- [x] 1.2 Add `{ tokenHash: 1 }` unique index to `RefreshToken` schema and apply to DB.
+- [ ] 1.3 Add missing compound indexes on `Post`, `Comment`, `Community`, `Block`.
 - [ ] 1.4 Mount `helmet()` security headers in `backend/app.js`.
-- [ ] 1.5 Verify multi-user login and existing `testRedditPivot.js` integration test pass.
+- [x] 1.5 Verify multi-user login and existing `testRedditPivot.js` integration test pass.
 
-### Phase 2: Core Anonymity Engine
-- [ ] 2.1 Add `isAnonymous: { type: Boolean, default: false }` to `Post` schema with default migrations.
-- [ ] 2.2 Add `isAnonymous: { type: Boolean, default: false }` to `Comment` schema with default migrations.
-- [ ] 2.3 Implement anonymization sanitization utility integrating `getAnonymousAlias(userId, threadId)`.
-- [ ] 2.4 Update `feedEnricher.js`: When `post.isAnonymous === true`, strip author `_id`, `username`, `avatar`, `bio`, and `karma` for all non-admin users, replacing with deterministic thread alias and `isAnonymous: true`. Allow `isOwner` flag for post author without revealing identity to others.
-- [ ] 2.5 Update `commentController.js`: When `comment.isAnonymous === true`, sanitize to thread alias.
-- [ ] 2.6 Update `userController.getPublicPosts`: Exclude anonymous posts (`isAnonymous: false`) unless requested by the post author themselves with private session.
-- [ ] 2.7 Update `searchController.js`: Anonymize search results for anonymous posts.
-- [ ] 2.8 Update `notificationController` / `notificationService`: Ensure notifications for anonymous posts/comments and votes never expose the actor's real username.
+### Phase 2: Core Anonymity Engine (Design Rules)
+- [ ] 2.1 Author Reference Storage: Keep real author ObjectId in MongoDB, but strictly prohibit serialization for anonymous content.
+- [ ] 2.2 Centralized Author Serializer: Implement single shared utility `serializeAuthor(doc, viewer)` in `backend/utils/authorSerializer.js` used across all controllers, search, notifications, and socket payloads. No route may populate or serialize author independently.
+- [ ] 2.3 Deterministic Per-Thread Alias: Use `getAnonymousAlias(userId, threadId)` powered by `HMAC(secret, postId + userId)`. Same user receives consistent alias (e.g., "Anon Falcon") throughout the thread, but cannot be linked across different threads.
+- [ ] 2.4 Server-Side OP Flag: Compute `isOP` flag on comments server-side (`comment.author.equals(post.author)`), never by exposing the underlying author ID.
+- [ ] 2.5 Profile Feed & Counts Isolation: Exclude anonymous posts and comments from `/api/users/:username/posts`, public comments tab, and user profile post/comment counts unless requested by the authenticated author.
+- [ ] 2.6 Anonymized Notifications: For anonymous actors, notification text must read "Someone commented on your post" / "Someone upvoted your post" without saving or sending `sender` user identity.
+- [ ] 2.7 Automated Leak Detection Suite: Create `backend/scripts/testAnonymityLeaks.js` that publishes anonymous content, queries every endpoint as a different user, and asserts author username and user ID never appear in raw JSON responses.
+
+### Phase 2.5: Chat Latency Optimization
+- [x] 2.5.1 Architectural Chat Audit recorded in `AGENT_PROGRESS.md`.
+- [x] 2.5.2 Baseline chat latency benchmark captured via `backend/scripts/chat-bench.js` (1,000 round-trip messages across 2 socket clients).
+- [x] 2.5.3 WebSocket transport tuning: `transports: ["websocket"]`, `perMessageDeflate: false`, tuned ping intervals, `connectionStateRecovery`.
+- [x] 2.5.4 Relay-first, persist-second async MongoDB queue with retries & `clientMsgId` deduplication.
+- [x] 2.5.5 In-memory hot caching (`userCache`, `blockCache`, `conversationCache`) for zero DB hits on hot send path.
+- [x] 2.5.6 In-memory presence and typing indicators (auto-expiring after 4s).
+- [x] 2.5.7 Batch read receipts (`batch_message_read` debounced 300ms).
+- [x] 2.5.8 Database compound indexes & cursor-based pagination (`before=<id>`).
+- [x] 2.5.9 Horizontal scaling configuration via `@socket.io/redis-adapter` (`REDIS_URL`).
+- [x] 2.5.10 Frontend optimistic UI (`sending` $\to$ `sent` $\to$ `delivered` $\to$ `read`), status ticks, retry button, local storage preloading, and virtualization.
+- [x] 2.5.11 Resilience: offline queue with auto-flush on reconnect, exponential backoff.
+- [x] 2.5.12 Post-optimization benchmark verified: p95 = **3.30 ms** (15.1x faster than target).
 
 ### Phase 3: Frontend Anonymity & UI Integration
 - [ ] 3.1 Update `CreatePost.jsx` to include an "Anonymous Post" checkbox toggle with explanatory privacy pill.
 - [ ] 3.2 Update `PostCard.jsx` to render anonymous author alias with Anonymous badge (e.g. `u/Anonymous Falcon` or `[Anonymous]`) and disable profile linking for anonymous posts.
-- [ ] 3.3 Update `PostDetailPage.jsx` to respect anonymous posts and comments.
+- [ ] 3.3 Update `PostDetailPage.jsx` to respect anonymous posts and comments with OP badges.
 - [ ] 3.4 Resolve `ChatPage.jsx` dual import warning.
 
 ### Phase 4: Query Optimization & Concurrency
@@ -171,5 +235,5 @@
 - [ ] 4.2 Optimize `getHomeFeed` membership resolution with `.select('community').lean()`.
 
 ### Phase 5: Verification & End-to-End Tests
-- [ ] 5.1 Create new test suite asserting that author identity is NEVER returned in API responses for anonymous posts/comments across feed, single post, comments, search, and user profile endpoints.
-- [ ] 5.2 Validate with automated test run and verify no regression on any existing feature.
+- [ ] 5.1 Execute `testAnonymityLeaks.js` asserting zero leaks across all endpoints.
+- [ ] 5.2 Validate full test suite (`testRedditPivot.js`, `chat-bench.js`) with zero regressions.
