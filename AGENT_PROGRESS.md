@@ -87,6 +87,13 @@
   - [x] 1.5 Delayed Karma Sync: Implemented `queueDelayedKarma` and `flushDelayedKarma` in `backend/services/karmaService.js` to batch and jitter anonymous post/comment karma sync, thwarting timing de-anonymization attacks.
   - [x] 1.6 Admin Accountability: AES-256-GCM encrypted author reference (`backend/utils/encryption.js`), decrypted only via `POST /api/admin/reveal-author` with mandatory reason; write audit trail to `AuditLog`.
   - [x] 1.7 Automated Leak Detection Suite: Created `backend/scripts/testAnonymityLeaks.js` asserting zero identity leaks across 18 GET endpoints, WebSocket payloads, author self-views, and admin deanonymization accountability.
+- [x] **Q2.1 — Persist Batching & LastMessage Coalescing**:
+  - Implemented asynchronous batch buffer (`persistBatch`, capped at 50 messages or flushed every $\le 20\text{ ms}$) using `Message.bulkWrite(ops, { ordered: false })`.
+  - Handled idempotent duplicate keys (code 11000) within `bulkWrite` write errors cleanly.
+  - Coalesced multiple conversation `lastMessage` updates within each flush into ONE bulk write (`Conversation.bulkWrite`), drastically cutting DB write amplification and event loop lag.
+  - Guaranteed relay emit executes before any `await` or DB write; sender ack is deferred and resolved per message once batch persist succeeds.
+  - Added flush on SIGTERM/SIGINT graceful shutdown.
+  - Verified with `chat-bench.js` (1,000 messages): delivery p50 = 0.36 ms, p95 = 2.24 ms; persist p50 = 17.87 ms, p95 = 34.23 ms; throughput = 1,440.9 msgs/sec. All quality gates passed.
 
 ---
 
@@ -236,7 +243,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 1.7 Automated Leak Detection Suite: `backend/scripts/testAnonymityLeaks.js` asserting zero identity leaks across all GET endpoints and sockets.
 
 ### Q2: Jitter Elimination
-- [ ] 2.1 Persist batching: buffer writes with `bulkWrite` every $\le 25\text{ ms}$ or 50 messages. Coalesce `lastMessage`.
+- [x] 2.1 Persist batching: buffer writes with `bulkWrite` every $\le 25\text{ ms}$ or 50 messages. Coalesce `lastMessage`.
 - [ ] 2.2 Event-loop health: `monitorEventLoopDelay`, expose p99 lag in `/api/health`, tune Mongo `maxPoolSize`, `TCP_NODELAY`.
 - [ ] 2.3 Prebuild message payload once; drop unneeded socket fields.
 - [ ] 2.4 Reconnect storms: exponential backoff with jitter (`randomizationFactor: 0.5`).

@@ -181,6 +181,9 @@ const isUserBlocked = async (userA, userB) => {
       }
       blockCache.get(block.blocker.toString()).add(block.blocked.toString());
       return true;
+    } else {
+      if (!blockCache.has(idA)) blockCache.set(idA, new Set());
+      if (!blockCache.has(idB)) blockCache.set(idB, new Set());
     }
   } catch (err) {
     console.error('[SocketCache] Error checking block:', err.message);
@@ -202,125 +205,162 @@ const invalidateUserCache = (userId) => {
   if (userId) userCache.delete(userId.toString());
 };
 
-// ─── Async MongoDB Persistence Queue with Retries & Graceful Flush ─────────────
-const persistMessageAsync = ({
-  messageId,
-  conversationId,
-  senderId,
-  content,
-  clientMsgId,
-  attachments = [],
-  socketId,
-  ackCb = null,
-  createdAt = new Date().toISOString(),
-}) => {
+// ─── Batched Async MongoDB Persistence Queue with Coalescing & Graceful Flush ──
+let persistBatch = [];
+let persistTimer = null;
+const BATCH_FLUSH_INTERVAL_MS = 20; // <= 25ms
+const BATCH_FLUSH_MAX_SIZE = 50; // <= 50 messages
+
+const flushPersistBatch = async () => {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  if (persistBatch.length === 0) return;
+
+  const currentBatch = persistBatch;
+  persistBatch = [];
+
   const task = (async () => {
-    const msgDate = new Date(createdAt);
-    const convIdStr = conversationId.toString();
-    let messagePersisted = false;
+    const Message = require('../models/Message');
+    const Conversation = require('../models/Conversation');
 
-    // 1. Persist Message to MongoDB with independent retry loop (50ms, 150ms, 450ms)
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const Message = require('../models/Message');
-        await Message.create({
-          _id: messageId,
-          conversation: conversationId,
-          sender: senderId,
-          content,
-          clientMsgId: clientMsgId || null,
-          attachments,
-          createdAt: msgDate, // Q0.5: Single timestamp for DB and broadcast
-        });
-        messagePersisted = true;
-        break;
-      } catch (err) {
-        if (err.code === 11000) {
-          // Idempotent duplicate: already persisted
-          messagePersisted = true;
-          break;
+    const msgOps = currentBatch.map((item) => ({
+      insertOne: {
+        document: {
+          _id: item.messageId,
+          conversation: item.conversationId,
+          sender: item.senderId,
+          content: item.content,
+          clientMsgId: item.clientMsgId || null,
+          attachments: item.attachments || [],
+          createdAt: item.msgDate,
+        },
+      },
+    }));
+
+    let successfulItems = [];
+    let failedItems = [];
+
+    try {
+      await Message.bulkWrite(msgOps, { ordered: false });
+      successfulItems = currentBatch;
+    } catch (err) {
+      if (err && err.writeErrors && Array.isArray(err.writeErrors)) {
+        const errorIndices = new Map();
+        for (const we of err.writeErrors) {
+          errorIndices.set(we.index, we);
         }
-        console.error(
-          `[AsyncPersist] Error persisting message ${messageId} (attempt ${attempt + 1}/3):`,
-          err.message
-        );
-        if (attempt < 2) {
-          const delay = Math.pow(3, attempt) * 50;
-          await new Promise((resolve) => setTimeout(resolve, delay));
+        for (let i = 0; i < currentBatch.length; i++) {
+          const we = errorIndices.get(i);
+          if (!we) {
+            successfulItems.push(currentBatch[i]);
+          } else if (we.code === 11000) {
+            // Idempotent duplicate: count as success
+            successfulItems.push(currentBatch[i]);
+          } else {
+            console.error(`[AsyncPersist] Bulk write error for message ${currentBatch[i].messageId}:`, we.errmsg || we.message);
+            failedItems.push(currentBatch[i]);
+          }
         }
+      } else {
+        console.error('[AsyncPersist] Entire bulkWrite failed:', err.message);
+        failedItems = currentBatch;
       }
     }
 
-    if (!messagePersisted) {
-      console.error(
-        `[AsyncPersist] Message ${messageId} failed all persistence attempts for conversation ${convIdStr}`
-      );
-      // Sender ack error
-      if (ackCb) {
-        ackCb({
-          error: 'Failed to persist message to database',
-          status: 'failed',
-          clientMsgId,
-          messageId: messageId ? messageId.toString() : null,
-        });
-      }
-      // Q0.4: Emit message_failed to BOTH participants so recipient UI removes speculative bubble
-      if (io) {
-        io.to(convIdStr).emit('message_failed', {
-          clientMsgId,
-          messageId: messageId ? messageId.toString() : null,
-          conversationId: convIdStr,
-          error: 'Failed to persist message to database',
-        });
-        if (socketId) {
-          io.to(socketId).emit('message_failed', {
-            clientMsgId,
-            messageId: messageId ? messageId.toString() : null,
-            conversationId: convIdStr,
-            error: 'Failed to persist message to database',
+    // Resolve deferred sender acks for successful items
+    for (const item of successfulItems) {
+      if (item.ackCb) {
+        try {
+          item.ackCb({
+            status: 'sent',
+            clientMsgId: item.clientMsgId,
+            messageId: item.messageId.toString(),
+            createdAt: item.msgDate.toISOString(),
           });
+        } catch (ackErr) {
+          console.error('[AsyncPersist] Error executing ackCb:', ackErr.message);
         }
       }
-      return;
     }
 
-    // Sender ack fires ONLY after Message DB write succeeds
-    if (ackCb) {
-      ackCb({
-        status: 'sent',
-        clientMsgId,
-        messageId: messageId.toString(),
-        createdAt: msgDate.toISOString(),
-      });
-    }
+    // Coalesce Conversation.lastMessage into ONE update per conversation per flush
+    if (successfulItems.length > 0) {
+      const latestByConv = new Map();
+      for (const item of successfulItems) {
+        const cId = item.conversationId.toString();
+        const existing = latestByConv.get(cId);
+        if (!existing || item.msgDate >= existing.msgDate) {
+          latestByConv.set(cId, item);
+        }
+      }
 
-    // 2. Q0.3: Retry Conversation.lastMessage update independently of Message.create
-    let convUpdated = false;
-    for (let cAttempt = 0; cAttempt < 3; cAttempt++) {
-      try {
-        const Conversation = require('../models/Conversation');
-        await Conversation.findByIdAndUpdate(conversationId, {
-          $set: {
-            lastMessage: messageId,
-            lastMessageAt: msgDate,
+      const convOps = Array.from(latestByConv.values()).map((latest) => ({
+        updateOne: {
+          filter: { _id: latest.conversationId },
+          update: {
+            $set: {
+              lastMessage: latest.messageId,
+              lastMessageAt: latest.msgDate,
+            },
           },
-        });
-        convUpdated = true;
-        break;
-      } catch (cErr) {
-        console.error(
-          `[AsyncPersist] Error updating lastMessage for conversation ${convIdStr} (attempt ${cAttempt + 1}/3):`,
-          cErr.message
-        );
-        if (cAttempt < 2) {
-          await new Promise((resolve) => setTimeout(resolve, 50 * (cAttempt + 1)));
+        },
+      }));
+
+      if (convOps.length > 0) {
+        try {
+          await Conversation.bulkWrite(convOps, { ordered: false });
+        } catch (convErr) {
+          console.error('[AsyncPersist] Error coalescing Conversation.lastMessage bulkWrite:', convErr.message);
         }
       }
     }
-    if (!convUpdated) {
-      console.error(
-        `[AsyncPersist] Failed to update lastMessage independently for conversation ${convIdStr}`
-      );
+
+    // Handle failed items (retry up to 3 attempts, or emit message_failed)
+    if (failedItems.length > 0) {
+      for (const item of failedItems) {
+        item.attempts = (item.attempts || 0) + 1;
+        if (item.attempts >= 3) {
+          console.error(`[AsyncPersist] Message ${item.messageId} failed all 3 persistence attempts.`);
+          if (item.ackCb) {
+            try {
+              item.ackCb({
+                status: 'failed',
+                error: 'Failed to persist message to database',
+                clientMsgId: item.clientMsgId,
+                messageId: item.messageId ? item.messageId.toString() : null,
+              });
+            } catch (ackErr) {
+              console.error('[AsyncPersist] Error executing failed ackCb:', ackErr.message);
+            }
+          }
+          if (io) {
+            const convIdStr = item.conversationId.toString();
+            io.to(convIdStr).emit('message_failed', {
+              clientMsgId: item.clientMsgId,
+              messageId: item.messageId ? item.messageId.toString() : null,
+              conversationId: convIdStr,
+              error: 'Failed to persist message to database',
+            });
+            if (item.socketId) {
+              io.to(item.socketId).emit('message_failed', {
+                clientMsgId: item.clientMsgId,
+                messageId: item.messageId ? item.messageId.toString() : null,
+                conversationId: convIdStr,
+                error: 'Failed to persist message to database',
+              });
+            }
+          }
+        } else {
+          // Re-queue for next flush
+          persistBatch.push(item);
+        }
+      }
+
+      if (persistBatch.length > 0 && !persistTimer) {
+        persistTimer = setTimeout(flushPersistBatch, 50).unref();
+      }
     }
   })();
 
@@ -329,8 +369,20 @@ const persistMessageAsync = ({
   return task;
 };
 
+const queueMessagePersist = (item) => {
+  persistBatch.push(item);
+  if (persistBatch.length >= BATCH_FLUSH_MAX_SIZE) {
+    flushPersistBatch();
+  } else if (!persistTimer) {
+    persistTimer = setTimeout(flushPersistBatch, BATCH_FLUSH_INTERVAL_MS).unref();
+  }
+};
+
 // ─── Graceful Shutdown: Flush Persist Queue on SIGTERM / SIGINT ──────────────
 const flushPersistQueue = async () => {
+  if (persistBatch.length > 0) {
+    await flushPersistBatch();
+  }
   if (pendingPersistQueue.size > 0) {
     console.log(`[Socket] Flushing ${pendingPersistQueue.size} pending message persistence tasks...`);
     await Promise.allSettled(Array.from(pendingPersistQueue));
@@ -563,18 +615,31 @@ const initializeSocket = (server) => {
           processedClientMsgs.set(effectiveClientMsgId, now);
         }
 
-        // D. Verify membership via hot cache
-        const conv = await getCachedConversation(conversationId);
+        const convIdStr = conversationId.toString();
+
+        // D. Verify membership via hot cache (sync check first)
+        let conv = conversationCache.get(convIdStr);
+        if (!conv) {
+          conv = await getCachedConversation(convIdStr);
+        }
         if (!conv || !conv.participants.includes(userId)) {
           socket.emit('error_message', { message: 'Unauthorized or conversation not found' });
           if (ackCb) ackCb({ error: 'Unauthorized' });
           return;
         }
 
-        // E. Block check via hot cache
+        // E. Block check via hot cache (sync check first)
         const otherParticipant = conv.participants.find((p) => p !== userId);
         if (otherParticipant) {
-          const blocked = await isUserBlocked(userId, otherParticipant);
+          let blocked = false;
+          if (
+            (blockCache.has(userId) && blockCache.get(userId).has(otherParticipant)) ||
+            (blockCache.has(otherParticipant) && blockCache.get(otherParticipant).has(userId))
+          ) {
+            blocked = true;
+          } else if (!blockCache.has(userId) || !blockCache.has(otherParticipant)) {
+            blocked = await isUserBlocked(userId, otherParticipant);
+          }
           if (blocked) {
             socket.emit('error_message', { message: 'Cannot send message. A block relationship exists.' });
             if (ackCb) ackCb({ error: 'Blocked' });
@@ -582,9 +647,10 @@ const initializeSocket = (server) => {
           }
         }
 
-        // F. RELAY FIRST TO RECIPIENT: Broadcast to room IMMEDIATELY
+        // F. RELAY FIRST TO RECIPIENT: Broadcast to room IMMEDIATELY before ANY await
         const messageId = new mongoose.Types.ObjectId();
-        const createdAt = new Date().toISOString();
+        const msgDate = new Date();
+        const createdAt = msgDate.toISOString();
 
         const publicSender = {
           _id: socket.user._id,
@@ -596,7 +662,7 @@ const initializeSocket = (server) => {
           _id: messageId.toString(),
           clientMsgId: effectiveClientMsgId || null,
           tempId: effectiveClientMsgId || null,
-          conversation: conversationId.toString(),
+          conversation: convIdStr,
           sender: publicSender,
           content: trimmed,
           attachments,
@@ -606,20 +672,20 @@ const initializeSocket = (server) => {
         };
 
         // Recipient receives message immediately via WebSocket
-        io.to(conversationId).emit('new_message', responseMessage);
+        io.to(convIdStr).emit('new_message', responseMessage);
 
-        // G. PERSIST SECOND: Asynchronous background write to MongoDB.
-        // Sender's "sent" ack fires only AFTER the DB write succeeds.
-        persistMessageAsync({
+        // G. PERSIST SECOND: Buffer into batched flush queue (<= 25ms or 50 messages)
+        // Sender's "sent" ack fires only AFTER the batched bulkWrite succeeds.
+        queueMessagePersist({
           messageId,
-          conversationId,
+          conversationId: convIdStr,
           senderId: socket.user._id,
           content: trimmed,
           clientMsgId: effectiveClientMsgId,
           attachments,
           socketId: socket.id,
           ackCb,
-          createdAt,
+          msgDate,
         });
 
       } catch (err) {
