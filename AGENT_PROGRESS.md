@@ -237,6 +237,13 @@
   - Implemented atomic aggregate calculation (`syncAggregateMetrics`) updating target averages on review creation.
   - Author serialization via `serializeAuthor` guarantees zero author identity leaks for anonymous course/professor reviews.
   - Built Jest integration test suite (`backend/tests/reviews.test.js`) covering public reviews, anonymous reviews with leak assertions, aggregate metric updates, duplicate rejection, and voting (6/6 suites passing, 18/18 tests).
+- [x] **Q5.1b — Course & Professor Reviews UI (Frontend)**:
+  - Created `frontend/src/api/reviewApi.js` connecting to course, professor, review submission, and voting endpoints.
+  - Built comprehensive `frontend/src/pages/ReviewsPage.jsx` with dual tab switching (Courses / Professors), real-time search filtering, and department categorization.
+  - Added rich visual rating cards with color-coded rating score badges (⭐ 4+ green, 3-4 yellow, <3 red), difficulty indicators, and review counts.
+  - Built course and professor detail modal with aggregate metrics, review history, tags, helpfulness voting, and review submission.
+  - Integrated "Post anonymously" checkbox toggle for review submission, allowing students to submit candid elective/professor reviews with zero risk of identity disclosure.
+  - Mounted `/reviews` route in `App.jsx` and added `🎓 Reviews` link to `LeftSidebar.jsx`. Verified with clean Vite build.
 
 ---
 
@@ -414,7 +421,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 
 ### Q5: High-Value Features
 - [x] 5.1a Course & professor reviews (Backend: Course, Professor, Review models, atomic aggregate score sync, anonymity support, API endpoints & Jest test suite)
-- [ ] 5.1b Course & professor reviews (Frontend: Reviews browse view, course/professor profile modal, rating metrics, anonymous submission toggle)
+- [x] 5.1b Course & professor reviews (Frontend: Reviews browse view, course/professor profile modal, rating metrics, anonymous submission toggle)
 - [ ] 5.2 Polls in posts
 - [ ] 5.3 Resource library
 - [ ] 5.4 Hot ranking

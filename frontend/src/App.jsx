@@ -26,6 +26,7 @@ import ChatPage from './pages/ChatPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
+import ReviewsPage from './pages/ReviewsPage';
 
 function App() {
   return (
@@ -50,6 +51,7 @@ function App() {
               <Route path="/u/:username" element={<ProfilePage />} />
               <Route path="/search" element={<SearchResults />} />
               <Route path="/communities" element={<ExploreCommunities />} />
+              <Route path="/reviews" element={<ReviewsPage />} />
 
               {/* Protected Member routes */}
               <Route element={<ProtectedRoute />}>
