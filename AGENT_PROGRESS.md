@@ -140,6 +140,13 @@
   - Set fixed tick widths (`.msg-tick`: `display: inline-block; width: 14px; min-width: 14px; text-align: right;`) preventing horizontal text jitter during status transitions (`sending -> sent -> delivered -> read`).
   - Added reserved 20px typing slot (`.chat-typing-slot`) so typing indicator mounts and unmounts without shifting message scroll height.
   - Integrated `PostSkeleton` in `HomeFeed.jsx`, `LatestFeed.jsx`, and `PopularFeed.jsx`. Verified with build and budget benchmark suite.
+- [x] **Q2.9 — Render Storm Elimination & Context Splitting**:
+  - Split `SocketContext` into three dedicated, memoized React contexts (`SocketContext`, `PresenceContext`, `TypingContext`) with dedicated hooks (`useSocket`, `usePresence`, `useTyping`).
+  - Isolated presence and typing state: components consuming only socket transport (e.g. `LatestFeed`) or message rows no longer re-render on presence or typing indicator updates.
+  - Created `MessageRow` wrapped in `React.memo` with custom comparator, avoiding re-renders of older message bubbles when new messages arrive.
+  - Isolated input state inside `<ChatInput>`: user keystrokes never trigger re-renders in the parent chat page or message list.
+  - Isolated typing indicator into `<ChatTypingSlot>`: typing events only re-render the 20px slot, preserving stable message list layout.
+  - Batched bursty socket messages using `requestAnimationFrame` before dispatching React state updates. Verified with frontend build and budget benchmark (delivery p50 = 0.96 ms, p95 = 2.43 ms, persist p95 = 24.03 ms, event loop lag p99 = 15.90 ms).
 
 ---
 
@@ -297,7 +304,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 2.6 Chat list stability: key rows by `clientMsgId`.
 - [x] 2.7 Scroll behavior: preserve scroll delta on prepending older pages, CSS `overflow-anchor`.
 - [x] 2.8 Layout shift: fixed-size avatars, aspect ratios, skeletons (CLS < 0.05).
-- [ ] 2.9 Render storms: React.memo message rows, split SocketContext.
+- [x] 2.9 Render storms: React.memo message rows, split SocketContext.
 - [ ] 2.10 Feed smoothness: stale-while-revalidate, optimistic vote/save with rollback.
 - [ ] 2.11 Web-vitals logging (CLS, INP, LCP).
 

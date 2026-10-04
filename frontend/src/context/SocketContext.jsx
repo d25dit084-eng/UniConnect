@@ -235,23 +235,43 @@ export const SocketProvider = ({ children }) => {
     }
   }, []);
 
+  const socketValue = useMemo(() => ({
+    socket,
+    socketStatus,
+    joinConversation,
+    leaveConversation,
+    emitSendMessage,
+    emitTypingStart,
+    emitTypingStop,
+    emitBatchRead,
+    emitMessageDelivered,
+  }), [
+    socket,
+    socketStatus,
+    joinConversation,
+    leaveConversation,
+    emitSendMessage,
+    emitTypingStart,
+    emitTypingStop,
+    emitBatchRead,
+    emitMessageDelivered,
+  ]);
+
+  const presenceValue = useMemo(() => ({
+    onlineUsers,
+  }), [onlineUsers]);
+
+  const typingValue = useMemo(() => ({
+    typingUsers,
+  }), [typingUsers]);
+
   return (
-    <SocketContext.Provider
-      value={{
-        socket,
-        socketStatus,
-        onlineUsers,
-        typingUsers,
-        joinConversation,
-        leaveConversation,
-        emitSendMessage,
-        emitTypingStart,
-        emitTypingStop,
-        emitBatchRead,
-        emitMessageDelivered,
-      }}
-    >
-      {children}
+    <SocketContext.Provider value={socketValue}>
+      <PresenceContext.Provider value={presenceValue}>
+        <TypingContext.Provider value={typingValue}>
+          {children}
+        </TypingContext.Provider>
+      </PresenceContext.Provider>
     </SocketContext.Provider>
   );
 };
@@ -260,6 +280,22 @@ export const useSocket = () => {
   const context = useContext(SocketContext);
   if (!context) {
     throw new Error('useSocket must be used within a SocketProvider');
+  }
+  return context;
+};
+
+export const usePresence = () => {
+  const context = useContext(PresenceContext);
+  if (!context) {
+    throw new Error('usePresence must be used within a SocketProvider');
+  }
+  return context;
+};
+
+export const useTyping = () => {
+  const context = useContext(TypingContext);
+  if (!context) {
+    throw new Error('useTyping must be used within a SocketProvider');
   }
   return context;
 };

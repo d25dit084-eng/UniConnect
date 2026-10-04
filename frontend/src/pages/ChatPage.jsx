@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useSocket } from '../context/SocketContext';
+import { useSocket, usePresence, useTyping } from '../context/SocketContext';
 import { listConversations, getMessages, deleteMessage } from '../api/chatApi';
 import { ConversationSkeleton, MessageSkeleton } from '../components/Skeleton';
 
@@ -9,14 +9,212 @@ const CONVS_CACHE_KEY_PREFIX = 'uniconnect_cached_convs_';
 const MSGS_CACHE_KEY_PREFIX = 'uniconnect_cached_msgs_';
 const WINDOW_PAGE_SIZE = 60;
 
+// ─── 1. Memoized Message Row Component ──────────────────────────────────────────
+export const MessageRow = React.memo(
+  function MessageRow({ msg, isMine, onRetry, onDelete }) {
+    const status = msg.status || (msg.isRead ? 'read' : 'delivered');
+    const isFailed = status === 'failed';
+    const isSending = status === 'sending';
+    const rowKey = msg.clientMsgId || msg._id;
+
+    return (
+      <div
+        key={rowKey}
+        className={`message-bubble ${isMine ? 'mine' : 'other'}${isSending ? ' pending' : ''}${isFailed ? ' failed' : ''}`}
+      >
+        <div>{msg.content}</div>
+        <div className="msg-meta-row">
+          <div className="msg-status-indicator">
+            {isSending ? (
+              <span>🕒 Sending...</span>
+            ) : isFailed ? (
+              <span>
+                ⚠️ Undelivered
+                <button
+                  type="button"
+                  className="msg-retry-btn"
+                  onClick={() => onRetry(msg)}
+                >
+                  Retry
+                </button>
+              </span>
+            ) : (
+              <span>
+                {new Date(msg.createdAt).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+            )}
+
+            {/* Status Ticks for outgoing messages */}
+            {isMine && !isSending && !isFailed && (
+              <span
+                className={`msg-tick${status === 'read' ? ' read' : ''}`}
+                title={
+                  status === 'read'
+                    ? 'Read'
+                    : status === 'delivered'
+                    ? 'Delivered'
+                    : 'Sent'
+                }
+              >
+                {status === 'read' ? '✓✓' : status === 'delivered' ? '✓✓' : '✓'}
+              </span>
+            )}
+          </div>
+
+          {isMine && !isSending && (
+            <button
+              type="button"
+              onClick={() => onDelete(msg._id)}
+              style={{
+                border: 'none',
+                background: 'none',
+                color: isMine ? 'rgba(255,255,255,0.6)' : '#aa2d00',
+                padding: 0,
+                textDecoration: 'underline',
+                fontSize: '9px',
+                marginLeft: '10px',
+                cursor: 'pointer',
+              }}
+            >
+              Delete
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  },
+  (prev, next) => (
+    prev.msg._id === next.msg._id &&
+    prev.msg.clientMsgId === next.msg.clientMsgId &&
+    prev.msg.content === next.msg.content &&
+    prev.msg.status === next.msg.status &&
+    prev.msg.isRead === next.msg.isRead &&
+    prev.msg.createdAt === next.msg.createdAt &&
+    prev.isMine === next.isMine &&
+    prev.onRetry === next.onRetry &&
+    prev.onDelete === next.onDelete
+  )
+);
+
+// ─── 2. Isolated Conversation List Item (Subscribes to Presence) ───────────────
+const ConversationListItem = React.memo(function ConversationListItem({
+  conv,
+  isActive,
+  partnerId,
+  partnerUsername,
+  onSelect,
+}) {
+  const { onlineUsers } = usePresence();
+  const isOnline = Boolean(partnerId && onlineUsers.includes(partnerId));
+
+  return (
+    <div
+      className={`conversation-item${isActive ? ' active' : ''}`}
+      onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === 'Enter' && onSelect()}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span className="conversation-item-name">u/{partnerUsername?.replace('u/', '')}</span>
+        {isOnline && <span style={{ fontSize: '10px', color: '#090' }}>● online</span>}
+      </div>
+      <div className="conversation-item-preview">
+        {conv.lastMessage?.content || '(no messages)'}
+      </div>
+    </div>
+  );
+});
+
+// ─── 3. Isolated Partner Online Badge (Subscribes to Presence) ─────────────────
+const ChatPartnerStatus = React.memo(function ChatPartnerStatus({ partnerId }) {
+  const { onlineUsers } = usePresence();
+  const isOnline = Boolean(partnerId && onlineUsers.includes(partnerId));
+
+  return (
+    <span
+      style={{
+        fontSize: '11px',
+        fontWeight: 'normal',
+        color: isOnline ? '#090' : '#888',
+      }}
+    >
+      ({isOnline ? 'Online' : 'Offline'})
+    </span>
+  );
+});
+
+// ─── 4. Isolated Typing Indicator Slot (Subscribes to Typing) ───────────────────
+const ChatTypingSlot = React.memo(function ChatTypingSlot({ conversationId, partnerId, partnerUsername }) {
+  const { typingUsers } = useTyping();
+  const isTyping = Boolean(
+    conversationId && partnerId && typingUsers[conversationId]?.[partnerId]
+  );
+
+  return (
+    <div className="chat-typing-slot" aria-live="polite">
+      {isTyping ? `${partnerUsername || 'User'} is typing...` : ''}
+    </div>
+  );
+});
+
+// ─── 5. Isolated Input Component (Keystrokes Do Not Re-render Messages) ────────
+const ChatInput = React.memo(function ChatInput({ conversationId, onSend, onTypingStart, onTypingStop }) {
+  const [text, setText] = useState('');
+  const typingTimeoutRef = useRef(null);
+
+  const handleInputChange = (e) => {
+    setText(e.target.value);
+    if (onTypingStart) onTypingStart(conversationId);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      if (onTypingStop) onTypingStop(conversationId);
+    }, 1500);
+  };
+
+  const handleSubmit = (e) => {
+    if (e) e.preventDefault();
+    const trimmed = text.trim();
+    if (!trimmed || !conversationId) return;
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    if (onTypingStop) onTypingStop(conversationId);
+
+    setText('');
+    onSend(trimmed);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="chat-input-area">
+      <input
+        type="text"
+        value={text}
+        onChange={handleInputChange}
+        placeholder="Type a message..."
+        maxLength={2000}
+        required
+        aria-label="Message input"
+        autoComplete="off"
+      />
+      <button type="submit" className="chat-send-btn" disabled={!text.trim()}>
+        Send
+      </button>
+    </form>
+  );
+});
+
+// ─── Main ChatPage Component ───────────────────────────────────────────────────
 export const ChatPage = () => {
   const { conversationId } = useParams();
   const { user } = useAuth();
   const {
     socket,
     socketStatus,
-    onlineUsers,
-    typingUsers,
     joinConversation,
     leaveConversation,
     emitSendMessage,
@@ -52,7 +250,6 @@ export const ChatPage = () => {
     }
   });
 
-  const [text, setText] = useState('');
   const [loadingConvs, setLoadingConvs] = useState(() => conversations.length === 0);
   const [loadingMsgs, setLoadingMsgs] = useState(() => messages.length === 0);
   const [isRefreshingMsgs, setIsRefreshingMsgs] = useState(false);
@@ -66,39 +263,68 @@ export const ChatPage = () => {
   const [showNewMsgBtn, setShowNewMsgBtn] = useState(false);
   const isNearBottom = useRef(true);
 
-  const typingTimeoutRef = useRef(null);
   const messageEndRef = useRef(null);
   const chatMessagesRef = useRef(null);
   const scrollSnapshotRef = useRef(null);
 
-  // ─── Deduplication Helper ────────────────────────────────────────────────────
-  const addMessageDeduped = useCallback((newMsg) => {
+  // Bursty socket events batching queue (rAF)
+  const incomingQueueRef = useRef([]);
+  const rafIdRef = useRef(null);
+
+  // ─── Batch Flushing via requestAnimationFrame ────────────────────────────────
+  const flushIncomingQueue = useCallback(() => {
+    rafIdRef.current = null;
+    const batch = incomingQueueRef.current;
+    if (batch.length === 0) return;
+    incomingQueueRef.current = [];
+
     setMessages((prev) => {
-      // 1. Check if already present by exact _id
-      const existsById = prev.some((m) => m._id === newMsg._id);
-      if (existsById) return prev;
+      let next = [...prev];
+      for (const newMsg of batch) {
+        // 1. Check if already present by exact _id
+        const existsById = next.some((m) => m._id === newMsg._id);
+        if (existsById) continue;
 
-      // 2. Check if there's a pending client message with matching clientMsgId or tempId
-      const targetId = newMsg.clientMsgId || newMsg.tempId;
-      if (targetId) {
-        const tempIdx = prev.findIndex(
-          (m) => m.clientMsgId === targetId || m.tempId === targetId || m._id === targetId
-        );
-        if (tempIdx !== -1) {
-          const next = [...prev];
-          next[tempIdx] = {
-            ...next[tempIdx],
-            ...newMsg,
-            clientMsgId: next[tempIdx].clientMsgId || newMsg.clientMsgId,
-            _id: newMsg._id,
-            status: newMsg.status || 'sent',
-          };
-          return next;
+        // 2. Check if there's a pending client message with matching clientMsgId or tempId
+        const targetId = newMsg.clientMsgId || newMsg.tempId;
+        if (targetId) {
+          const tempIdx = next.findIndex(
+            (m) => m.clientMsgId === targetId || m.tempId === targetId || m._id === targetId
+          );
+          if (tempIdx !== -1) {
+            next[tempIdx] = {
+              ...next[tempIdx],
+              ...newMsg,
+              clientMsgId: next[tempIdx].clientMsgId || newMsg.clientMsgId,
+              _id: newMsg._id,
+              status: newMsg.status || 'sent',
+            };
+            continue;
+          }
         }
-      }
 
-      return [...prev, { ...newMsg, status: newMsg.status || 'delivered' }];
+        next.push({ ...newMsg, status: newMsg.status || 'delivered' });
+      }
+      return next;
     });
+  }, []);
+
+  const queueIncomingMessage = useCallback(
+    (newMsg) => {
+      incomingQueueRef.current.push(newMsg);
+      if (!rafIdRef.current) {
+        rafIdRef.current = requestAnimationFrame(flushIncomingQueue);
+      }
+    },
+    [flushIncomingQueue]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+    };
   }, []);
 
   // ─── Fetch Conversations with Background Refresh ────────────────────────────
@@ -240,12 +466,10 @@ export const ChatPage = () => {
         const senderId = data.sender?._id || data.sender;
         const isFromMe = senderId === user?._id || senderId?.toString?.() === user?._id;
 
-        addMessageDeduped(data);
+        queueIncomingMessage(data);
 
         if (!isFromMe) {
-          // Immediately acknowledge delivery to the room
           emitMessageDelivered(conversationId, data._id, data.clientMsgId);
-          // Debounced batch read
           emitBatchRead(conversationId, data._id);
         }
 
@@ -312,7 +536,6 @@ export const ChatPage = () => {
           if (isMine) {
             return [{ ...m, status: 'failed' }];
           }
-          // Recipient drops speculative unpersisted bubble
           return [];
         })
       );
@@ -335,7 +558,7 @@ export const ChatPage = () => {
     socket,
     conversationId,
     user?._id,
-    addMessageDeduped,
+    queueIncomingMessage,
     fetchConversations,
     emitMessageDelivered,
     emitBatchRead,
@@ -365,101 +588,87 @@ export const ChatPage = () => {
     if (atBottom) setShowNewMsgBtn(false);
   }, []);
 
-  // Typing debounce (Throttled by SocketContext)
-  const handleInputChange = (e) => {
-    setText(e.target.value);
-    emitTypingStart(conversationId);
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => {
-      emitTypingStop(conversationId);
-    }, 1500);
-  };
-
   // ─── Optimistic Send with State Progression ──────────────────────────────────
-  const handleSend = async (e) => {
-    if (e) e.preventDefault();
-    if (!text.trim() || !conversationId) return;
+  const handleSend = useCallback(
+    async (messageContent) => {
+      if (!messageContent || !conversationId) return;
 
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-      emitTypingStop(conversationId);
-    }
+      // Generate unique clientMsgId for idempotency and optimistic UI
+      const clientMsgId = `cmsg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      const optimisticMsg = {
+        _id: clientMsgId,
+        clientMsgId,
+        tempId: clientMsgId,
+        conversation: conversationId,
+        sender: { _id: user._id, username: user.username },
+        content: messageContent,
+        createdAt: new Date().toISOString(),
+        status: 'sending',
+      };
 
-    const messageContent = text.trim();
-    setText('');
+      setMessages((prev) => [...prev, optimisticMsg]);
+      setTimeout(() => messageEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 30);
 
-    // Generate unique clientMsgId for idempotency and optimistic UI
-    const clientMsgId = `cmsg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    const optimisticMsg = {
-      _id: clientMsgId,
-      clientMsgId,
-      tempId: clientMsgId,
-      conversation: conversationId,
-      sender: { _id: user._id, username: user.username },
-      content: messageContent,
-      createdAt: new Date().toISOString(),
-      status: 'sending',
-    };
+      try {
+        const ack = await emitSendMessage(conversationId, messageContent, clientMsgId);
 
-    setMessages((prev) => [...prev, optimisticMsg]);
-    setTimeout(() => messageEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 30);
+        if (ack?.status === 'queued_offline') {
+          return;
+        }
 
-    try {
-      const ack = await emitSendMessage(conversationId, messageContent, clientMsgId);
-
-      if (ack?.status === 'queued_offline') {
-        // Enqueued in offline buffer, will auto-flush on reconnect
-        return;
+        // Update message status to 'sent' while preserving stable clientMsgId and position
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.clientMsgId === clientMsgId || m._id === clientMsgId
+              ? { ...m, status: 'sent', _id: ack?.messageId || m._id, clientMsgId: m.clientMsgId || clientMsgId }
+              : m
+          )
+        );
+      } catch (err) {
+        console.error('[ChatPage] Send failed:', err.message);
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.clientMsgId === clientMsgId || m._id === clientMsgId
+              ? { ...m, status: 'failed' }
+              : m
+          )
+        );
       }
-
-      // Update message status to 'sent' while preserving stable clientMsgId and position
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.clientMsgId === clientMsgId || m._id === clientMsgId
-            ? { ...m, status: 'sent', _id: ack?.messageId || m._id, clientMsgId: m.clientMsgId || clientMsgId }
-            : m
-        )
-      );
-    } catch (err) {
-      console.error('[ChatPage] Send failed:', err.message);
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.clientMsgId === clientMsgId || m._id === clientMsgId
-            ? { ...m, status: 'failed' }
-            : m
-        )
-      );
-    }
-  };
+    },
+    [conversationId, user?._id, user?.username, emitSendMessage]
+  );
 
   // ─── Retry Failed Message ────────────────────────────────────────────────────
-  const handleRetry = async (msg) => {
-    if (!msg || !conversationId) return;
-
-    // Reset status back to sending
-    setMessages((prev) =>
-      prev.map((m) => (m._id === msg._id ? { ...m, status: 'sending' } : m))
-    );
-
-    try {
-      const ack = await emitSendMessage(conversationId, msg.content, msg.clientMsgId || msg._id);
-      if (ack?.status === 'queued_offline') return;
+  const handleRetry = useCallback(
+    async (msg) => {
+      if (!msg || !conversationId) return;
 
       setMessages((prev) =>
-        prev.map((m) =>
-          m._id === msg._id
-            ? { ...m, status: 'sent', _id: ack?.messageId || m._id }
-            : m
-        )
+        prev.map((m) => (m._id === msg._id ? { ...m, status: 'sending' } : m))
       );
-    } catch (err) {
-      setMessages((prev) =>
-        prev.map((m) => (m._id === msg._id ? { ...m, status: 'failed' } : m))
-      );
-    }
-  };
 
-  const handleDeleteMsg = async (msgId) => {
+      try {
+        const ack = await emitSendMessage(conversationId, msg.content, msg.clientMsgId || msg._id);
+        if (ack?.status === 'queued_offline') return;
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m._id === msg._id
+              ? { ...m, status: 'sent', _id: ack?.messageId || m._id }
+              : m
+          )
+        );
+      } catch (err) {
+        setMessages((prev) =>
+          prev.map((m) => (m._id === msg._id ? { ...m, status: 'failed' } : m))
+        );
+      }
+    },
+    [conversationId, emitSendMessage]
+  );
+
+  // ─── Delete Message ──────────────────────────────────────────────────────────
+  const handleDeleteMsg = useCallback(async (msgId) => {
     if (msgId.startsWith('cmsg_') || msgId.startsWith('temp-')) return;
     if (!window.confirm('Delete this message?')) return;
     try {
@@ -468,28 +677,30 @@ export const ChatPage = () => {
     } catch (err) {
       alert(`Delete failed: ${err.message}`);
     }
-  };
+  }, []);
 
-  const getPartnerInfo = (conv) => {
-    if (!conv || !conv.participants) return { username: 'deleted', _id: '' };
-    return conv.participants.find((p) => p._id !== user?._id) || { username: 'deleted', _id: '' };
-  };
+  const getPartnerInfo = useCallback(
+    (conv) => {
+      if (!conv || !conv.participants) return { username: 'deleted', _id: '' };
+      return conv.participants.find((p) => p._id !== user?._id) || { username: 'deleted', _id: '' };
+    },
+    [user?._id]
+  );
 
-  const activeConversation = conversations.find((c) => c._id === conversationId);
-  const partner = getPartnerInfo(activeConversation);
-  const isPartnerOnline = onlineUsers.includes(partner._id);
+  const activeConversation = useMemo(
+    () => conversations.find((c) => c._id === conversationId),
+    [conversations, conversationId]
+  );
 
-  // Typing state
-  const typingInThisConv = typingUsers[conversationId] || {};
-  const otherTypingUsernames = Object.entries(typingInThisConv)
-    .filter(([uid]) => uid !== user?._id)
-    .map(([, uname]) => uname);
-  const isTyping = otherTypingUsernames.length > 0;
+  const partner = useMemo(
+    () => getPartnerInfo(activeConversation),
+    [getPartnerInfo, activeConversation]
+  );
 
-  const handleMobileBack = () => {
+  const handleMobileBack = useCallback(() => {
     setMobileView('list');
     navigate('/chat');
-  };
+  }, [navigate]);
 
   // ─── Virtualized / Windowed Slice of Messages ───────────────────────────────
   const visibleMessages = useMemo(() => {
@@ -499,7 +710,7 @@ export const ChatPage = () => {
 
   const hasEarlierMessages = messages.length > visibleCount;
 
-  const handleLoadEarlier = () => {
+  const handleLoadEarlier = useCallback(() => {
     const el = chatMessagesRef.current;
     if (el) {
       scrollSnapshotRef.current = {
@@ -508,7 +719,7 @@ export const ChatPage = () => {
       };
     }
     setVisibleCount((prev) => prev + WINDOW_PAGE_SIZE);
-  };
+  }, []);
 
   // Preserve scroll position when prepending older pages (scrollHeight delta)
   useLayoutEffect(() => {
@@ -549,24 +760,15 @@ export const ChatPage = () => {
           ) : conversations.length > 0 ? (
             conversations.map((conv) => {
               const p = getPartnerInfo(conv);
-              const isOnline = onlineUsers.includes(p._id);
               return (
-                <div
+                <ConversationListItem
                   key={conv._id}
-                  className={`conversation-item${conv._id === conversationId ? ' active' : ''}`}
-                  onClick={() => navigate(`/chat/${conv._id}`)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === 'Enter' && navigate(`/chat/${conv._id}`)}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className="conversation-item-name">u/{p.username?.replace('u/', '')}</span>
-                    {isOnline && <span style={{ fontSize: '10px', color: '#090' }}>● online</span>}
-                  </div>
-                  <div className="conversation-item-preview">
-                    {conv.lastMessage?.content || '(no messages)'}
-                  </div>
-                </div>
+                  conv={conv}
+                  isActive={conv._id === conversationId}
+                  partnerId={p._id}
+                  partnerUsername={p.username}
+                  onSelect={() => navigate(`/chat/${conv._id}`)}
+                />
               );
             })
           ) : (
@@ -594,15 +796,7 @@ export const ChatPage = () => {
                   {activeConversation ? (
                     <>
                       u/{partner.username?.replace('u/', '')}{' '}
-                      <span
-                        style={{
-                          fontSize: '11px',
-                          fontWeight: 'normal',
-                          color: isPartnerOnline ? '#090' : '#888',
-                        }}
-                      >
-                        ({isPartnerOnline ? 'Online' : 'Offline'})
-                      </span>
+                      <ChatPartnerStatus partnerId={partner._id} />
                       {isRefreshingMsgs && (
                         <span className="chat-window-cache-badge">· syncing...</span>
                       )}
@@ -645,78 +839,16 @@ export const ChatPage = () => {
                   visibleMessages.map((msg) => {
                     const senderId = msg.sender?._id || msg.sender;
                     const isMine = senderId === user?._id || senderId?.toString?.() === user?._id;
-                    const status = msg.status || (msg.isRead ? 'read' : 'delivered');
-                    const isFailed = status === 'failed';
-                    const isSending = status === 'sending';
-
                     const rowKey = msg.clientMsgId || msg._id;
+
                     return (
-                      <div
+                      <MessageRow
                         key={rowKey}
-                        className={`message-bubble ${isMine ? 'mine' : 'other'}${isSending ? ' pending' : ''}${isFailed ? ' failed' : ''}`}
-                      >
-                        <div>{msg.content}</div>
-                        <div className="msg-meta-row">
-                          <div className="msg-status-indicator">
-                            {isSending ? (
-                              <span>🕒 Sending...</span>
-                            ) : isFailed ? (
-                              <span>
-                                ⚠️ Undelivered
-                                <button
-                                  type="button"
-                                  className="msg-retry-btn"
-                                  onClick={() => handleRetry(msg)}
-                                >
-                                  Retry
-                                </button>
-                              </span>
-                            ) : (
-                              <span>
-                                {new Date(msg.createdAt).toLocaleTimeString([], {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                              </span>
-                            )}
-
-                            {/* Status Ticks for outgoing messages */}
-                            {isMine && !isSending && !isFailed && (
-                              <span
-                                className={`msg-tick${status === 'read' ? ' read' : ''}`}
-                                title={
-                                  status === 'read'
-                                    ? 'Read'
-                                    : status === 'delivered'
-                                    ? 'Delivered'
-                                    : 'Sent'
-                                }
-                              >
-                                {status === 'read' ? '✓✓' : status === 'delivered' ? '✓✓' : '✓'}
-                              </span>
-                            )}
-                          </div>
-
-                          {isMine && !isSending && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteMsg(msg._id)}
-                              style={{
-                                border: 'none',
-                                background: 'none',
-                                color: isMine ? 'rgba(255,255,255,0.6)' : '#aa2d00',
-                                padding: 0,
-                                textDecoration: 'underline',
-                                fontSize: '9px',
-                                marginLeft: '10px',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                        msg={msg}
+                        isMine={isMine}
+                        onRetry={handleRetry}
+                        onDelete={handleDeleteMsg}
+                      />
                     );
                   })
                 ) : (
@@ -725,15 +857,16 @@ export const ChatPage = () => {
                   </div>
                 )}
 
-                {/* Reserved Line for Typing Indicator (prevents layout shift) */}
-                <div className="chat-typing-slot" aria-live="polite">
-                  {isTyping ? `${otherTypingUsernames[0]} is typing...` : ''}
-                </div>
+                {/* Reserved Line for Typing Indicator (Isolated Component) */}
+                <ChatTypingSlot
+                  conversationId={conversationId}
+                  partnerId={partner._id}
+                  partnerUsername={partner.username?.replace('u/', '')}
+                />
 
                 <div ref={messageEndRef} className="chat-scroll-anchor" />
               </div>
 
-              {/* Jump to New Messages Button */}
               {/* Floating New Messages Pill when scrolled up */}
               {showNewMsgBtn && (
                 <button
@@ -750,22 +883,13 @@ export const ChatPage = () => {
                 </button>
               )}
 
-              {/* Message Input Bar */}
-              <form onSubmit={handleSend} className="chat-input-area">
-                <input
-                  type="text"
-                  value={text}
-                  onChange={handleInputChange}
-                  placeholder="Type a message..."
-                  maxLength={2000}
-                  required
-                  aria-label="Message input"
-                  autoComplete="off"
-                />
-                <button type="submit" className="chat-send-btn" disabled={!text.trim()}>
-                  Send
-                </button>
-              </form>
+              {/* Isolated Message Input Bar */}
+              <ChatInput
+                conversationId={conversationId}
+                onSend={handleSend}
+                onTypingStart={emitTypingStart}
+                onTypingStop={emitTypingStop}
+              />
             </>
           ) : (
             <div style={{ margin: 'auto', textAlign: 'center', color: '#888', fontSize: '13px', padding: '20px' }}>

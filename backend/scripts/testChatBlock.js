@@ -108,7 +108,12 @@ const runBlockTest = async () => {
     let rejectedError = null;
 
     const blockPromise = new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        resolve({ error: 'TIMEOUT: no error_message or ack received within 5s' });
+      }, 5000);
+
       bobSocket.once('error_message', (err) => {
+        clearTimeout(timer);
         resolve({ error: err.message });
       });
 
@@ -117,7 +122,8 @@ const runBlockTest = async () => {
         content: 'Hello Alice, after block!',
         clientMsgId: 'msg_after_block',
       }, (ack) => {
-        if (ack?.error) resolve(ack);
+        clearTimeout(timer);
+        resolve(ack || { status: 'sent_no_error' });
       });
     });
 
