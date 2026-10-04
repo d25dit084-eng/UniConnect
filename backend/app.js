@@ -64,11 +64,14 @@ app.use(cookieParser());
 // ─── Static Files (uploaded images) ──────────────────────────────────────────
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+const { getEventLoopStats } = require('./utils/eventLoopMonitor');
+
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   const dbState = mongoose.connection.readyState;
   const dbStatusMap = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
   const dbStatus = dbStatusMap[dbState] || 'unknown';
+  const eventLoop = getEventLoopStats();
 
   res.json({
     success: true,
@@ -76,6 +79,13 @@ app.get('/api/health', (req, res) => {
     database: dbStatus,
     environment: process.env.NODE_ENV || 'development',
     uptime: `${Math.floor(process.uptime())}s`,
+    eventLoop: {
+      p99LagMs: eventLoop.p99LagMs,
+      p95LagMs: eventLoop.p95LagMs,
+      p50LagMs: eventLoop.p50LagMs,
+      maxLagMs: eventLoop.maxLagMs,
+      meanLagMs: eventLoop.meanLagMs,
+    },
   });
 });
 

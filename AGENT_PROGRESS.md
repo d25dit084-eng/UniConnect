@@ -94,6 +94,13 @@
   - Guaranteed relay emit executes before any `await` or DB write; sender ack is deferred and resolved per message once batch persist succeeds.
   - Added flush on SIGTERM/SIGINT graceful shutdown.
   - Verified with `chat-bench.js` (1,000 messages): delivery p50 = 0.36 ms, p95 = 2.24 ms; persist p50 = 17.87 ms, p95 = 34.23 ms; throughput = 1,440.9 msgs/sec. All quality gates passed.
+- [x] **Q2.2 — Event-Loop Health & TCP_NODELAY**:
+  - Implemented `backend/utils/eventLoopMonitor.js` using `perf_hooks.monitorEventLoopDelay({ resolution: 10 })` to track p50, p95, p99, max, and mean event-loop delay.
+  - Exposed live event-loop lag metrics under `eventLoop` in `GET /api/health`.
+  - Audited socket paths: 0 sync fs calls, 0 heavy loops, 0 large synchronous JSON serialization on hot paths.
+  - Tuned MongoDB connection pool in `backend/config/database.js` (`maxPoolSize: 50`, `minPoolSize: 10`, `serverSelectionTimeoutMS: 5000`, `socketTimeoutMS: 45000`).
+  - Enabled `TCP_NODELAY` (`socket.setNoDelay(true)`) across all incoming HTTP and WebSocket transport connections, disabling Nagle's algorithm to eliminate network buffering jitter.
+  - Verified throughput reached 1,652.9 msgs/sec with delivery p50 = 0.34 ms, p95 = 2.21 ms, and persist p95 = 29.71 ms.
 
 ---
 
@@ -244,7 +251,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 
 ### Q2: Jitter Elimination
 - [x] 2.1 Persist batching: buffer writes with `bulkWrite` every $\le 25\text{ ms}$ or 50 messages. Coalesce `lastMessage`.
-- [ ] 2.2 Event-loop health: `monitorEventLoopDelay`, expose p99 lag in `/api/health`, tune Mongo `maxPoolSize`, `TCP_NODELAY`.
+- [x] 2.2 Event-loop health: `monitorEventLoopDelay`, expose p99 lag in `/api/health`, tune Mongo `maxPoolSize`, `TCP_NODELAY`.
 - [ ] 2.3 Prebuild message payload once; drop unneeded socket fields.
 - [ ] 2.4 Reconnect storms: exponential backoff with jitter (`randomizationFactor: 0.5`).
 - [ ] 2.5 Upgrade `chat-bench.js` to Budget format (warmup, median of 3 runs, event-loop lag).

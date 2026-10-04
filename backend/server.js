@@ -13,6 +13,11 @@ const startServer = async () => {
 
   const server = http.createServer(app);
 
+  // Enable TCP_NODELAY on all incoming HTTP/WebSocket connections
+  server.on('connection', (socket) => {
+    socket.setNoDelay(true);
+  });
+
   // Initialize Socket.io server
   initializeSocket(server);
 

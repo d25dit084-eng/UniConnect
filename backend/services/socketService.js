@@ -470,6 +470,13 @@ const initializeSocket = (server) => {
     },
   });
 
+  // Ensure TCP_NODELAY on raw Engine.IO transport sockets
+  io.engine.on('connection', (rawSocket) => {
+    if (rawSocket.transport && rawSocket.transport.socket) {
+      rawSocket.transport.socket.setNoDelay?.(true);
+    }
+  });
+
   // ─── Optional Redis Adapter for Multi-Node Scaling ──────────────────────────
   if (process.env.REDIS_URL) {
     try {
