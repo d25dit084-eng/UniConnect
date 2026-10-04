@@ -83,6 +83,10 @@ const postSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isAnonymous: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
@@ -93,6 +97,7 @@ const postSchema = new mongoose.Schema(
 // Text index for search
 postSchema.index({ title: 'text', content: 'text' });
 postSchema.index({ author: 1 });
+postSchema.index({ author: 1, isAnonymous: 1 });
 postSchema.index({ community: 1, createdAt: -1 });
 postSchema.index({ status: 1, createdAt: -1 });
 postSchema.index({ hotRank: -1 });

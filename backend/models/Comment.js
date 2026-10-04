@@ -62,6 +62,10 @@ const commentSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isAnonymous: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
@@ -70,6 +74,7 @@ const commentSchema = new mongoose.Schema(
 
 commentSchema.index({ post: 1, parentComment: 1, createdAt: 1 });
 commentSchema.index({ author: 1 });
+commentSchema.index({ author: 1, isAnonymous: 1 });
 commentSchema.index({ parentComment: 1 });
 
 const Comment = mongoose.model('Comment', commentSchema);

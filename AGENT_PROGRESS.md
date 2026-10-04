@@ -55,6 +55,15 @@
   - [x] 11. Rate limit per socket (20 msgs / 10s) and message character cap (2,000 chars); blocked senders rejected server-side.
   - [x] Benchmark script created at `backend/scripts/chat-bench.js` sending 1,000 round-trip messages across 2 socket clients. p95 delivery measured at **3.30 ms**.
   - [x] E2E integration test suite (`testRedditPivot.js`) verified with all 9 phases passing.
+- [x] **Backlog A Hardening & Refinements**:
+  - [x] (a) Relay-first to recipient with sender's "sent" ack delivered strictly after MongoDB write succeeds. Graceful shutdown flushes persist queue on SIGTERM / SIGINT.
+  - [x] (b) Cleared `uniconnect_cached_msgs_*` and `uniconnect_cached_convs_*` from `localStorage` on logout and whenever the logged-in `userId` changes.
+  - [x] (c) Per-user rate limiting (by `userId` instead of socket ID). Added `disconnectUserSockets` to immediately terminate banned users' active sockets. Created automated test (`testChatBlock.js`) verifying blocked users cannot send socket messages.
+  - [x] (d) `chat-bench.js` enhanced to report both Delivery Latency (sender to receiver relay) and Time-to-Persisted (sender to MongoDB write ack).
+- [x] **Phase 2.1 — Schema & Idempotent Migration**:
+  - [x] Added `isAnonymous` (Boolean, default `false`) to `Post` schema with compound index `{ author: 1, isAnonymous: 1 }`.
+  - [x] Added `isAnonymous` (Boolean, default `false`) to `Comment` schema with compound index `{ author: 1, isAnonymous: 1 }`.
+  - [x] Created and executed idempotent migration script `backend/scripts/migrateAnonymity.js` ensuring all existing docs have `isAnonymous: false` and indexes are synchronized.
 
 ---
 
@@ -202,8 +211,8 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 1.5 Verify multi-user login and existing `testRedditPivot.js` integration test pass.
 
 ### Phase 2: Core Anonymity Engine (Design Rules)
-- [ ] 2.1 Author Reference Storage: Keep real author ObjectId in MongoDB, but strictly prohibit serialization for anonymous content.
-- [ ] 2.2 Centralized Author Serializer: Implement single shared utility `serializeAuthor(doc, viewer)` in `backend/utils/authorSerializer.js` used across all controllers, search, notifications, and socket payloads. No route may populate or serialize author independently.
+- [x] 2.1 Schema: Add `isAnonymous` (Boolean, default false, indexed with `{ author: 1, isAnonymous: 1 }`) to Post and Comment. Idempotent migration script `backend/scripts/migrateAnonymity.js` verified.
+- [ ] 2.2 Centralized Author Serializer: Implement single shared utility `serializeAuthor(doc, viewer)` in `backend/helpers/authorSerializer.js` used across all controllers, search, notifications, and socket payloads. No route may populate or serialize author independently.
 - [ ] 2.3 Deterministic Per-Thread Alias: Use `getAnonymousAlias(userId, threadId)` powered by `HMAC(secret, postId + userId)`. Same user receives consistent alias (e.g., "Anon Falcon") throughout the thread, but cannot be linked across different threads.
 - [ ] 2.4 Server-Side OP Flag: Compute `isOP` flag on comments server-side (`comment.author.equals(post.author)`), never by exposing the underlying author ID.
 - [ ] 2.5 Profile Feed & Counts Isolation: Exclude anonymous posts and comments from `/api/users/:username/posts`, public comments tab, and user profile post/comment counts unless requested by the authenticated author.
