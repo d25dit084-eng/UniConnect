@@ -87,6 +87,7 @@ export const ChatPage = () => {
           next[tempIdx] = {
             ...next[tempIdx],
             ...newMsg,
+            clientMsgId: next[tempIdx].clientMsgId || newMsg.clientMsgId,
             _id: newMsg._id,
             status: newMsg.status || 'sent',
           };
@@ -155,12 +156,21 @@ export const ChatPage = () => {
         );
 
         setMessages((prev) => {
-          // Normalize server messages with delivered / read status
+          // Index existing messages by _id and clientMsgId to preserve stable clientMsgId keys
+          const existingMap = new Map();
+          for (const m of prev) {
+            if (m._id) existingMap.set(m._id, m);
+            if (m.clientMsgId) existingMap.set(m.clientMsgId, m);
+          }
+
+          // Normalize server messages with delivered / read status and preserve stable clientMsgId
           const normalizedServer = serverMsgs.map((m) => {
+            const existing = existingMap.get(m._id) || (m.clientMsgId && existingMap.get(m.clientMsgId));
             const senderId = m.sender?._id || m.sender;
             const isMine = senderId === user?._id || senderId?.toString?.() === user?._id;
             return {
               ...m,
+              clientMsgId: m.clientMsgId || existing?.clientMsgId || m._id,
               status: isMine ? (m.isRead ? 'read' : 'delivered') : 'delivered',
             };
           });
@@ -400,11 +410,11 @@ export const ChatPage = () => {
         return;
       }
 
-      // Update message status to 'sent'
+      // Update message status to 'sent' while preserving stable clientMsgId and position
       setMessages((prev) =>
         prev.map((m) =>
           m.clientMsgId === clientMsgId || m._id === clientMsgId
-            ? { ...m, status: 'sent', _id: ack?.messageId || m._id }
+            ? { ...m, status: 'sent', _id: ack?.messageId || m._id, clientMsgId: m.clientMsgId || clientMsgId }
             : m
         )
       );
@@ -608,9 +618,10 @@ export const ChatPage = () => {
                     const isFailed = status === 'failed';
                     const isSending = status === 'sending';
 
+                    const rowKey = msg.clientMsgId || msg._id;
                     return (
                       <div
-                        key={msg._id || msg.clientMsgId}
+                        key={rowKey}
                         className={`message-bubble ${isMine ? 'mine' : 'other'}${isSending ? ' pending' : ''}${isFailed ? ' failed' : ''}`}
                       >
                         <div>{msg.content}</div>

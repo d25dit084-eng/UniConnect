@@ -121,6 +121,12 @@
     - `persisted p95`: **27.55 ms** (Budget: < 80.0 ms) — ✅ PASS
     - `event-loop lag p99`: **18.07 ms** (Budget: < 20.0 ms) — ✅ PASS
   - Reported detailed statistics: delivery stddev = 0.78 ms, persisted stddev = 6.17 ms. Exits with code 1 upon any regression.
+- [x] **Q2.6 — Chat List Stability & Keying by clientMsgId**:
+  - Keyed message rows stably by `msg.clientMsgId || msg._id` in `ChatPage.jsx`, retaining that key before and after server `_id` arrives.
+  - Eliminated React unmount/remount flicker on socket echo / ack.
+  - Preserved optimistic array index position in `addMessageDeduped` and `handleSend` until ack, preventing reorder jumps.
+  - Preserved `clientMsgId` across server background message history refreshes via `existingMap`.
+  - Verified with frontend build and budget benchmark: delivery p50 = 1.40 ms, p95 = 3.69 ms, persist p95 = 26.27 ms, event loop lag p99 = 16.07 ms. All quality gates passed.
 
 ---
 
@@ -275,7 +281,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 2.3 Prebuild message payload once; drop unneeded socket fields.
 - [x] 2.4 Reconnect storms: exponential backoff with jitter (`randomizationFactor: 0.5`).
 - [x] 2.5 Upgrade `chat-bench.js` to Budget format (warmup, median of 3 runs, event-loop lag).
-- [ ] 2.6 Chat list stability: key rows by `clientMsgId`.
+- [x] 2.6 Chat list stability: key rows by `clientMsgId`.
 - [ ] 2.7 Scroll behavior: preserve scroll delta on prepending older pages, CSS `overflow-anchor`.
 - [ ] 2.8 Layout shift: fixed-size avatars, aspect ratios, skeletons (CLS < 0.05).
 - [ ] 2.9 Render storms: React.memo message rows, split SocketContext.

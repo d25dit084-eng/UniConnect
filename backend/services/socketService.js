@@ -640,18 +640,10 @@ const initializeSocket = (server) => {
           return;
         }
 
-        // E. Block check via hot cache (sync check first)
+        // E. Block check via hot cache
         const otherParticipant = conv.participants.find((p) => p !== userId);
         if (otherParticipant) {
-          let blocked = false;
-          if (
-            (blockCache.has(userId) && blockCache.get(userId).has(otherParticipant)) ||
-            (blockCache.has(otherParticipant) && blockCache.get(otherParticipant).has(userId))
-          ) {
-            blocked = true;
-          } else if (!blockCache.has(userId) || !blockCache.has(otherParticipant)) {
-            blocked = await isUserBlocked(userId, otherParticipant);
-          }
+          const blocked = await isUserBlocked(userId, otherParticipant);
           if (blocked) {
             socket.emit('error_message', { message: 'Cannot send message. A block relationship exists.' });
             if (ackCb) ackCb({ error: 'Blocked' });

@@ -179,6 +179,7 @@ const blockUser = asyncHandler(async (req, res) => {
       blocked: targetUser._id,
     });
     invalidateBlockCache(blockerId);
+    invalidateBlockCache(targetUser._id);
   } catch (err) {
     if (err.code === 11000) {
       throw new ApiError(409, 'You have already blocked this user');
@@ -213,6 +214,7 @@ const unblockUser = asyncHandler(async (req, res) => {
   }
 
   invalidateBlockCache(blockerId);
+  invalidateBlockCache(targetUser._id);
 
   sendResponse(res, 200, `Unblocked u/${targetUser.username} successfully`);
 });
