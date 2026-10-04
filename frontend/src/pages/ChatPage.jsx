@@ -289,12 +289,19 @@ export const ChatPage = () => {
       );
     };
 
-    // E. Message persist failure notification
+    // E. Message persist failure notification (Q0.4: recipient drops speculative bubble, sender marks failed)
     const handleMessageFailed = ({ clientMsgId, messageId }) => {
       setMessages((prev) =>
-        prev.map((m) => {
+        prev.flatMap((m) => {
           const match = m._id === messageId || (clientMsgId && m.clientMsgId === clientMsgId);
-          return match ? { ...m, status: 'failed' } : m;
+          if (!match) return [m];
+          const senderId = m.sender?._id || m.sender;
+          const isMine = senderId === user?._id || senderId?.toString?.() === user?._id;
+          if (isMine) {
+            return [{ ...m, status: 'failed' }];
+          }
+          // Recipient drops speculative unpersisted bubble
+          return [];
         })
       );
     };

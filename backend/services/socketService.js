@@ -5,24 +5,92 @@ const User = require('../models/User');
 
 let io;
 
-// ─── In-Memory Hot Caches (Zero-DB Hit on Fast Path) ──────────────────────────
-// userCache: userId (string) -> { _id, username, avatar, isBanned }
-const userCache = new Map();
+// ─── Bounded LRU Cache with TTL Expiry Sweep ──────────────────────────────────
+class BoundedLRUMap {
+  constructor(maxSize = 2000, defaultTTLMs = 0) {
+    this.maxSize = maxSize;
+    this.defaultTTLMs = defaultTTLMs;
+    this.map = new Map();
+  }
 
-// blockCache: blockerId (string) -> Set<blockedId (string)>
-const blockCache = new Map();
+  get(key) {
+    if (!this.map.has(key)) return undefined;
+    const entry = this.map.get(key);
+    if (entry.expiresAt && Date.now() > entry.expiresAt) {
+      this.map.delete(key);
+      return undefined;
+    }
+    // Refresh LRU position
+    this.map.delete(key);
+    this.map.set(key, entry);
+    return entry.value;
+  }
 
-// conversationCache: conversationId (string) -> { participants: string[] }
-const conversationCache = new Map();
+  set(key, value, ttlMs = this.defaultTTLMs) {
+    if (this.map.has(key)) {
+      this.map.delete(key);
+    } else if (this.map.size >= this.maxSize) {
+      // Evict least recently accessed item
+      const oldestKey = this.map.keys().next().value;
+      if (oldestKey !== undefined) this.map.delete(oldestKey);
+    }
+    const expiresAt = ttlMs > 0 ? Date.now() + ttlMs : null;
+    this.map.set(key, { value, expiresAt });
+    return this;
+  }
 
-// userRateLimits: userId (string) -> { count: number, resetAt: number }
-const userRateLimits = new Map();
+  has(key) {
+    return this.get(key) !== undefined;
+  }
 
-// typingTimers: key (`${conversationId}:${userId}`) -> NodeJS.Timeout
-const typingTimers = new Map();
+  delete(key) {
+    return this.map.delete(key);
+  }
 
-// processedClientMsgs: clientMsgId -> timestamp (prevents duplicate sends)
-const processedClientMsgs = new Map();
+  clear() {
+    this.map.clear();
+  }
+
+  entries() {
+    const now = Date.now();
+    const result = [];
+    for (const [k, v] of this.map.entries()) {
+      if (!v.expiresAt || v.expiresAt > now) {
+        result.push([k, v.value]);
+      }
+    }
+    return result;
+  }
+
+  sweep() {
+    const now = Date.now();
+    for (const [k, v] of this.map.entries()) {
+      if (v.expiresAt && v.expiresAt <= now) {
+        this.map.delete(k);
+      }
+    }
+  }
+
+  get size() {
+    return this.map.size;
+  }
+}
+
+// ─── In-Memory Hot Caches with Hard Max Caps & TTLs ───────────────────────────
+// userCache: userId -> { _id, username, avatar, isBanned } (cap 5,000, TTL 15m)
+const userCache = new BoundedLRUMap(5000, 15 * 60 * 1000);
+
+// blockCache: blockerId -> Set<blockedId> (cap 5,000, TTL 15m)
+const blockCache = new BoundedLRUMap(5000, 15 * 60 * 1000);
+
+// conversationCache: conversationId -> { participants: string[] } (cap 2,000, TTL 15m)
+const conversationCache = new BoundedLRUMap(2000, 15 * 60 * 1000);
+
+// userRateLimits: userId -> { count, resetAt } (cap 10,000)
+const userRateLimits = new BoundedLRUMap(10000);
+
+// processedClientMsgs: clientMsgId -> timestamp (cap 20,000, TTL 5m)
+const processedClientMsgs = new BoundedLRUMap(20000, 5 * 60 * 1000);
 
 // onlineUsers: userId -> Set of socket.ids (supports multiple tabs)
 const onlineUsers = new Map();
@@ -30,16 +98,17 @@ const onlineUsers = new Map();
 // pendingPersistQueue: Set of active async persistence promises for graceful shutdown
 const pendingPersistQueue = new Set();
 
-// Clean up processed dedupe cache every 2 minutes
+// Active expiry sweep every 60 seconds
 setInterval(() => {
-  const cutoff = Date.now() - 5 * 60 * 1000;
-  for (const [id, time] of processedClientMsgs.entries()) {
-    if (time < cutoff) processedClientMsgs.delete(id);
-  }
+  processedClientMsgs.sweep();
+  userCache.sweep();
+  blockCache.sweep();
+  conversationCache.sweep();
+  const now = Date.now();
   for (const [uid, data] of userRateLimits.entries()) {
-    if (data.resetAt < Date.now()) userRateLimits.delete(uid);
+    if (data.resetAt < now) userRateLimits.delete(uid);
   }
-}, 2 * 60 * 1000).unref();
+}, 60 * 1000).unref();
 
 // ─── Cache Helpers ────────────────────────────────────────────────────────────
 
@@ -144,89 +213,114 @@ const persistMessageAsync = ({
   socketId,
   ackCb = null,
   createdAt = new Date().toISOString(),
-  retryCount = 0,
 }) => {
   const task = (async () => {
-    try {
-      const Message = require('../models/Message');
-      const Conversation = require('../models/Conversation');
+    const msgDate = new Date(createdAt);
+    const convIdStr = conversationId.toString();
+    let messagePersisted = false;
 
-      // 1. Persist Message to MongoDB
-      await Message.create({
-        _id: messageId,
-        conversation: conversationId,
-        sender: senderId,
-        content,
-        clientMsgId: clientMsgId || null,
-        attachments,
-      });
+    // 1. Persist Message to MongoDB with independent retry loop (50ms, 150ms, 450ms)
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const Message = require('../models/Message');
+        await Message.create({
+          _id: messageId,
+          conversation: conversationId,
+          sender: senderId,
+          content,
+          clientMsgId: clientMsgId || null,
+          attachments,
+          createdAt: msgDate, // Q0.5: Single timestamp for DB and broadcast
+        });
+        messagePersisted = true;
+        break;
+      } catch (err) {
+        if (err.code === 11000) {
+          // Idempotent duplicate: already persisted
+          messagePersisted = true;
+          break;
+        }
+        console.error(
+          `[AsyncPersist] Error persisting message ${messageId} (attempt ${attempt + 1}/3):`,
+          err.message
+        );
+        if (attempt < 2) {
+          const delay = Math.pow(3, attempt) * 50;
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
+    }
 
-      // 2. Denormalize lastMessage onto Conversation in a single atomic update
-      await Conversation.findByIdAndUpdate(conversationId, {
-        $set: {
-          lastMessage: messageId,
-          lastMessageAt: new Date(),
-        },
-      });
-
-      // Sender ack fires ONLY after DB write succeeds
+    if (!messagePersisted) {
+      console.error(
+        `[AsyncPersist] Message ${messageId} failed all persistence attempts for conversation ${convIdStr}`
+      );
+      // Sender ack error
       if (ackCb) {
         ackCb({
-          status: 'sent',
+          error: 'Failed to persist message to database',
+          status: 'failed',
           clientMsgId,
-          messageId: messageId.toString(),
-          createdAt,
+          messageId: messageId ? messageId.toString() : null,
         });
       }
-    } catch (err) {
-      if (err.code === 11000) {
-        // Idempotent duplicate: message with same sender and clientMsgId already persisted
-        if (ackCb) {
-          ackCb({
-            status: 'sent',
-            clientMsgId,
-            messageId: messageId ? messageId.toString() : null,
-            createdAt,
-          });
-        }
-        return;
-      }
-      console.error(`[AsyncPersist] Error persisting message (attempt ${retryCount + 1}):`, err.message);
-      if (retryCount < 3) {
-        // Exponential backoff retry: 50ms, 150ms, 450ms
-        const delay = Math.pow(3, retryCount) * 50;
-        await new Promise((resolve) => setTimeout(resolve, delay));
-        return persistMessageAsync({
-          messageId,
-          conversationId,
-          senderId,
-          content,
+      // Q0.4: Emit message_failed to BOTH participants so recipient UI removes speculative bubble
+      if (io) {
+        io.to(convIdStr).emit('message_failed', {
           clientMsgId,
-          attachments,
-          socketId,
-          ackCb,
-          createdAt,
-          retryCount: retryCount + 1,
+          messageId: messageId ? messageId.toString() : null,
+          conversationId: convIdStr,
+          error: 'Failed to persist message to database',
         });
-      } else {
-        // Emit failure ack to sender if all retries exhausted
-        if (ackCb) {
-          ackCb({
-            error: 'Failed to persist message to database',
-            status: 'failed',
-            clientMsgId,
-            messageId: messageId ? messageId.toString() : null,
-          });
-        }
-        if (io && socketId) {
+        if (socketId) {
           io.to(socketId).emit('message_failed', {
             clientMsgId,
             messageId: messageId ? messageId.toString() : null,
-            conversationId,
+            conversationId: convIdStr,
             error: 'Failed to persist message to database',
           });
         }
       }
+      return;
+    }
+
+    // Sender ack fires ONLY after Message DB write succeeds
+    if (ackCb) {
+      ackCb({
+        status: 'sent',
+        clientMsgId,
+        messageId: messageId.toString(),
+        createdAt: msgDate.toISOString(),
+      });
+    }
+
+    // 2. Q0.3: Retry Conversation.lastMessage update independently of Message.create
+    let convUpdated = false;
+    for (let cAttempt = 0; cAttempt < 3; cAttempt++) {
+      try {
+        const Conversation = require('../models/Conversation');
+        await Conversation.findByIdAndUpdate(conversationId, {
+          $set: {
+            lastMessage: messageId,
+            lastMessageAt: msgDate,
+          },
+        });
+        convUpdated = true;
+        break;
+      } catch (cErr) {
+        console.error(
+          `[AsyncPersist] Error updating lastMessage for conversation ${convIdStr} (attempt ${cAttempt + 1}/3):`,
+          cErr.message
+        );
+        if (cAttempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 50 * (cAttempt + 1)));
+        }
+      }
+    }
+    if (!convUpdated) {
+      console.error(
+        `[AsyncPersist] Failed to update lastMessage independently for conversation ${convIdStr}`
+      );
     }
   })();
 

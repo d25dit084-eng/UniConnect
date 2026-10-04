@@ -31,6 +31,9 @@
     - **p99: 6.05 ms** (vs 1358.89 ms baseline, ~224x speedup)
     - Throughput: **451.1 messages / sec** round-trip verified
   - **Target Outcome**: Server-side p95 delivery < 50 ms met decisively with 3.30 ms.
+- **Multi-Instance Scaling & Redis Limitations (Q0.6)**:
+  - `connectionStateRecovery` relies on persistent offset tracking; it does **not** work with the classic Redis adapter (`@socket.io/redis-adapter` pub/sub), which lacks stream persistence. For multi-instance deployments, either Redis Streams adapter (`@socket.io/redis-streams-adapter`) or Mongo-backed recovery must be used.
+  - In-memory hot caches (`userCache`, `blockCache`, `conversationCache`, `userRateLimits`) require Redis pub/sub invalidation channels when running multiple Node server instances so that cache writes on one instance immediately evict corresponding keys on all other instances.
 
 ---
 
@@ -63,6 +66,16 @@
 - [x] **Q0.1 — Message Idempotency Partial Unique Index**:
   - Added unique compound index `{ sender: 1, clientMsgId: 1 }` with `partialFilterExpression: { clientMsgId: { $type: "string" } }` to `Message` model.
   - Handled duplicate-key error (Mongo code 11000) in `persistMessageAsync` idempotently as a success acknowledgment. Synced DB indexes.
+- [x] **Q0.2 — Bounded LRU & TTL Sweeps on Hot Caches**:
+  - Implemented `BoundedLRUMap` with hard max sizes and TTLs: `userCache` (5,000, 15m), `blockCache` (5,000, 15m), `conversationCache` (2,000, 15m), `userRateLimits` (10,000), `processedClientMsgs` (20,000, 5m). Periodic active sweep every 60s. Removed unbounded Maps.
+- [x] **Q0.3 — Independent Conversation.lastMessage Retries**:
+  - Decoupled `Conversation.lastMessage` update from `Message.create` with its own 3-attempt exponential retry loop. Logged failures with conversation ID.
+- [x] **Q0.4 — Dual Participant message_failed Notification**:
+  - Emitted `message_failed` to conversation room so recipient drops speculative bubbles while sender marks failed for retry.
+- [x] **Q0.5 — Unified Relay & DB Timestamp**:
+  - Created single Date instance in `send_message`, passed to socket relay broadcast payload, `Message.create` (`createdAt: msgDate`), and `Conversation.lastMessageAt`.
+- [x] **Q0.6 — Multi-Instance Scaling Documentation**:
+  - Recorded architectural note on `connectionStateRecovery` incompatibility with classic Redis adapter and requirement for pub/sub cache invalidation.
 - [x] **Phase 2.1 — Schema & Idempotent Migration**:
   - [x] Added `isAnonymous` (Boolean, default `false`) to `Post` schema with compound index `{ author: 1, isAnonymous: 1 }`.
   - [x] Added `isAnonymous` (Boolean, default `false`) to `Comment` schema with compound index `{ author: 1, isAnonymous: 1 }`.
@@ -208,11 +221,11 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 
 ### Q0: Backlog A Leftovers
 - [x] 0.1 Unique index on Message `{sender: 1, clientMsgId: 1}` (partial filter expression: `clientMsgId: { $type: "string" }`). On duplicate-key error (code 11000), ack success (idempotent dedupe).
-- [ ] 0.2 TTL/LRU cap on `processedClientMsgs`, `userRateLimits`, and hot caches (max size + expiry sweep). No unbounded Maps.
-- [ ] 0.3 Retry the `Conversation.lastMessage` update independently of `Message.create`; log failures with conversation ID.
-- [ ] 0.4 If persistence finally fails after all retries, emit `message_failed` to BOTH participants so the recipient UI removes the speculative message.
-- [ ] 0.5 Use ONE timestamp for relay payload and DB `createdAt` so DB order always equals broadcast order.
-- [ ] 0.6 Document in `AGENT_PROGRESS.md` that `connectionStateRecovery` does not work with the classic Redis adapter, and that in-memory caches require pub/sub invalidation across multiple Node instances.
+- [x] 0.2 TTL/LRU cap on `processedClientMsgs`, `userRateLimits`, and hot caches (max size + expiry sweep). No unbounded Maps.
+- [x] 0.3 Retry the `Conversation.lastMessage` update independently of `Message.create`; log failures with conversation ID.
+- [x] 0.4 If persistence finally fails after all retries, emit `message_failed` to BOTH participants so the recipient UI removes the speculative message.
+- [x] 0.5 Use ONE timestamp for relay payload and DB `createdAt` so DB order always equals broadcast order.
+- [x] 0.6 Document in `AGENT_PROGRESS.md` that `connectionStateRecovery` does not work with the classic Redis adapter, and that in-memory caches require pub/sub invalidation across multiple Node instances.
 
 ### Q1: Phase 2 Anonymity Engine
 - [x] 1.1 Schema: Add `isAnonymous` (Boolean, default false, indexed with `{ author: 1, isAnonymous: 1 }`) to Post and Comment. Idempotent migration script verified.
