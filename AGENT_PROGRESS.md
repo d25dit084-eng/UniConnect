@@ -275,6 +275,13 @@
   - Enhanced `feedController.js` to support `hot`, `new`, `top`, `controversial` sorting and `timeframe` filtering (`today`, `week`, `month`, `year`, `all`).
   - Hooked real-time post `hotRank` recalculation on comment creation and replies in `commentController.js`, so lively campus discussions dynamically surge to the top of feeds.
   - Built Jest test suite (`backend/tests/ranking.test.js`) verifying mathematical formulas, comment weighting, decay over time, controversy balance, and feed integration (9/9 suites passing, 37/37 tests).
+- [x] **Q5.5a — Mentions & Autocomplete Engine (Backend)**:
+  - Built `mentionService.js`: regex parser extracting unique `@username` tags from posts and comments, cross-referencing registered users, and dispatching targeted `mention` notifications while suppressing self-notifications.
+  - Anonymity protection: anonymous mentions strictly set `actor: null` and generic message text ("Someone mentioned you in an anonymous post/comment"), preventing author de-anonymization.
+  - Added `mention` to `Notification.js` schema types.
+  - Created `GET /api/users/autocomplete?q=query` endpoint returning matching safe user profiles (`_id`, `username`, `avatar`) without sensitive fields.
+  - Integrated mention triggers into `postController.createPost`, `commentController.createComment`, and `commentController.replyToComment`.
+  - Built Jest test suite (`backend/tests/mentions.test.js`) verifying autocomplete querying, public post mentions, anonymous post mentions with zero author identity leaks, comment mentions, and self-mention suppression (10/10 suites passing, 42/42 tests).
 
 ---
 
@@ -458,7 +465,8 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 5.3a Resource library (Backend: Resource model, course linkage, resourceController, download tracker, anonymity support, and Jest test suite)
 - [x] 5.3b Resource library (Frontend: ResourceLibraryPage, search & filter by course/type, upload modal, and navigation)
 - [x] 5.4 Hot ranking
-- [ ] 5.5 Mentions & autocomplete
+- [x] 5.5a Mentions & autocomplete (Backend: @username parsing, zero-leak mention notifications, user autocomplete endpoint, and Jest tests)
+- [ ] 5.5b Mentions & autocomplete (Frontend: @-mention autocomplete dropdown in comments/posts and clickable @username links)
 - [ ] 5.6 Study groups
 - [ ] 5.7 Campus events & RSVP
 - [ ] 5.8 PWA & Web Push

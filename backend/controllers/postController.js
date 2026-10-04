@@ -9,6 +9,7 @@ const { calculateHotRank } = require('../services/rankingService');
 const { updateKarma } = require('../services/karmaService');
 const { broadcastNewPost } = require('../services/socketService');
 const { encryptAuthor } = require('../utils/encryption');
+const { processMentions } = require('../services/mentionService');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const sendResponse = require('../utils/sendResponse');
@@ -102,6 +103,15 @@ const createPost = asyncHandler(async (req, res) => {
 
   // Increment community postsCount atomically
   await Community.findByIdAndUpdate(communityId, { $inc: { postsCount: 1 } });
+
+  // Process @mentions in title and content
+  const mentionText = `${post.title || ''} ${post.content || ''}`;
+  processMentions({
+    text: mentionText,
+    author: req.user,
+    isAnonymous: Boolean(isAnonymous),
+    postId: post._id,
+  }).catch((err) => console.error('[Mentions] Error processing post mentions:', err.message));
 
   // Populates details for response
   const populated = await Post.findById(post._id)

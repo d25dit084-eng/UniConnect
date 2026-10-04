@@ -8,6 +8,7 @@ const NOTIFICATION_TYPES = [
   'community_invite',
   'moderator_action',
   'chat_message',
+  'mention',
   'system',
 ];
 

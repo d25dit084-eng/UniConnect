@@ -12,6 +12,7 @@ const {
   requestVerification,
   verifyEmail,
   uploadProfileImage,
+  autocompleteUsers,
 } = require('../controllers/userController');
 
 const { protect, optionalAuth } = require('../middleware/authMiddleware');
@@ -34,6 +35,7 @@ router.post('/profile/image', protect, uploadMiddleware, validateUploadedImage, 
 router.get('/blocked', protect, getBlockedUsers);
 router.post('/:username/block', protect, blockUser);
 router.delete('/:username/block', protect, unblockUser);
+router.get('/autocomplete', optionalAuth, autocompleteUsers);
 
 // Parameterized public queries
 router.get('/u/:username/posts', optionalAuth, getPublicPosts);

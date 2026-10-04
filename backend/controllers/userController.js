@@ -310,6 +310,32 @@ const uploadProfileImage = asyncHandler(async (req, res) => {
   });
 });
 
+// ─── Autocomplete Users for @mentions ─────────────────────────────────────────
+const autocompleteUsers = asyncHandler(async (req, res) => {
+  const { q = '' } = req.query;
+  const cleanQ = q.replace(/^[@u/]+/, '').trim();
+
+  if (!cleanQ || cleanQ.length < 1) {
+    return sendResponse(res, 200, 'Autocomplete results', { users: [] });
+  }
+
+  const users = await User.find({
+    username: { $regex: new RegExp(`^${cleanQ}`, 'i') },
+  })
+    .select('_id username avatar profileImage bio karma')
+    .limit(10)
+    .lean();
+
+  const formatted = users.map((u) => ({
+    _id: u._id,
+    username: u.username.startsWith('u/') ? u.username : `u/${u.username}`,
+    rawUsername: u.username.replace(/^u\//, ''),
+    avatar: u.avatar || u.profileImage || null,
+  }));
+
+  sendResponse(res, 200, 'Autocomplete results retrieved successfully', { users: formatted });
+});
+
 module.exports = {
   getProfile,
   getPublicProfile,
@@ -321,4 +347,6 @@ module.exports = {
   requestVerification,
   verifyEmail,
   uploadProfileImage,
+  autocompleteUsers,
 };
+

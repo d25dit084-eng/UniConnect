@@ -12,6 +12,7 @@ const { serializeAuthor } = require('../helpers/authorSerializer');
 const { encryptAuthor } = require('../utils/encryption');
 const { sanitizeContent } = require('../utils/sanitizer');
 const { calculateHotRank } = require('../services/rankingService');
+const { processMentions } = require('../services/mentionService');
 
 const MAX_DEPTH = 8;
 
@@ -139,6 +140,15 @@ const createComment = asyncHandler(async (req, res) => {
     });
   }
 
+  // Dispatch notifications for any @mentions
+  processMentions({
+    text: content,
+    author: req.user,
+    isAnonymous: Boolean(isAnonymous),
+    postId: post._id,
+    commentId: comment._id,
+  }).catch((err) => console.error('[Mentions] Error processing comment mentions:', err.message));
+
   const populated = await Comment.findById(comment._id).populate('author', 'username avatar bio karma');
   const sanitized = sanitizeComment(populated, authorId, post.author.toString());
   const [enriched] = await enrichCommentsWithVotes([sanitized], authorId);
@@ -224,6 +234,15 @@ const replyToComment = asyncHandler(async (req, res) => {
       message: formattedMessage,
     });
   }
+
+  // Dispatch notifications for any @mentions
+  processMentions({
+    text: content,
+    author: req.user,
+    isAnonymous: Boolean(isAnonymous),
+    postId: parentComment.post,
+    commentId: reply._id,
+  }).catch((err) => console.error('[Mentions] Error processing reply mentions:', err.message));
 
   const populated = await Comment.findById(reply._id).populate('author', 'username avatar bio karma');
   const sanitized = sanitizeComment(populated, authorId, post.author.toString());
