@@ -298,7 +298,12 @@
   - Built `frontend/src/pages/StudyGroupsPage.jsx` with real-time text search, meeting format filter pills (`all`, `in_person`, `virtual`, `hybrid`), my-groups toggle, and rich group cards.
   - Implemented capacity badges (`FULL`, `X/Y members`), course code pills, meeting schedule displays, and direct links to live group chat (`/chat/${group.conversation}`) for joined members.
   - Added group creation modal with name, course code, description, meeting format, venue/link, meeting schedule, and max members cap.
-  - Integrated into navigation: added route `/study-groups` in `App.jsx` and `👥 Study Groups` item in `LeftSidebar.jsx`. Verified with 0 ESLint errors and clean Vite production build.
+- [x] **Q5.7a — Campus Events & RSVP System (Backend)**:
+  - Built `Event.js` Mongoose model with category taxonomy (`academic`, `social`, `career`, `sports`, `workshop`, `cultural`, `other`), format (`in_person`, `virtual`, `hybrid`), location & virtual link, start/end dates, capacity cap (`capacity`), and nested attendees list with RSVP status (`going`, `maybe`, `not_going`).
+  - Implemented `eventController.js` and `eventRoutes.js`: endpoints for event discovery with timeframes (`upcoming`, `past`) and search (`GET /api/events`), event details (`GET /api/events/:id`), event creation with organizer auto-enrollment (`POST /api/events`), RSVP updates with capacity enforcement (`POST /api/events/:id/rsvp`), RSVP cancellation (`DELETE /api/events/:id/rsvp`), and organizer deletion (`DELETE /api/events/:id`).
+  - Integrated notification trigger: organizer receives `event_rsvp` notification when a attendee RSVPs 'going'.
+  - Added `event_rsvp` type and `event` reference field to `Notification.js`.
+  - Built Jest integration test suite (`backend/tests/events.test.js`) verifying creation, timeframe/format filtering, RSVP status shifts, capacity limits, cancellations, and organizer-only deletion (12/12 suites passing, 57/57 tests).
 
 ---
 
@@ -486,7 +491,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 5.5b Mentions & autocomplete (Frontend: @-mention autocomplete dropdown in comments/posts and clickable @username links)
 - [x] 5.6a Study groups (Backend: StudyGroup model, chat conversation integration, membership join/leave, and Jest tests)
 - [x] 5.6b Study groups (Frontend: StudyGroupsPage, filter by course/meeting type, group creation modal, join/leave UI, and group chat link)
-- [ ] 5.7a Campus events & RSVP (Backend: Event model, RSVP tracking, date/time/venue/virtual link, capacity cap, reminder notifications, Jest tests)
+- [x] 5.7a Campus events & RSVP (Backend: Event model, RSVP tracking, date/time/venue/virtual link, capacity cap, reminder notifications, Jest tests)
 - [ ] 5.7b Campus events & RSVP (Frontend: Events browse view, date/format filters, RSVP toggling with optimistic state, event creation modal)
 - [ ] 5.8 PWA & Web Push
 - [ ] 5.9 Onboarding

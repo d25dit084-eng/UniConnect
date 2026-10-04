@@ -24,6 +24,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const resourceRoutes = require('./routes/resourceRoutes');
 const studyGroupRoutes = require('./routes/studyGroupRoutes');
+const eventRoutes = require('./routes/eventRoutes');
 
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./docs/swagger');
@@ -182,6 +183,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api', reviewRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/study-groups', studyGroupRoutes);
+app.use('/api/events', eventRoutes);
 
 // ─── API Documentation (OpenAPI 3.0 / Swagger UI) ───────────────────────────
 app.get('/api/docs/json', (req, res) => {

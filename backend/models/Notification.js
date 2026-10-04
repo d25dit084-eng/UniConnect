@@ -9,6 +9,7 @@ const NOTIFICATION_TYPES = [
   'moderator_action',
   'chat_message',
   'mention',
+  'event_rsvp',
   'system',
 ];
 
@@ -43,6 +44,11 @@ const notificationSchema = new mongoose.Schema(
     community: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Community',
+      default: null,
+    },
+    event: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Event',
       default: null,
     },
     message: {
