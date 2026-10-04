@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { votePost } from '../api/voteApi';
@@ -8,35 +8,84 @@ import { deletePost } from '../api/postApi';
 export const PostCard = ({ post: initialPost, onPostDeleted }) => {
   const { user, isAuthenticated } = useAuth();
   const [post, setPost] = useState(initialPost);
-  const [isSaved, setIsSaved] = useState(post.savedByMe || false);
+  const [isSaved, setIsSaved] = useState(initialPost.savedByMe || false);
+  const isVotingRef = useRef(false);
+  const isSavingRef = useRef(false);
+
+  useEffect(() => {
+    setPost(initialPost);
+    if (initialPost.savedByMe !== undefined) {
+      setIsSaved(initialPost.savedByMe);
+    }
+  }, [initialPost]);
 
   const handleVote = async (value) => {
     if (!isAuthenticated) return;
+    if (isVotingRef.current) return;
+    isVotingRef.current = true;
+
+    // Snapshot current state for rollback
+    const prevScore = post.score || 0;
+    const prevVoteStatus = post.voteStatus || 0;
+
+    // Calculate optimistic delta: if already voted same way, toggle to 0; else to value
+    const targetStatus = prevVoteStatus === value ? 0 : value;
+    const delta = targetStatus - prevVoteStatus;
+    const optimisticScore = prevScore + delta;
+
+    // Immediate optimistic update
+    setPost((prev) => ({
+      ...prev,
+      score: optimisticScore,
+      voteStatus: targetStatus,
+    }));
+
     try {
-      // API call returns new score and updated status
       const res = await votePost(post._id, value);
+      if (res?.data) {
+        setPost((prev) => ({
+          ...prev,
+          score: res.data.score,
+          voteStatus: res.data.voteStatus,
+        }));
+      }
+    } catch (err) {
+      console.error('[Vote] Failed, rolling back:', err.message);
+      // Rollback on error
       setPost((prev) => ({
         ...prev,
-        score: res.data.score,
-        voteStatus: res.data.voteStatus,
+        score: prevScore,
+        voteStatus: prevVoteStatus,
       }));
-    } catch (err) {
-      console.error('[Vote] Failed to register vote:', err.message);
+    } finally {
+      isVotingRef.current = false;
     }
   };
 
   const handleSaveToggle = async () => {
     if (!isAuthenticated) return;
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
+
+    // Snapshot current state for rollback
+    const prevSaved = isSaved;
+    const nextSaved = !prevSaved;
+
+    // Immediate optimistic update
+    setIsSaved(nextSaved);
+
     try {
-      if (isSaved) {
+      if (prevSaved) {
         await unsavePost(post._id);
-        setIsSaved(false);
       } else {
         await savePost(post._id);
-        setIsSaved(true);
       }
     } catch (err) {
-      console.error('[Save] Failed to toggle save:', err.message);
+      console.error('[Save] Failed, rolling back:', err.message);
+      // Rollback on error
+      setIsSaved(prevSaved);
+    } finally {
+      isSavingRef.current = false;
     }
   };
 

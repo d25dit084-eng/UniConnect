@@ -1,39 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getLatestFeed } from '../api/feedApi';
 import { PostCard } from '../components/PostCard';
 import { PostSkeleton } from '../components/Skeleton';
 import { useSocket } from '../context/SocketContext';
+import { useFeedSWR } from '../hooks/useFeedSWR';
 
 export const LatestFeed = () => {
-  const [posts, setPosts] = useState([]);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [newPostsCount, setNewPostsCount] = useState(0);
 
   const { socket } = useSocket();
 
-  const fetchFeed = async (resetCount = false) => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await getLatestFeed(page, 10);
-      setPosts(res.data.posts || []);
-      setTotalPages(res.data.pagination?.pages || 1);
-      if (resetCount) {
-        setNewPostsCount(0);
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to load latest feed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchFeed();
+  const cacheKey = `latest_feed_${page}`;
+  const fetcher = useCallback(async () => {
+    const res = await getLatestFeed(page, 10);
+    return {
+      posts: res.data.posts || [],
+      totalPages: res.data.pagination?.pages || 1,
+    };
   }, [page]);
+
+  const { posts, totalPages, loading, isRevalidating, error, revalidate, mutate } = useFeedSWR(cacheKey, fetcher);
 
   // Subscribe to real-time new_post triggers
   useEffect(() => {
@@ -50,21 +37,32 @@ export const LatestFeed = () => {
   }, [socket]);
 
   const handlePostDeleted = (deletedId) => {
-    setPosts((prev) => prev.filter((p) => p._id !== deletedId));
+    mutate((prev) => ({
+      ...prev,
+      posts: (prev?.posts || []).filter((p) => p._id !== deletedId),
+    }));
   };
 
   const handleLoadNewPosts = () => {
     setPage(1);
-    fetchFeed(true);
+    setNewPostsCount(0);
+    revalidate(true);
   };
 
   return (
     <div>
-      <div className="page-header">
-        <h2>Latest/Live Feed</h2>
-        <div style={{ fontSize: '11px', color: '#555' }}>
-          Chronological listing of new posts across UniConnect
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h2>Latest/Live Feed</h2>
+          <div style={{ fontSize: '11px', color: '#555' }}>
+            Chronological listing of new posts across UniConnect
+          </div>
         </div>
+        {isRevalidating && (
+          <span style={{ fontSize: '10px', color: '#888', fontStyle: 'italic', alignSelf: 'center' }}>
+            ● updating...
+          </span>
+        )}
       </div>
 
       {newPostsCount > 0 && (
@@ -90,9 +88,9 @@ export const LatestFeed = () => {
           <PostSkeleton />
           <PostSkeleton />
         </div>
-      ) : error ? (
+      ) : error && posts.length === 0 ? (
         <div className="error-indicator">
-          {error} <button onClick={() => fetchFeed()}>Try Again</button>
+          {error} <button onClick={() => revalidate(true)}>Try Again</button>
         </div>
       ) : posts.length > 0 ? (
         <>
@@ -126,4 +124,5 @@ export const LatestFeed = () => {
     </div>
   );
 };
+
 export default LatestFeed;

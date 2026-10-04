@@ -147,6 +147,13 @@
   - Isolated input state inside `<ChatInput>`: user keystrokes never trigger re-renders in the parent chat page or message list.
   - Isolated typing indicator into `<ChatTypingSlot>`: typing events only re-render the 20px slot, preserving stable message list layout.
   - Batched bursty socket messages using `requestAnimationFrame` before dispatching React state updates. Verified with frontend build and budget benchmark (delivery p50 = 0.96 ms, p95 = 2.43 ms, persist p95 = 24.03 ms, event loop lag p99 = 15.90 ms).
+- [x] **Q2.10 — Feed Smoothness: Stale-While-Revalidate & Optimistic Vote/Save**:
+  - Created `frontend/src/hooks/useFeedSWR.js` — an in-memory SWR cache with per-query TTL (60s). On tab return or sort/page change: stale data is displayed instantly (0ms flash), then re-fetched silently in background with `● updating...` badge.
+  - Integrated `useFeedSWR` in `HomeFeed.jsx`, `LatestFeed.jsx`, and `PopularFeed.jsx`. Feed mutation (delete) is applied optimistically via `mutate()` without re-fetching.
+  - Implemented optimistic voting in `PostCard.jsx`: applies delta to score immediately, corrects to server value on success, rolls back on error (with guard flag to prevent double-clicks).
+  - Implemented optimistic save toggle in `PostCard.jsx` and `PostDetailPage.jsx`: flips `isSaved` instantly, rolls back on API error.
+  - Implemented optimistic voting in `PostDetailPage.jsx` with identical delta-and-rollback pattern.
+  - Verified: frontend build 0 errors, all 3 test suites pass.
 
 ---
 
@@ -305,7 +312,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 2.7 Scroll behavior: preserve scroll delta on prepending older pages, CSS `overflow-anchor`.
 - [x] 2.8 Layout shift: fixed-size avatars, aspect ratios, skeletons (CLS < 0.05).
 - [x] 2.9 Render storms: React.memo message rows, split SocketContext.
-- [ ] 2.10 Feed smoothness: stale-while-revalidate, optimistic vote/save with rollback.
+- [x] 2.10 Feed smoothness: stale-while-revalidate, optimistic vote/save with rollback.
 - [ ] 2.11 Web-vitals logging (CLS, INP, LCP).
 
 ### Q3: Frontend Anonymity & Hardening

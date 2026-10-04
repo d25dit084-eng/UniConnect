@@ -229,31 +229,64 @@ export const PostDetailPage = () => {
   }, [id]);
 
   const handlePostVote = async (value) => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !post) return;
+
+    // Snapshot current state for rollback
+    const prevScore = post.score || 0;
+    const prevVoteStatus = post.voteStatus || 0;
+
+    // Calculate optimistic delta
+    const targetStatus = prevVoteStatus === value ? 0 : value;
+    const delta = targetStatus - prevVoteStatus;
+    const optimisticScore = prevScore + delta;
+
+    // 1. Immediate optimistic update
+    setPost((prev) => ({
+      ...prev,
+      score: optimisticScore,
+      voteStatus: targetStatus,
+    }));
+
     try {
       const res = await votePost(post._id, value);
+      if (res?.data) {
+        setPost((prev) => ({
+          ...prev,
+          score: res.data.score,
+          voteStatus: res.data.voteStatus,
+        }));
+      }
+    } catch (err) {
+      console.error('[VotePost] Error, rolling back:', err.message);
+      // 2. Rollback on error
       setPost((prev) => ({
         ...prev,
-        score: res.data.score,
-        voteStatus: res.data.voteStatus,
+        score: prevScore,
+        voteStatus: prevVoteStatus,
       }));
-    } catch (err) {
-      console.error('[VotePost] Error:', err.message);
     }
   };
 
   const handleSaveToggle = async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !post) return;
+
+    // Snapshot current state for rollback
+    const prevSaved = isSaved;
+    const nextSaved = !prevSaved;
+
+    // 1. Immediate optimistic update
+    setIsSaved(nextSaved);
+
     try {
-      if (isSaved) {
+      if (prevSaved) {
         await unsavePost(post._id);
-        setIsSaved(false);
       } else {
         await savePost(post._id);
-        setIsSaved(true);
       }
     } catch (err) {
-      console.error('[SavePost] Error:', err.message);
+      console.error('[SavePost] Error, rolling back:', err.message);
+      // 2. Rollback on error
+      setIsSaved(prevSaved);
     }
   };
 
