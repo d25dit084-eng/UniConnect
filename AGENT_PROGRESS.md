@@ -184,6 +184,11 @@
   - **Login Lockout**: Added `failedLoginAttempts` and `lockUntil` to `User` schema. Locks accounts for 15 minutes after 5 consecutive failed login attempts (returns 429), preventing credential brute-forcing. Resets cleanly on successful login.
   - **Image Upload Validation**: Enhanced `uploadMiddleware.js` with MIME whitelist (`image/jpeg`, `image/png`, `image/webp`, `image/gif`), extension matching, 5MB limit, and binary magic byte verification on disk (`validateUploadedImage`) that unlinks and rejects disguised scripts.
   - Created `backend/scripts/testSecurityHardening.js`: verified all 5 security pillars with 100% pass rate.
+- [x] **Q4.1a — Code Style: ESLint & Prettier Configuration Across Frontend & Backend**:
+  - Configured root `.prettierrc.json`, `.prettierignore`, and `.editorconfig` with consistent standards (single quotes, 2-space indentation, 100 column print width).
+  - Configured backend ESLint 9 (`backend/eslint.config.js`) with `@eslint/js` for Node.js/CommonJS. Resolved missing imports (`SavedPost` in `postController.js`, `typingTimers` in `socketService.js`). Achieved 0 ESLint errors.
+  - Configured frontend ESLint 9 (`frontend/eslint.config.js`) for React 18, React hooks, and Vite. Resolved missing context definitions (`useMemo`, `PresenceContext`, `TypingContext` in `SocketContext.jsx`, render-safe ref handling in `useFeedSWR.js`). Achieved 0 ESLint errors.
+  - Added `lint`, `lint:fix`, and `format` npm scripts to both `frontend/package.json` and `backend/package.json`. Formatted all source files with Prettier.
 
 ---
 
@@ -351,7 +356,7 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 3.3 Security: Helmet, rate limiting, zod validation, markdown sanitization, login lockout, image upload validation.
 
 ### Q4: Engineering Base
-- [ ] 4.1a Code style: ESLint & Prettier configuration across frontend and backend.
+- [x] 4.1a Code style: ESLint & Prettier configuration across frontend and backend.
 - [ ] 4.1b Automated test suites: Jest integration & unit test suite with coverage scripts.
 - [ ] 4.1c CI/CD pipeline: GitHub Actions workflow (`.github/workflows/ci.yml`) for lint, tests, and build.
 - [ ] 4.1d Containerization: Multi-stage Dockerfiles for backend and frontend + `docker-compose.yml`.

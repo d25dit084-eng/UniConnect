@@ -29,7 +29,9 @@ export const AdminRoute = () => {
     <div style={{ padding: '40px', fontFamily: 'monospace', textAlign: 'center' }}>
       <h1>403 - Forbidden</h1>
       <p>Only platform administrators are authorized to access this dashboard.</p>
-      <a href="/home" style={{ color: '#000', textDecoration: 'underline' }}>Back to Home Feed</a>
+      <a href="/home" style={{ color: '#000', textDecoration: 'underline' }}>
+        Back to Home Feed
+      </a>
     </div>
   );
 };

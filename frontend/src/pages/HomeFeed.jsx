@@ -17,7 +17,10 @@ export const HomeFeed = () => {
     };
   }, [sort, page]);
 
-  const { posts, totalPages, loading, isRevalidating, error, revalidate, mutate } = useFeedSWR(cacheKey, fetcher);
+  const { posts, totalPages, loading, isRevalidating, error, revalidate, mutate } = useFeedSWR(
+    cacheKey,
+    fetcher
+  );
 
   const handlePostDeleted = (deletedId) => {
     mutate((prev) => ({
@@ -28,15 +31,18 @@ export const HomeFeed = () => {
 
   return (
     <div>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div
+        className="page-header"
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}
+      >
         <div>
           <h2>Home</h2>
-          <div style={{ fontSize: '11px', color: '#666666' }}>
-            Posts from your communities
-          </div>
+          <div style={{ fontSize: '11px', color: '#666666' }}>Posts from your communities</div>
         </div>
         {isRevalidating && (
-          <span style={{ fontSize: '10px', color: '#888', fontStyle: 'italic', alignSelf: 'center' }}>
+          <span
+            style={{ fontSize: '10px', color: '#888', fontStyle: 'italic', alignSelf: 'center' }}
+          >
             ● updating...
           </span>
         )}
@@ -46,21 +52,30 @@ export const HomeFeed = () => {
         <button
           type="button"
           className={`tab-button ${sort === 'hot' ? 'active' : ''}`}
-          onClick={() => { setSort('hot'); setPage(1); }}
+          onClick={() => {
+            setSort('hot');
+            setPage(1);
+          }}
         >
           Hot
         </button>
         <button
           type="button"
           className={`tab-button ${sort === 'new' ? 'active' : ''}`}
-          onClick={() => { setSort('new'); setPage(1); }}
+          onClick={() => {
+            setSort('new');
+            setPage(1);
+          }}
         >
           New
         </button>
         <button
           type="button"
           className={`tab-button ${sort === 'top' ? 'active' : ''}`}
-          onClick={() => { setSort('top'); setPage(1); }}
+          onClick={() => {
+            setSort('top');
+            setPage(1);
+          }}
         >
           Top
         </button>
@@ -82,11 +97,10 @@ export const HomeFeed = () => {
             <PostCard key={post._id} post={post} onPostDeleted={handlePostDeleted} />
           ))}
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px' }}>
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
+          <div
+            style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px' }}
+          >
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
               Previous Page
             </button>
             <span style={{ fontSize: '13px', alignSelf: 'center' }}>

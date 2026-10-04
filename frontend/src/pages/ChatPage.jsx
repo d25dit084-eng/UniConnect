@@ -30,11 +30,7 @@ export const MessageRow = React.memo(
             ) : isFailed ? (
               <span>
                 ⚠️ Undelivered
-                <button
-                  type="button"
-                  className="msg-retry-btn"
-                  onClick={() => onRetry(msg)}
-                >
+                <button type="button" className="msg-retry-btn" onClick={() => onRetry(msg)}>
                   Retry
                 </button>
               </span>
@@ -51,13 +47,7 @@ export const MessageRow = React.memo(
             {isMine && !isSending && !isFailed && (
               <span
                 className={`msg-tick${status === 'read' ? ' read' : ''}`}
-                title={
-                  status === 'read'
-                    ? 'Read'
-                    : status === 'delivered'
-                    ? 'Delivered'
-                    : 'Sent'
-                }
+                title={status === 'read' ? 'Read' : status === 'delivered' ? 'Delivered' : 'Sent'}
               >
                 {status === 'read' ? '✓✓' : status === 'delivered' ? '✓✓' : '✓'}
               </span>
@@ -86,7 +76,7 @@ export const MessageRow = React.memo(
       </div>
     );
   },
-  (prev, next) => (
+  (prev, next) =>
     prev.msg._id === next.msg._id &&
     prev.msg.clientMsgId === next.msg.clientMsgId &&
     prev.msg.content === next.msg.content &&
@@ -96,7 +86,6 @@ export const MessageRow = React.memo(
     prev.isMine === next.isMine &&
     prev.onRetry === next.onRetry &&
     prev.onDelete === next.onDelete
-  )
 );
 
 // ─── 2. Isolated Conversation List Item (Subscribes to Presence) ───────────────
@@ -148,11 +137,13 @@ const ChatPartnerStatus = React.memo(function ChatPartnerStatus({ partnerId }) {
 });
 
 // ─── 4. Isolated Typing Indicator Slot (Subscribes to Typing) ───────────────────
-const ChatTypingSlot = React.memo(function ChatTypingSlot({ conversationId, partnerId, partnerUsername }) {
+const ChatTypingSlot = React.memo(function ChatTypingSlot({
+  conversationId,
+  partnerId,
+  partnerUsername,
+}) {
   const { typingUsers } = useTyping();
-  const isTyping = Boolean(
-    conversationId && partnerId && typingUsers[conversationId]?.[partnerId]
-  );
+  const isTyping = Boolean(conversationId && partnerId && typingUsers[conversationId]?.[partnerId]);
 
   return (
     <div className="chat-typing-slot" aria-live="polite">
@@ -162,7 +153,12 @@ const ChatTypingSlot = React.memo(function ChatTypingSlot({ conversationId, part
 });
 
 // ─── 5. Isolated Input Component (Keystrokes Do Not Re-render Messages) ────────
-const ChatInput = React.memo(function ChatInput({ conversationId, onSend, onTypingStart, onTypingStop }) {
+const ChatInput = React.memo(function ChatInput({
+  conversationId,
+  onSend,
+  onTypingStart,
+  onTypingStop,
+}) {
   const [text, setText] = useState('');
   const typingTimeoutRef = useRef(null);
 
@@ -393,7 +389,8 @@ export const ChatPage = () => {
 
           // Normalize server messages with delivered / read status and preserve stable clientMsgId
           const normalizedServer = serverMsgs.map((m) => {
-            const existing = existingMap.get(m._id) || (m.clientMsgId && existingMap.get(m.clientMsgId));
+            const existing =
+              existingMap.get(m._id) || (m.clientMsgId && existingMap.get(m.clientMsgId));
             const senderId = m.sender?._id || m.sender;
             const isMine = senderId === user?._id || senderId?.toString?.() === user?._id;
             return {
@@ -430,12 +427,10 @@ export const ChatPage = () => {
         joinConversation(conversationId);
 
         // Mark latest unread message from peer as read
-        const lastPeerMsg = [...serverMsgs]
-          .reverse()
-          .find((m) => {
-            const sId = m.sender?._id || m.sender;
-            return sId !== user?._id && sId?.toString?.() !== user?._id;
-          });
+        const lastPeerMsg = [...serverMsgs].reverse().find((m) => {
+          const sId = m.sender?._id || m.sender;
+          return sId !== user?._id && sId?.toString?.() !== user?._id;
+        });
         if (lastPeerMsg) {
           emitBatchRead(conversationId, lastPeerMsg._id);
         }
@@ -620,7 +615,12 @@ export const ChatPage = () => {
         setMessages((prev) =>
           prev.map((m) =>
             m.clientMsgId === clientMsgId || m._id === clientMsgId
-              ? { ...m, status: 'sent', _id: ack?.messageId || m._id, clientMsgId: m.clientMsgId || clientMsgId }
+              ? {
+                  ...m,
+                  status: 'sent',
+                  _id: ack?.messageId || m._id,
+                  clientMsgId: m.clientMsgId || clientMsgId,
+                }
               : m
           )
         );
@@ -628,9 +628,7 @@ export const ChatPage = () => {
         console.error('[ChatPage] Send failed:', err.message);
         setMessages((prev) =>
           prev.map((m) =>
-            m.clientMsgId === clientMsgId || m._id === clientMsgId
-              ? { ...m, status: 'failed' }
-              : m
+            m.clientMsgId === clientMsgId || m._id === clientMsgId ? { ...m, status: 'failed' } : m
           )
         );
       }
@@ -643,9 +641,7 @@ export const ChatPage = () => {
     async (msg) => {
       if (!msg || !conversationId) return;
 
-      setMessages((prev) =>
-        prev.map((m) => (m._id === msg._id ? { ...m, status: 'sending' } : m))
-      );
+      setMessages((prev) => prev.map((m) => (m._id === msg._id ? { ...m, status: 'sending' } : m)));
 
       try {
         const ack = await emitSendMessage(conversationId, msg.content, msg.clientMsgId || msg._id);
@@ -653,9 +649,7 @@ export const ChatPage = () => {
 
         setMessages((prev) =>
           prev.map((m) =>
-            m._id === msg._id
-              ? { ...m, status: 'sent', _id: ack?.messageId || m._id }
-              : m
+            m._id === msg._id ? { ...m, status: 'sent', _id: ack?.messageId || m._id } : m
           )
         );
       } catch (err) {
@@ -738,7 +732,11 @@ export const ChatPage = () => {
       return <div className="chat-reconnect-banner">🔄 Reconnecting to real-time chat...</div>;
     }
     if (socketStatus === 'disconnected') {
-      return <div className="chat-reconnect-banner">⚠️ Connection offline. Outgoing messages will auto-send on reconnect.</div>;
+      return (
+        <div className="chat-reconnect-banner">
+          ⚠️ Connection offline. Outgoing messages will auto-send on reconnect.
+        </div>
+      );
     }
     return null;
   };
@@ -792,7 +790,14 @@ export const ChatPage = () => {
                 >
                   ‹
                 </button>
-                <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div
+                  style={{
+                    flex: 1,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
                   {activeConversation ? (
                     <>
                       u/{partner.username?.replace('u/', '')}{' '}
@@ -811,11 +816,7 @@ export const ChatPage = () => {
               {renderReconnectBanner()}
 
               {/* Message List */}
-              <div
-                className="chat-messages"
-                ref={chatMessagesRef}
-                onScroll={handleScroll}
-              >
+              <div className="chat-messages" ref={chatMessagesRef} onScroll={handleScroll}>
                 {hasEarlierMessages && (
                   <button
                     type="button"
@@ -852,7 +853,15 @@ export const ChatPage = () => {
                     );
                   })
                 ) : (
-                  <div style={{ margin: 'auto', textAlign: 'center', color: '#888', fontStyle: 'italic', fontSize: '12px' }}>
+                  <div
+                    style={{
+                      margin: 'auto',
+                      textAlign: 'center',
+                      color: '#888',
+                      fontStyle: 'italic',
+                      fontSize: '12px',
+                    }}
+                  >
                     Say hello to u/{partner.username?.replace('u/', '')}!
                   </div>
                 )}
@@ -892,7 +901,15 @@ export const ChatPage = () => {
               />
             </>
           ) : (
-            <div style={{ margin: 'auto', textAlign: 'center', color: '#888', fontSize: '13px', padding: '20px' }}>
+            <div
+              style={{
+                margin: 'auto',
+                textAlign: 'center',
+                color: '#888',
+                fontSize: '13px',
+                padding: '20px',
+              }}
+            >
               ◀ Select a conversation to start direct messaging
             </div>
           )}

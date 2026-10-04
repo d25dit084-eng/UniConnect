@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getProfile, updateProfile, uploadAvatar, getBlockedUsers, unblockUser } from '../api/userApi';
+import {
+  getProfile,
+  updateProfile,
+  uploadAvatar,
+  getBlockedUsers,
+  unblockUser,
+} from '../api/userApi';
 
 export const SettingsPage = () => {
   const { user, updateCurrentUser } = useAuth();
@@ -95,7 +101,9 @@ export const SettingsPage = () => {
       {error && <div className="error-indicator">{error}</div>}
 
       <form onSubmit={handleSave}>
-        <h4 style={{ marginBottom: '10px', borderBottom: '1px dotted #000' }}>Public Information</h4>
+        <h4 style={{ marginBottom: '10px', borderBottom: '1px dotted #000' }}>
+          Public Information
+        </h4>
 
         <div className="form-group">
           <label>Bio (max 500 chars)</label>
@@ -122,20 +130,22 @@ export const SettingsPage = () => {
           {user?.avatar && (
             <div style={{ margin: '5px 0' }}>
               <img
-                src={user.avatar.startsWith('http') ? user.avatar : `${import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'}${user.avatar}`}
+                src={
+                  user.avatar.startsWith('http')
+                    ? user.avatar
+                    : `${import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'}${user.avatar}`
+                }
                 alt="Avatar Preview"
                 style={{ width: '50px', height: '50px', border: '1px solid #000' }}
               />
             </div>
           )}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setAvatarFile(e.target.files[0])}
-          />
+          <input type="file" accept="image/*" onChange={(e) => setAvatarFile(e.target.files[0])} />
         </div>
 
-        <h4 style={{ margin: '20px 0 10px 0', borderBottom: '1px dotted #000' }}>Privacy & Communication</h4>
+        <h4 style={{ margin: '20px 0 10px 0', borderBottom: '1px dotted #000' }}>
+          Privacy & Communication
+        </h4>
 
         <div className="form-group">
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -170,7 +180,11 @@ export const SettingsPage = () => {
           </label>
         </div>
 
-        <button type="submit" style={{ background: '#000', color: '#fff', marginTop: '10px' }} disabled={saving}>
+        <button
+          type="submit"
+          style={{ background: '#000', color: '#fff', marginTop: '10px' }}
+          disabled={saving}
+        >
           {saving ? 'Saving...' : 'Save Settings'}
         </button>
       </form>
@@ -185,10 +199,7 @@ export const SettingsPage = () => {
         {blockedUsers.length > 0 ? (
           <ul style={{ listStyle: 'none' }}>
             {blockedUsers.map((b) => (
-              <li
-                key={b._id}
-                className="blocked-user-item"
-              >
+              <li key={b._id} className="blocked-user-item">
                 <span>u/{b.username}</span>
                 <button
                   type="button"

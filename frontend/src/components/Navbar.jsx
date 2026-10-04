@@ -69,7 +69,9 @@ export const Navbar = () => {
     <>
       <nav className="navbar">
         {/* Brand */}
-        <Link to="/" className="navbar-brand">UniConnect</Link>
+        <Link to="/" className="navbar-brand">
+          UniConnect
+        </Link>
 
         {/* Desktop search bar */}
         <form onSubmit={handleSearchSubmit} className="navbar-search">
@@ -84,13 +86,18 @@ export const Navbar = () => {
 
         {/* Desktop action links */}
         <div className="navbar-actions">
-          <div className="navbar-desktop-links" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div
+            className="navbar-desktop-links"
+            style={{ display: 'flex', alignItems: 'center', gap: '12px' }}
+          >
             {isAuthenticated ? (
               <>
                 <Link to="/create-post" style={{ textDecoration: 'none' }}>
                   <button type="button">Create</button>
                 </Link>
-                <Link to="/chat" style={{ textDecoration: 'none', color: '#666' }}>Chat</Link>
+                <Link to="/chat" style={{ textDecoration: 'none', color: '#666' }}>
+                  Chat
+                </Link>
                 <Link to="/notifications" style={{ textDecoration: 'none', color: '#666' }}>
                   🔔{unreadCount > 0 ? ` ${unreadCount}` : ''}
                 </Link>
@@ -109,11 +116,7 @@ export const Navbar = () => {
                   </button>
                   {showDropdown && (
                     <div className="navbar-dropdown" role="menu">
-                      <Link
-                        to="/profile"
-                        onClick={() => setShowDropdown(false)}
-                        role="menuitem"
-                      >
+                      <Link to="/profile" onClick={() => setShowDropdown(false)} role="menuitem">
                         My Profile
                       </Link>
                       <Link
@@ -123,18 +126,10 @@ export const Navbar = () => {
                       >
                         Public Profile
                       </Link>
-                      <Link
-                        to="/saved"
-                        onClick={() => setShowDropdown(false)}
-                        role="menuitem"
-                      >
+                      <Link to="/saved" onClick={() => setShowDropdown(false)} role="menuitem">
                         Saved Posts
                       </Link>
-                      <Link
-                        to="/settings"
-                        onClick={() => setShowDropdown(false)}
-                        role="menuitem"
-                      >
+                      <Link to="/settings" onClick={() => setShowDropdown(false)} role="menuitem">
                         Settings
                       </Link>
                       {user?.role === 'admin' && (
@@ -148,11 +143,7 @@ export const Navbar = () => {
                         </Link>
                       )}
                       <div className="navbar-dropdown-divider" />
-                      <button
-                        type="button"
-                        onClick={handleLogoutClick}
-                        role="menuitem"
-                      >
+                      <button type="button" onClick={handleLogoutClick} role="menuitem">
                         Logout
                       </button>
                     </div>
@@ -161,7 +152,9 @@ export const Navbar = () => {
               </>
             ) : (
               <>
-                <Link to="/login" style={{ textDecoration: 'none', color: '#666' }}>Login</Link>
+                <Link to="/login" style={{ textDecoration: 'none', color: '#666' }}>
+                  Login
+                </Link>
                 <Link to="/register" style={{ textDecoration: 'none' }}>
                   <button type="button">Register</button>
                 </Link>
@@ -173,7 +166,10 @@ export const Navbar = () => {
           <button
             type="button"
             className="navbar-search-toggle"
-            onClick={() => { setMobileSearchOpen(!mobileSearchOpen); setMobileMenuOpen(false); }}
+            onClick={() => {
+              setMobileSearchOpen(!mobileSearchOpen);
+              setMobileMenuOpen(false);
+            }}
             aria-label="Toggle search"
           >
             🔍
@@ -183,7 +179,10 @@ export const Navbar = () => {
           <button
             type="button"
             className="navbar-hamburger"
-            onClick={() => { setMobileMenuOpen(!mobileMenuOpen); setMobileSearchOpen(false); }}
+            onClick={() => {
+              setMobileMenuOpen(!mobileMenuOpen);
+              setMobileSearchOpen(false);
+            }}
             aria-label="Open menu"
             aria-expanded={mobileMenuOpen}
           >
@@ -208,39 +207,69 @@ export const Navbar = () => {
             aria-label="Mobile search"
             style={{ flex: 1 }}
           />
-          <button type="submit" style={{ marginLeft: '8px', flexShrink: 0 }}>Go</button>
+          <button type="submit" style={{ marginLeft: '8px', flexShrink: 0 }}>
+            Go
+          </button>
         </form>
       )}
 
       {/* Mobile drawer menu */}
-      <div className={`navbar-mobile-drawer${mobileMenuOpen ? ' open' : ''}`} role="navigation" aria-label="Mobile menu">
+      <div
+        className={`navbar-mobile-drawer${mobileMenuOpen ? ' open' : ''}`}
+        role="navigation"
+        aria-label="Mobile menu"
+      >
         {isAuthenticated ? (
           <>
-            <Link to="/home" onClick={closeMobileMenu}>🏠 Home</Link>
-            <Link to="/communities" onClick={closeMobileMenu}>🌐 Explore Communities</Link>
-            <Link to="/create-post" onClick={closeMobileMenu}>✏️ Create Post</Link>
+            <Link to="/home" onClick={closeMobileMenu}>
+              🏠 Home
+            </Link>
+            <Link to="/communities" onClick={closeMobileMenu}>
+              🌐 Explore Communities
+            </Link>
+            <Link to="/create-post" onClick={closeMobileMenu}>
+              ✏️ Create Post
+            </Link>
             <Link to="/notifications" onClick={closeMobileMenu}>
               🔔 Notifications{unreadCount > 0 ? ` (${unreadCount})` : ''}
             </Link>
-            <Link to="/chat" onClick={closeMobileMenu}>💬 Chat</Link>
-            <Link to="/saved" onClick={closeMobileMenu}>🔖 Saved Posts</Link>
-            <Link to="/profile" onClick={closeMobileMenu}>⚙️ Settings / Profile</Link>
+            <Link to="/chat" onClick={closeMobileMenu}>
+              💬 Chat
+            </Link>
+            <Link to="/saved" onClick={closeMobileMenu}>
+              🔖 Saved Posts
+            </Link>
+            <Link to="/profile" onClick={closeMobileMenu}>
+              ⚙️ Settings / Profile
+            </Link>
             {user?.role === 'admin' && (
               <Link to="/admin" onClick={closeMobileMenu} style={{ fontWeight: 'bold' }}>
                 🛡️ Admin Dashboard
               </Link>
             )}
             <div style={{ borderTop: '1px solid #e2e0db', margin: '4px 0' }} />
-            <button type="button" onClick={handleLogoutClick} style={{ color: '#aa2d00', textAlign: 'left' }}>
+            <button
+              type="button"
+              onClick={handleLogoutClick}
+              style={{ color: '#aa2d00', textAlign: 'left' }}
+            >
               Logout
             </button>
           </>
         ) : (
           <>
-            <Link to="/home" onClick={closeMobileMenu}>🏠 Home</Link>
-            <Link to="/communities" onClick={closeMobileMenu}>🌐 Explore Communities</Link>
-            <Link to="/login" onClick={closeMobileMenu}>Login</Link>
-            <Link to="/register" onClick={closeMobileMenu}>Register</Link>
+            <Link to="/home" onClick={closeMobileMenu}>
+              🏠 Home
+            </Link>
+            <Link to="/communities" onClick={closeMobileMenu}>
+              🌐 Explore Communities
+            </Link>
+            <Link to="/login" onClick={closeMobileMenu}>
+              Login
+            </Link>
+            <Link to="/register" onClick={closeMobileMenu}>
+              Register
+            </Link>
           </>
         )}
       </div>

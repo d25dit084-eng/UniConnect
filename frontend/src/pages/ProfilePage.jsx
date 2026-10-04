@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getPublicProfile, getUserPosts, blockUser, unblockUser, getBlockedUsers } from '../api/userApi';
+import {
+  getPublicProfile,
+  getUserPosts,
+  blockUser,
+  unblockUser,
+  getBlockedUsers,
+} from '../api/userApi';
 import { createConversation } from '../api/chatApi';
 import { PostCard } from '../components/PostCard';
 import { useAuth } from '../context/AuthContext';
@@ -101,7 +107,14 @@ export const ProfilePage = () => {
               Member since: {new Date(profile.createdAt).toLocaleDateString()}
             </div>
             {profile.bio && (
-              <p style={{ fontSize: '13px', margin: '8px 0', fontStyle: 'italic', overflowWrap: 'break-word' }}>
+              <p
+                style={{
+                  fontSize: '13px',
+                  margin: '8px 0',
+                  fontStyle: 'italic',
+                  overflowWrap: 'break-word',
+                }}
+              >
                 {profile.bio}
               </p>
             )}

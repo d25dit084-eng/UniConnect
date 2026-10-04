@@ -60,21 +60,48 @@ export const LeftSidebar = () => {
           {visibleCommunities.length > 0 ? (
             visibleCommunities.map((comm) => (
               <li key={comm._id}>
-                <NavLink to={`/c/${comm.slug}`} className={({ isActive }) => (isActive ? 'active' : '')}>
+                <NavLink
+                  to={`/c/${comm.slug}`}
+                  className={({ isActive }) => (isActive ? 'active' : '')}
+                >
                   c/{comm.name}
                 </NavLink>
               </li>
             ))
           ) : (
-            <li style={{ fontSize: '11px', color: '#666666', padding: '6px 10px', fontStyle: 'italic' }}>
+            <li
+              style={{
+                fontSize: '11px',
+                color: '#666666',
+                padding: '6px 10px',
+                fontStyle: 'italic',
+              }}
+            >
               No communities found.
             </li>
           )}
         </ul>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '10px', fontSize: '13px' }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+            paddingLeft: '10px',
+            fontSize: '13px',
+          }}
+        >
           {isAuthenticated && (
-            <Link to="/communities/create" style={{ display: 'block', padding: '4px 0', textDecoration: 'none', color: '#1a1a1a', fontWeight: 'bold' }}>
+            <Link
+              to="/communities/create"
+              style={{
+                display: 'block',
+                padding: '4px 0',
+                textDecoration: 'none',
+                color: '#1a1a1a',
+                fontWeight: 'bold',
+              }}
+            >
               + Create Community
             </Link>
           )}
@@ -107,7 +134,17 @@ export const LeftSidebar = () => {
 
       {/* Explore All Communities at bottom */}
       <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #e2e0db' }}>
-        <Link to="/communities" style={{ fontSize: '12px', textDecoration: 'underline', color: '#1a1a1a', fontWeight: 'bold', display: 'block', padding: '6px 10px' }}>
+        <Link
+          to="/communities"
+          style={{
+            fontSize: '12px',
+            textDecoration: 'underline',
+            color: '#1a1a1a',
+            fontWeight: 'bold',
+            display: 'block',
+            padding: '6px 10px',
+          }}
+        >
           Explore All Communities →
         </Link>
       </div>

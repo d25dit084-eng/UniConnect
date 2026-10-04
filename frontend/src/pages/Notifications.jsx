@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getNotifications, markAsRead, markAllAsRead, deleteNotification, clearAllNotifications } from '../api/notificationApi';
+import {
+  getNotifications,
+  markAsRead,
+  markAllAsRead,
+  deleteNotification,
+  clearAllNotifications,
+} from '../api/notificationApi';
 
 export const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
@@ -76,7 +82,12 @@ export const Notifications = () => {
           <button type="button" onClick={handleMarkAllRead} disabled={notifications.length === 0}>
             Mark All Read
           </button>
-          <button type="button" onClick={handleClearAll} style={{ color: '#c00' }} disabled={notifications.length === 0}>
+          <button
+            type="button"
+            onClick={handleClearAll}
+            style={{ color: '#c00' }}
+            disabled={notifications.length === 0}
+          >
             Clear All
           </button>
         </div>
@@ -136,7 +147,14 @@ export const Notifications = () => {
                     e.stopPropagation();
                     handleDelete(n._id);
                   }}
-                  style={{ border: 'none', background: 'none', color: '#c00', fontSize: '11px', textDecoration: 'underline', flexShrink: 0 }}
+                  style={{
+                    border: 'none',
+                    background: 'none',
+                    color: '#c00',
+                    fontSize: '11px',
+                    textDecoration: 'underline',
+                    flexShrink: 0,
+                  }}
                 >
                   Delete
                 </button>
@@ -144,11 +162,10 @@ export const Notifications = () => {
             ))}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px' }}>
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
+          <div
+            style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px' }}
+          >
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
               Previous Page
             </button>
             <span style={{ fontSize: '13px', alignSelf: 'center' }}>

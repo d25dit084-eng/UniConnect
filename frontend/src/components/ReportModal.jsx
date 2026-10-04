@@ -73,7 +73,9 @@ export const ReportModal = () => {
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '15px' }}>
+          <div
+            style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '15px' }}
+          >
             <button type="button" onClick={() => setIsOpen(false)} disabled={loading}>
               Cancel
             </button>

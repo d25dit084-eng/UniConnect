@@ -18,7 +18,7 @@ export const RightSidebar = () => {
           rank: String(idx + 1).padStart(2, '0'),
           name: `c/${c.name}`,
           slug: c.slug,
-          growth: `${c.membersCount || 0} members`
+          growth: `${c.membersCount || 0} members`,
         }));
         setActiveCommunities(formatted);
       } catch (err) {
@@ -42,25 +42,41 @@ export const RightSidebar = () => {
       <CommunityPulse />
 
       {/* 4. Active Communities Card */}
-      <div style={{ border: '1px solid #e0e0e0', padding: '16px', background: '#ffffff', borderRadius: '4px' }}>
-        <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: '#111111', fontWeight: 'bold', marginBottom: '12px', letterSpacing: '0.05em' }}>
+      <div
+        style={{
+          border: '1px solid #e0e0e0',
+          padding: '16px',
+          background: '#ffffff',
+          borderRadius: '4px',
+        }}
+      >
+        <h4
+          style={{
+            fontSize: '12px',
+            textTransform: 'uppercase',
+            color: '#111111',
+            fontWeight: 'bold',
+            marginBottom: '12px',
+            letterSpacing: '0.05em',
+          }}
+        >
           Active Communities
         </h4>
-        
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {loading ? (
             <div style={{ fontSize: '11px', color: '#888' }}>Loading...</div>
           ) : activeCommunities.length > 0 ? (
             activeCommunities.map((item) => (
-              <div 
-                key={item.rank} 
-                style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center', 
+              <div
+                key={item.rank}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                   fontSize: '12px',
                   paddingBottom: '6px',
-                  borderBottom: '1px dashed #e0e0e0'
+                  borderBottom: '1px dashed #e0e0e0',
                 }}
               >
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -69,7 +85,14 @@ export const RightSidebar = () => {
                     {item.name}
                   </Link>
                 </div>
-                <span style={{ color: '#090', fontFamily: 'monospace', fontSize: '11px', fontWeight: '500' }}>
+                <span
+                  style={{
+                    color: '#090',
+                    fontFamily: 'monospace',
+                    fontSize: '11px',
+                    fontWeight: '500',
+                  }}
+                >
                   {item.growth}
                 </span>
               </div>
@@ -82,7 +105,10 @@ export const RightSidebar = () => {
         </div>
 
         <div style={{ marginTop: '12px', textAlign: 'center' }}>
-          <Link to="/communities" style={{ fontSize: '11px', textDecoration: 'underline', color: '#666666' }}>
+          <Link
+            to="/communities"
+            style={{ fontSize: '11px', textDecoration: 'underline', color: '#666666' }}
+          >
             Explore All Communities
           </Link>
         </div>

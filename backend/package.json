@@ -7,7 +7,10 @@
     "dev": "nodemon server.js",
     "seed": "node scripts/seed.js",
     "seed:categories": "node scripts/seedCategories.js",
-    "db:clean": "node scripts/clean.js"
+    "db:clean": "node scripts/clean.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{js,json,md}\""
   },
   "keywords": [],
   "author": "",
@@ -32,7 +35,11 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^17.13.0",
     "nodemon": "^3.1.14",
+    "prettier": "^3.9.9",
     "socket.io-client": "^4.8.4"
   }
 }

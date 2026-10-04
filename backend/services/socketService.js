@@ -95,6 +95,9 @@ const processedClientMsgs = new BoundedLRUMap(20000, 5 * 60 * 1000);
 // onlineUsers: userId -> Set of socket.ids (supports multiple tabs)
 const onlineUsers = new Map();
 
+// typingTimers: `${conversationId}:${userId}` -> setTimeout handle
+const typingTimers = new Map();
+
 // pendingPersistQueue: Set of active async persistence promises for graceful shutdown
 const pendingPersistQueue = new Set();
 

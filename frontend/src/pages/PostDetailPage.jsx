@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getPostDetails, deletePost } from '../api/postApi';
-import { createComment, getPostComments, replyToComment, updateComment, deleteComment } from '../api/commentApi';
+import {
+  createComment,
+  getPostComments,
+  replyToComment,
+  updateComment,
+  deleteComment,
+} from '../api/commentApi';
 import { votePost, voteComment } from '../api/voteApi';
 import { savePost, unsavePost } from '../api/savedApi';
 import { useAuth } from '../context/AuthContext';
@@ -61,15 +67,23 @@ const CommentNode = ({ comment, onCommentAction, depth = 0 }) => {
     }
   };
 
-  const isOwner = user && comment.author && (user._id === (comment.author._id || comment.author) || comment.author?.isMine);
+  const isOwner =
+    user &&
+    comment.author &&
+    (user._id === (comment.author._id || comment.author) || comment.author?.isMine);
   const isAdmin = user && user.role === 'admin';
   const isAnonymous = Boolean(comment.isAnonymous);
-  const authorDisplay = isAnonymous ? (comment.author?.alias || 'Anonymous') : (comment.author?.username || '[deleted]');
+  const authorDisplay = isAnonymous
+    ? comment.author?.alias || 'Anonymous'
+    : comment.author?.username || '[deleted]';
   const isOP = Boolean(comment.author?.isOP);
   const isMine = Boolean(comment.author?.isMine) || isOwner;
 
   return (
-    <div className="comment-item" style={{ marginLeft: depth > 0 ? `${Math.min(depth, 3) * 14}px` : '0' }}>
+    <div
+      className="comment-item"
+      style={{ marginLeft: depth > 0 ? `${Math.min(depth, 3) * 14}px` : '0' }}
+    >
       <div className="comment-author-meta">
         {isAnonymous ? (
           <span style={{ fontStyle: 'italic', color: '#888' }}>
@@ -120,7 +134,8 @@ const CommentNode = ({ comment, onCommentAction, depth = 0 }) => {
             )}
           </>
         )}{' '}
-        • {new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        •{' '}
+        {new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       </div>
 
       {isEditing ? (
@@ -132,8 +147,12 @@ const CommentNode = ({ comment, onCommentAction, depth = 0 }) => {
             onChange={(e) => setEditContent(e.target.value)}
           />
           <div style={{ marginTop: '4px', display: 'flex', gap: '5px' }}>
-            <button type="button" className="btn-secondary" onClick={() => setIsEditing(false)}>Cancel</button>
-            <button type="submit" style={{ background: '#000', color: '#fff' }}>Save</button>
+            <button type="button" className="btn-secondary" onClick={() => setIsEditing(false)}>
+              Cancel
+            </button>
+            <button type="submit" style={{ background: '#000', color: '#fff' }}>
+              Save
+            </button>
           </div>
         </form>
       ) : (
@@ -152,7 +171,9 @@ const CommentNode = ({ comment, onCommentAction, depth = 0 }) => {
             >
               ▲
             </button>
-            <span style={{ fontSize: '11px', margin: '0 4px', color: '#1a1a1a' }}>{comment.score}</span>
+            <span style={{ fontSize: '11px', margin: '0 4px', color: '#1a1a1a' }}>
+              {comment.score}
+            </span>
             <button
               type="button"
               className={`vote-btn ${comment.voteStatus === -1 ? 'active' : ''}`}
@@ -168,7 +189,12 @@ const CommentNode = ({ comment, onCommentAction, depth = 0 }) => {
             <button
               type="button"
               onClick={() => setIsReplying(!isReplying)}
-              style={{ border: 'none', background: 'none', textDecoration: 'underline', padding: 0 }}
+              style={{
+                border: 'none',
+                background: 'none',
+                textDecoration: 'underline',
+                padding: 0,
+              }}
             >
               Reply
             </button>
@@ -178,7 +204,12 @@ const CommentNode = ({ comment, onCommentAction, depth = 0 }) => {
             <button
               type="button"
               onClick={() => setIsEditing(true)}
-              style={{ border: 'none', background: 'none', textDecoration: 'underline', padding: 0 }}
+              style={{
+                border: 'none',
+                background: 'none',
+                textDecoration: 'underline',
+                padding: 0,
+              }}
             >
               Edit
             </button>
@@ -188,7 +219,13 @@ const CommentNode = ({ comment, onCommentAction, depth = 0 }) => {
             <button
               type="button"
               onClick={handleDelete}
-              style={{ color: '#c00', border: 'none', background: 'none', textDecoration: 'underline', padding: 0 }}
+              style={{
+                color: '#c00',
+                border: 'none',
+                background: 'none',
+                textDecoration: 'underline',
+                padding: 0,
+              }}
             >
               Delete
             </button>
@@ -204,7 +241,12 @@ const CommentNode = ({ comment, onCommentAction, depth = 0 }) => {
                   })
                 );
               }}
-              style={{ border: 'none', background: 'none', textDecoration: 'underline', padding: 0 }}
+              style={{
+                border: 'none',
+                background: 'none',
+                textDecoration: 'underline',
+                padding: 0,
+              }}
             >
               Report
             </button>
@@ -230,13 +272,20 @@ const CommentNode = ({ comment, onCommentAction, depth = 0 }) => {
               onChange={(e) => setReplyIsAnonymous(e.target.checked)}
               style={{ cursor: 'pointer' }}
             />
-            <label htmlFor={`anon-reply-${comment._id}`} style={{ fontSize: '11px', color: '#666', cursor: 'pointer' }}>
+            <label
+              htmlFor={`anon-reply-${comment._id}`}
+              style={{ fontSize: '11px', color: '#666', cursor: 'pointer' }}
+            >
               Reply anonymously
             </label>
           </div>
           <div className="form-btn-row">
-            <button type="button" onClick={() => setIsReplying(false)}>Cancel</button>
-            <button type="submit" style={{ background: '#000', color: '#fff' }}>Submit Reply</button>
+            <button type="button" onClick={() => setIsReplying(false)}>
+              Cancel
+            </button>
+            <button type="submit" style={{ background: '#000', color: '#fff' }}>
+              Submit Reply
+            </button>
           </div>
         </form>
       )}
@@ -386,10 +435,13 @@ export const PostDetailPage = () => {
   if (error) return <div className="error-indicator">{error}</div>;
   if (!post) return <div className="empty-indicator">Post not found.</div>;
 
-  const isOwner = user && post.author && (user._id === (post.author._id || post.author) || post.author?.isMine);
+  const isOwner =
+    user && post.author && (user._id === (post.author._id || post.author) || post.author?.isMine);
   const isAdmin = user && user.role === 'admin';
   const isPostAnonymous = Boolean(post.isAnonymous);
-  const postAuthorDisplay = isPostAnonymous ? (post.author?.alias || 'Anonymous') : (post.author?.username || '[deleted]');
+  const postAuthorDisplay = isPostAnonymous
+    ? post.author?.alias || 'Anonymous'
+    : post.author?.username || '[deleted]';
   const isPostOP = Boolean(post.author?.isOP);
   const isPostMine = Boolean(post.author?.isMine) || isOwner;
 
@@ -441,29 +493,71 @@ export const PostDetailPage = () => {
           • {new Date(post.createdAt).toLocaleString()}
         </div>
 
-        <h2 style={{ fontSize: '20px', margin: '8px 0', overflowWrap: 'break-word', wordBreak: 'break-word' }}>{post.title}</h2>
+        <h2
+          style={{
+            fontSize: '20px',
+            margin: '8px 0',
+            overflowWrap: 'break-word',
+            wordBreak: 'break-word',
+          }}
+        >
+          {post.title}
+        </h2>
 
         {post.type === 'text' && post.content && (
-          <div style={{ fontSize: '14px', whiteSpace: 'pre-wrap', margin: '15px 0', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+          <div
+            style={{
+              fontSize: '14px',
+              whiteSpace: 'pre-wrap',
+              margin: '15px 0',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word',
+            }}
+          >
             {post.content}
           </div>
         )}
 
         {post.type === 'link' && post.url && (
           <div style={{ margin: '15px 0', overflowWrap: 'break-word', wordBreak: 'break-all' }}>
-            🔗 <a href={post.url} target="_blank" rel="noopener noreferrer">{post.url}</a>
+            🔗{' '}
+            <a href={post.url} target="_blank" rel="noopener noreferrer">
+              {post.url}
+            </a>
           </div>
         )}
 
         {post.type === 'image' && post.media && post.media.length > 0 && (
-          <div style={{ margin: '15px auto', width: '100%', maxWidth: '800px', aspectRatio: '16/9', maxHeight: '500px', background: '#f5f4f0', overflow: 'hidden', border: '1px solid #e2e0db', textAlign: 'center' }}>
+          <div
+            style={{
+              margin: '15px auto',
+              width: '100%',
+              maxWidth: '800px',
+              aspectRatio: '16/9',
+              maxHeight: '500px',
+              background: '#f5f4f0',
+              overflow: 'hidden',
+              border: '1px solid #e2e0db',
+              textAlign: 'center',
+            }}
+          >
             <img
-              src={post.media[0].startsWith('http') ? post.media[0] : `${import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'}${post.media[0]}`}
+              src={
+                post.media[0].startsWith('http')
+                  ? post.media[0]
+                  : `${import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'}${post.media[0]}`
+              }
               alt={post.title}
               width="800"
               height="450"
               className="post-image"
-              style={{ width: '100%', height: '100%', objectFit: 'contain', margin: '0 auto', display: 'block' }}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                margin: '0 auto',
+                display: 'block',
+              }}
             />
           </div>
         )}
@@ -478,7 +572,9 @@ export const PostDetailPage = () => {
             >
               ▲
             </button>
-            <span style={{ fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>{post.score}</span>
+            <span style={{ fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>
+              {post.score}
+            </span>
             <button
               type="button"
               className={`vote-btn ${post.voteStatus === -1 ? 'active' : ''}`}
@@ -489,15 +585,18 @@ export const PostDetailPage = () => {
             </button>
           </div>
 
-          <span style={{ fontSize: '12px' }}>
-            👁️ {post.viewCount || 0} View(s)
-          </span>
+          <span style={{ fontSize: '12px' }}>👁️ {post.viewCount || 0} View(s)</span>
 
           {isAuthenticated && (
             <button
               type="button"
               onClick={handleSaveToggle}
-              style={{ border: 'none', background: 'none', textDecoration: 'underline', padding: 0 }}
+              style={{
+                border: 'none',
+                background: 'none',
+                textDecoration: 'underline',
+                padding: 0,
+              }}
             >
               {isSaved ? 'Unsave Post' : 'Save Post'}
             </button>
@@ -507,7 +606,13 @@ export const PostDetailPage = () => {
             <button
               type="button"
               onClick={handlePostDelete}
-              style={{ color: '#c00', border: 'none', background: 'none', textDecoration: 'underline', padding: 0 }}
+              style={{
+                color: '#c00',
+                border: 'none',
+                background: 'none',
+                textDecoration: 'underline',
+                padding: 0,
+              }}
             >
               Delete Post
             </button>
@@ -517,8 +622,14 @@ export const PostDetailPage = () => {
 
       {/* Comment Input */}
       {isAuthenticated ? (
-        <form onSubmit={handleCommentSubmit} className="comment-input-area" style={{ border: '1px solid #000', padding: '12px', background: '#fafafa' }}>
-          <label style={{ display: 'block', fontSize: '12px', marginBottom: '6px', fontWeight: 'bold' }}>
+        <form
+          onSubmit={handleCommentSubmit}
+          className="comment-input-area"
+          style={{ border: '1px solid #000', padding: '12px', background: '#fafafa' }}
+        >
+          <label
+            style={{ display: 'block', fontSize: '12px', marginBottom: '6px', fontWeight: 'bold' }}
+          >
             Write a comment
           </label>
           <textarea
@@ -528,8 +639,24 @@ export const PostDetailPage = () => {
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="What are your thoughts on this post?"
           />
-          <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: '#666' }}>
+          <div
+            style={{
+              marginTop: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                color: '#666',
+              }}
+            >
               <input
                 type="checkbox"
                 checked={commentIsAnonymous}
@@ -544,7 +671,14 @@ export const PostDetailPage = () => {
           </div>
         </form>
       ) : (
-        <div style={{ padding: '10px', border: '1px dashed #000', textAlign: 'center', fontSize: '13px' }}>
+        <div
+          style={{
+            padding: '10px',
+            border: '1px dashed #000',
+            textAlign: 'center',
+            fontSize: '13px',
+          }}
+        >
           Please <Link to="/login">login</Link> to join the discussion.
         </div>
       )}
@@ -557,11 +691,7 @@ export const PostDetailPage = () => {
           <div className="loading-indicator">Loading comments...</div>
         ) : comments.length > 0 ? (
           comments.map((comm) => (
-            <CommentNode
-              key={comm._id}
-              comment={comm}
-              onCommentAction={fetchPostAndComments}
-            />
+            <CommentNode key={comm._id} comment={comm} onCommentAction={fetchPostAndComments} />
           ))
         ) : (
           <div className="empty-indicator" style={{ marginTop: '10px' }}>

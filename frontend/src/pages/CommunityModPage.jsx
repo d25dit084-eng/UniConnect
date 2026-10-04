@@ -37,7 +37,8 @@ export const CommunityModPage = () => {
         const reportsRes = await listAllReports(1, 100); // get all recent reports
         // Filter reports specifically for this community
         const filtered = (reportsRes.data.reports || []).filter(
-          (r) => r.community === commObj._id || (r.community?._id && r.community._id === commObj._id)
+          (r) =>
+            r.community === commObj._id || (r.community?._id && r.community._id === commObj._id)
         );
         setReports(filtered);
       } catch (err) {
@@ -70,7 +71,8 @@ export const CommunityModPage = () => {
       // Refresh list
       const reportsRes = await listAllReports(1, 100);
       const filtered = (reportsRes.data.reports || []).filter(
-        (r) => r.community === community._id || (r.community?._id && r.community._id === community._id)
+        (r) =>
+          r.community === community._id || (r.community?._id && r.community._id === community._id)
       );
       setReports(filtered);
     } catch (err) {
@@ -124,14 +126,18 @@ export const CommunityModPage = () => {
                       <div style={{ display: 'flex', gap: '5px', justifyContent: 'flex-end' }}>
                         <button
                           type="button"
-                          onClick={() => handleActionReport(rep._id, 'dismissed', rep.targetType, rep.targetId)}
+                          onClick={() =>
+                            handleActionReport(rep._id, 'dismissed', rep.targetType, rep.targetId)
+                          }
                           disabled={actioning}
                         >
                           Dismiss
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleActionReport(rep._id, 'actioned', rep.targetType, rep.targetId)}
+                          onClick={() =>
+                            handleActionReport(rep._id, 'actioned', rep.targetType, rep.targetId)
+                          }
                           disabled={actioning}
                           style={{ color: '#fff', background: '#c00', borderColor: '#c00' }}
                         >

@@ -11,7 +11,13 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: 'Courier New', Courier, monospace, system-ui, -apple-system, sans-serif;
+  font-family:
+    'Courier New',
+    Courier,
+    monospace,
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 html {
@@ -20,7 +26,7 @@ html {
 
 body {
   background-color: #faf9f6; /* Warm off-white / light cream main page background */
-  color: #1a1a1a;            /* Near-black / charcoal primary text */
+  color: #1a1a1a; /* Near-black / charcoal primary text */
   line-height: 1.45;
   padding-bottom: 50px;
   overflow-x: hidden;
@@ -35,7 +41,17 @@ img {
 }
 
 /* Long content wrapping — universal rule */
-p, h1, h2, h3, h4, h5, h6, span, div, a, li {
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+span,
+div,
+a,
+li {
   overflow-wrap: break-word;
   word-break: break-word;
 }
@@ -54,7 +70,7 @@ a:hover {
 
 /* ─── Buttons: Primary ────────────────────────────────────────────────────────── */
 button,
-button[type="submit"] {
+button[type='submit'] {
   background: #1a1a1a;
   color: #ffffff;
   border: 1px solid #1a1a1a;
@@ -63,17 +79,19 @@ button[type="submit"] {
   font-size: 13px;
   font-weight: 500;
   border-radius: 4px;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
   min-height: 36px; /* touch-friendly baseline */
   touch-action: manipulation;
 }
 button:hover,
-button[type="submit"]:hover {
+button[type='submit']:hover {
   background: #000000;
   border-color: #000000;
 }
 button:disabled,
-button[type="submit"]:disabled {
+button[type='submit']:disabled {
   border-color: #e0ded9;
   color: #999999;
   cursor: not-allowed;
@@ -91,10 +109,10 @@ button.btn-secondary:hover {
 }
 
 /* ─── Forms ───────────────────────────────────────────────────────────────────── */
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="search"],
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='search'],
 textarea,
 select {
   background: #ffffff;
@@ -108,7 +126,9 @@ select {
   -webkit-appearance: none;
   appearance: none;
 }
-input:focus, textarea:focus, select:focus {
+input:focus,
+textarea:focus,
+select:focus {
   outline: none;
   border-color: #1a1a1a;
 }
@@ -253,7 +273,7 @@ input:focus, textarea:focus, select:focus {
   min-width: 160px;
   padding: 5px 0;
   border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 .navbar-dropdown a,
 .navbar-dropdown button {
@@ -844,7 +864,10 @@ input:focus, textarea:focus, select:focus {
   align-items: center;
   gap: 6px;
   overflow-anchor: none;
-  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
 }
 .chat-new-messages-btn:hover {
   background: #e03d00;
@@ -1012,7 +1035,8 @@ th {
   color: #1a1a1a;
   white-space: nowrap;
 }
-th, td {
+th,
+td {
   padding: 10px;
   text-align: left;
 }
@@ -1602,7 +1626,8 @@ tr {
   table {
     font-size: 11px;
   }
-  th, td {
+  th,
+  td {
     padding: 7px 6px;
   }
 
@@ -1614,9 +1639,9 @@ tr {
   }
 
   /* Forms */
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
+  input[type='text'],
+  input[type='email'],
+  input[type='password'],
   textarea,
   select {
     font-size: 16px; /* prevents iOS auto-zoom on focus */
@@ -1674,4 +1699,3 @@ tr {
   animation: skeletonShimmer 1.5s infinite ease-in-out;
   border-radius: 4px;
 }
-

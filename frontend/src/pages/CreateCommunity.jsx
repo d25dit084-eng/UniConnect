@@ -45,7 +45,15 @@ export const CreateCommunity = () => {
   };
 
   return (
-    <div style={{ maxWidth: '500px', margin: '40px auto', border: '1px solid #000', padding: '20px', background: '#fff' }}>
+    <div
+      style={{
+        maxWidth: '500px',
+        margin: '40px auto',
+        border: '1px solid #000',
+        padding: '20px',
+        background: '#fff',
+      }}
+    >
       <h2 style={{ marginBottom: '15px', borderBottom: '1px solid #000', paddingBottom: '5px' }}>
         Create Community
       </h2>
@@ -97,7 +105,9 @@ export const CreateCommunity = () => {
           </select>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px' }}>
+        <div
+          style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px' }}
+        >
           <button type="button" onClick={() => navigate(-1)} disabled={loading}>
             Cancel
           </button>

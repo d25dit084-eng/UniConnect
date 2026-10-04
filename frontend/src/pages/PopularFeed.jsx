@@ -16,7 +16,10 @@ export const PopularFeed = () => {
     };
   }, [page]);
 
-  const { posts, totalPages, loading, isRevalidating, error, revalidate, mutate } = useFeedSWR(cacheKey, fetcher);
+  const { posts, totalPages, loading, isRevalidating, error, revalidate, mutate } = useFeedSWR(
+    cacheKey,
+    fetcher
+  );
 
   const handlePostDeleted = (deletedId) => {
     mutate((prev) => ({
@@ -27,7 +30,10 @@ export const PopularFeed = () => {
 
   return (
     <div>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div
+        className="page-header"
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}
+      >
         <div>
           <h2>Popular Feed</h2>
           <div style={{ fontSize: '11px', color: '#555' }}>
@@ -35,7 +41,9 @@ export const PopularFeed = () => {
           </div>
         </div>
         {isRevalidating && (
-          <span style={{ fontSize: '10px', color: '#888', fontStyle: 'italic', alignSelf: 'center' }}>
+          <span
+            style={{ fontSize: '10px', color: '#888', fontStyle: 'italic', alignSelf: 'center' }}
+          >
             ● updating...
           </span>
         )}
@@ -57,11 +65,10 @@ export const PopularFeed = () => {
             <PostCard key={post._id} post={post} onPostDeleted={handlePostDeleted} />
           ))}
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px' }}>
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
+          <div
+            style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px' }}
+          >
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
               Previous Page
             </button>
             <span style={{ fontSize: '13px', alignSelf: 'center' }}>
@@ -76,9 +83,7 @@ export const PopularFeed = () => {
           </div>
         </>
       ) : (
-        <div className="empty-indicator">
-          No posts available.
-        </div>
+        <div className="empty-indicator">No posts available.</div>
       )}
     </div>
   );

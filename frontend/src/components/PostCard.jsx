@@ -109,10 +109,13 @@ export const PostCard = ({ post: initialPost, onPostDeleted }) => {
     return new Date(dateStr).toLocaleDateString();
   };
 
-  const isOwner = user && post.author && (user._id === (post.author._id || post.author) || post.author?.isMine);
+  const isOwner =
+    user && post.author && (user._id === (post.author._id || post.author) || post.author?.isMine);
   const isAdmin = user && user.role === 'admin';
   const isAnonymous = Boolean(post.isAnonymous);
-  const authorDisplay = isAnonymous ? (post.author?.alias || 'Anonymous') : (post.author?.username || '[deleted]');
+  const authorDisplay = isAnonymous
+    ? post.author?.alias || 'Anonymous'
+    : post.author?.username || '[deleted]';
   const isOP = Boolean(post.author?.isOP);
   const isMine = Boolean(post.author?.isMine) || isOwner;
 
@@ -121,7 +124,10 @@ export const PostCard = ({ post: initialPost, onPostDeleted }) => {
       <div className="post-meta">
         {post.community && (
           <>
-            <Link to={`/c/${post.community.slug || post.community.name}`} style={{ fontWeight: 'bold' }}>
+            <Link
+              to={`/c/${post.community.slug || post.community.name}`}
+              style={{ fontWeight: 'bold' }}
+            >
               c/{post.community.name}
             </Link>
             {' • '}
@@ -184,9 +190,23 @@ export const PostCard = ({ post: initialPost, onPostDeleted }) => {
       )}
 
       {post.type === 'image' && post.media && post.media.length > 0 && (
-        <div style={{ margin: '10px 0', width: '100%', aspectRatio: '16/9', maxHeight: '400px', background: '#f5f4f0', overflow: 'hidden', border: '1px solid #e2e0db' }}>
+        <div
+          style={{
+            margin: '10px 0',
+            width: '100%',
+            aspectRatio: '16/9',
+            maxHeight: '400px',
+            background: '#f5f4f0',
+            overflow: 'hidden',
+            border: '1px solid #e2e0db',
+          }}
+        >
           <img
-            src={post.media[0].startsWith('http') ? post.media[0] : `${import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'}${post.media[0]}`}
+            src={
+              post.media[0].startsWith('http')
+                ? post.media[0]
+                : `${import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'}${post.media[0]}`
+            }
             alt={post.title}
             width="600"
             height="338"
@@ -237,7 +257,13 @@ export const PostCard = ({ post: initialPost, onPostDeleted }) => {
           <button
             type="button"
             onClick={handleDelete}
-            style={{ color: '#aa2d00', border: 'none', background: 'none', textDecoration: 'underline', padding: 0 }}
+            style={{
+              color: '#aa2d00',
+              border: 'none',
+              background: 'none',
+              textDecoration: 'underline',
+              padding: 0,
+            }}
           >
             Delete
           </button>

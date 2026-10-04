@@ -92,7 +92,10 @@ export const SearchResults = () => {
           {type === 'communities' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {results.map((comm) => (
-                <div key={comm._id} style={{ border: '1px solid #000', padding: '10px', background: '#fff' }}>
+                <div
+                  key={comm._id}
+                  style={{ border: '1px solid #000', padding: '10px', background: '#fff' }}
+                >
                   <h4>
                     <Link to={`/c/${comm.slug}`}>c/{comm.name}</Link>
                   </h4>
@@ -108,24 +111,27 @@ export const SearchResults = () => {
           {type === 'users' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {results.map((u) => (
-                <div key={u.username} style={{ border: '1px solid #000', padding: '10px', background: '#fff' }}>
+                <div
+                  key={u.username}
+                  style={{ border: '1px solid #000', padding: '10px', background: '#fff' }}
+                >
                   <h4>
                     <Link to={`/u/${u.username.replace('u/', '')}`}>{u.username}</Link>
                   </h4>
                   {u.bio && <p style={{ fontSize: '12px', margin: '4px 0' }}>{u.bio}</p>}
                   <div style={{ fontSize: '11px', color: '#666' }}>
-                    Karma: {u.karma?.total || 0} (Post: {u.karma?.post || 0}, Comment: {u.karma?.comment || 0})
+                    Karma: {u.karma?.total || 0} (Post: {u.karma?.post || 0}, Comment:{' '}
+                    {u.karma?.comment || 0})
                   </div>
                 </div>
               ))}
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px' }}>
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
+          <div
+            style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px' }}
+          >
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
               Previous Page
             </button>
             <span style={{ fontSize: '13px', alignSelf: 'center' }}>

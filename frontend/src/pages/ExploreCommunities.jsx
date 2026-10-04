@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { listCommunities, joinCommunity, leaveCommunity, getJoinedCommunities } from '../api/communityApi';
+import {
+  listCommunities,
+  joinCommunity,
+  leaveCommunity,
+  getJoinedCommunities,
+} from '../api/communityApi';
 import { useAuth } from '../context/AuthContext';
 
 export const ExploreCommunities = () => {
@@ -52,7 +57,9 @@ export const ExploreCommunities = () => {
         });
         // Decrement local count
         setCommunities((prev) =>
-          prev.map((c) => (c._id === community._id ? { ...c, membersCount: c.membersCount - 1 } : c))
+          prev.map((c) =>
+            c._id === community._id ? { ...c, membersCount: c.membersCount - 1 } : c
+          )
         );
       } else {
         await joinCommunity(community._id);
@@ -62,7 +69,9 @@ export const ExploreCommunities = () => {
           return next;
         });
         setCommunities((prev) =>
-          prev.map((c) => (c._id === community._id ? { ...c, membersCount: c.membersCount + 1 } : c))
+          prev.map((c) =>
+            c._id === community._id ? { ...c, membersCount: c.membersCount + 1 } : c
+          )
         );
       }
       // Broadcast event to refresh sidebar joined communities list
@@ -92,10 +101,7 @@ export const ExploreCommunities = () => {
           <button type="submit">Search</button>
         </form>
 
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value)}
-        >
+        <select value={sort} onChange={(e) => setSort(e.target.value)}>
           <option value="members">Members Count</option>
           <option value="posts">Posts Count</option>
           <option value="newest">Newest first</option>
@@ -125,7 +131,8 @@ export const ExploreCommunities = () => {
                     {comm.description}
                   </p>
                   <div style={{ fontSize: '11px', color: '#666666' }}>
-                    {comm.membersCount} member(s) • {comm.postsCount || 0} post(s) • Type: {comm.visibility}
+                    {comm.membersCount} member(s) • {comm.postsCount || 0} post(s) • Type:{' '}
+                    {comm.visibility}
                   </div>
                 </div>
 

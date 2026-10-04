@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getCommunityDetails, joinCommunity, leaveCommunity, getCommunityPosts } from '../api/communityApi';
+import {
+  getCommunityDetails,
+  joinCommunity,
+  leaveCommunity,
+  getCommunityPosts,
+} from '../api/communityApi';
 import { PostCard } from '../components/PostCard';
 import { useAuth } from '../context/AuthContext';
 
@@ -98,12 +103,22 @@ export const CommunityPage = () => {
         <div className="community-header-inner">
           <div className="community-header-info">
             <h2 style={{ fontSize: '20px' }}>c/{community.name}</h2>
-            <div style={{ fontSize: '13px', fontWeight: 'bold', margin: '4px 0', overflowWrap: 'break-word' }}>
+            <div
+              style={{
+                fontSize: '13px',
+                fontWeight: 'bold',
+                margin: '4px 0',
+                overflowWrap: 'break-word',
+              }}
+            >
               {community.displayName}
             </div>
-            <p style={{ fontSize: '13px', margin: '8px 0', overflowWrap: 'break-word' }}>{community.description}</p>
+            <p style={{ fontSize: '13px', margin: '8px 0', overflowWrap: 'break-word' }}>
+              {community.description}
+            </p>
             <div style={{ fontSize: '11px', color: '#666666' }}>
-              <strong>{community.membersCount}</strong> member(s) • <strong>{community.postsCount}</strong> post(s) • Visibility: {community.visibility}
+              <strong>{community.membersCount}</strong> member(s) •{' '}
+              <strong>{community.postsCount}</strong> post(s) • Visibility: {community.visibility}
             </div>
           </div>
 
@@ -125,7 +140,11 @@ export const CommunityPage = () => {
             {isAuthenticated && (
               <button
                 type="button"
-                onClick={() => navigate('/create-post', { state: { communityId: community._id, name: community.name } })}
+                onClick={() =>
+                  navigate('/create-post', {
+                    state: { communityId: community._id, name: community.name },
+                  })
+                }
               >
                 Create Post
               </button>
@@ -161,21 +180,30 @@ export const CommunityPage = () => {
         <button
           type="button"
           className={`tab-button ${sort === 'hot' ? 'active' : ''}`}
-          onClick={() => { setSort('hot'); setPage(1); }}
+          onClick={() => {
+            setSort('hot');
+            setPage(1);
+          }}
         >
           Hot
         </button>
         <button
           type="button"
           className={`tab-button ${sort === 'new' ? 'active' : ''}`}
-          onClick={() => { setSort('new'); setPage(1); }}
+          onClick={() => {
+            setSort('new');
+            setPage(1);
+          }}
         >
           New
         </button>
         <button
           type="button"
           className={`tab-button ${sort === 'top' ? 'active' : ''}`}
-          onClick={() => { setSort('top'); setPage(1); }}
+          onClick={() => {
+            setSort('top');
+            setPage(1);
+          }}
         >
           Top
         </button>
@@ -190,11 +218,10 @@ export const CommunityPage = () => {
             <PostCard key={post._id} post={post} onPostDeleted={handlePostDeleted} />
           ))}
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px' }}>
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
+          <div
+            style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px' }}
+          >
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
               Previous Page
             </button>
             <span style={{ fontSize: '13px', alignSelf: 'center' }}>

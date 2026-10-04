@@ -1,8 +1,18 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+} from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 
 const SocketContext = createContext(null);
+const PresenceContext = createContext(null);
+const TypingContext = createContext(null);
 
 export const SocketProvider = ({ children }) => {
   const { accessToken, user } = useAuth();
@@ -147,7 +157,8 @@ export const SocketProvider = ({ children }) => {
    * Send message with clientMsgId, immediate ack response, and offline queue fallback.
    */
   const emitSendMessage = useCallback((conversationId, content, clientMsgId) => {
-    const effectiveMsgId = clientMsgId || `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const effectiveMsgId =
+      clientMsgId || `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
     return new Promise((resolve, reject) => {
       if (socketRef.current?.connected) {
@@ -235,42 +246,49 @@ export const SocketProvider = ({ children }) => {
     }
   }, []);
 
-  const socketValue = useMemo(() => ({
-    socket,
-    socketStatus,
-    joinConversation,
-    leaveConversation,
-    emitSendMessage,
-    emitTypingStart,
-    emitTypingStop,
-    emitBatchRead,
-    emitMessageDelivered,
-  }), [
-    socket,
-    socketStatus,
-    joinConversation,
-    leaveConversation,
-    emitSendMessage,
-    emitTypingStart,
-    emitTypingStop,
-    emitBatchRead,
-    emitMessageDelivered,
-  ]);
+  const socketValue = useMemo(
+    () => ({
+      socket,
+      socketStatus,
+      joinConversation,
+      leaveConversation,
+      emitSendMessage,
+      emitTypingStart,
+      emitTypingStop,
+      emitBatchRead,
+      emitMessageDelivered,
+    }),
+    [
+      socket,
+      socketStatus,
+      joinConversation,
+      leaveConversation,
+      emitSendMessage,
+      emitTypingStart,
+      emitTypingStop,
+      emitBatchRead,
+      emitMessageDelivered,
+    ]
+  );
 
-  const presenceValue = useMemo(() => ({
-    onlineUsers,
-  }), [onlineUsers]);
+  const presenceValue = useMemo(
+    () => ({
+      onlineUsers,
+    }),
+    [onlineUsers]
+  );
 
-  const typingValue = useMemo(() => ({
-    typingUsers,
-  }), [typingUsers]);
+  const typingValue = useMemo(
+    () => ({
+      typingUsers,
+    }),
+    [typingUsers]
+  );
 
   return (
     <SocketContext.Provider value={socketValue}>
       <PresenceContext.Provider value={presenceValue}>
-        <TypingContext.Provider value={typingValue}>
-          {children}
-        </TypingContext.Provider>
+        <TypingContext.Provider value={typingValue}>{children}</TypingContext.Provider>
       </PresenceContext.Provider>
     </SocketContext.Provider>
   );

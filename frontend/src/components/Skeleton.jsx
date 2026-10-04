@@ -21,7 +21,11 @@ export const ConversationSkeleton = () => (
 );
 
 export const CommentSkeleton = () => (
-  <div className="comment-item skeleton-card" aria-hidden="true" style={{ padding: '12px', borderBottom: '1px solid #e2e0db' }}>
+  <div
+    className="comment-item skeleton-card"
+    aria-hidden="true"
+    style={{ padding: '12px', borderBottom: '1px solid #e2e0db' }}
+  >
     <div className="skeleton-line" style={{ width: '30%', height: '12px', marginBottom: '8px' }} />
     <div className="skeleton-line" style={{ width: '90%', height: '14px', marginBottom: '6px' }} />
     <div className="skeleton-line" style={{ width: '65%', height: '14px' }} />

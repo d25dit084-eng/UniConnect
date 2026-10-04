@@ -179,8 +179,21 @@ export const CreatePost = () => {
           </div>
         )}
 
-        <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
-          <label htmlFor="post-anonymous-toggle" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none', margin: 0 }}>
+        <div
+          className="form-group"
+          style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}
+        >
+          <label
+            htmlFor="post-anonymous-toggle"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              userSelect: 'none',
+              margin: 0,
+            }}
+          >
             <input
               id="post-anonymous-toggle"
               type="checkbox"
@@ -191,7 +204,14 @@ export const CreatePost = () => {
             <span style={{ fontSize: '12px', color: isAnonymous ? '#4f8ef7' : '#666' }}>
               Post anonymously
               {isAnonymous && (
-                <span style={{ marginLeft: '6px', fontSize: '11px', fontStyle: 'italic', color: '#888' }}>
+                <span
+                  style={{
+                    marginLeft: '6px',
+                    fontSize: '11px',
+                    fontStyle: 'italic',
+                    color: '#888',
+                  }}
+                >
                   — your name is hidden; you can see your own post.
                 </span>
               )}
@@ -199,7 +219,9 @@ export const CreatePost = () => {
           </label>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px' }}>
+        <div
+          style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px' }}
+        >
           <button type="button" onClick={() => navigate(-1)} disabled={loading}>
             Cancel
           </button>

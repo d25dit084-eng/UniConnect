@@ -2,13 +2,17 @@ import { useEffect, useRef } from 'react';
 import { Renderer, Program, Mesh, Triangle } from 'ogl';
 import './GradientWaves.css';
 
-const hexToRgb = hex => {
+const hexToRgb = (hex) => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!result) return [1, 1, 1];
-  return [parseInt(result[1], 16) / 255, parseInt(result[2], 16) / 255, parseInt(result[3], 16) / 255];
+  return [
+    parseInt(result[1], 16) / 255,
+    parseInt(result[2], 16) / 255,
+    parseInt(result[3], 16) / 255,
+  ];
 };
 
-const detailToSteps = detail => {
+const detailToSteps = (detail) => {
   if (detail === 'low') return 40.0;
   if (detail === 'high') return 110.0;
   return 70.0;
@@ -149,7 +153,7 @@ const GradientWaves = ({
   parallaxStrength = 0.5,
   grain = true,
   grainIntensity = 0.05,
-  className = ''
+  className = '',
 }) => {
   const containerRef = useRef(null);
   const enableMouseRef = useRef(mouseInteraction);
@@ -163,7 +167,7 @@ const GradientWaves = ({
       alpha: true,
       premultipliedAlpha: true,
       antialias: false,
-      dpr: Math.min(window.devicePixelRatio || 1, 2)
+      dpr: Math.min(window.devicePixelRatio || 1, 2),
     });
 
     const gl = renderer.gl;
@@ -201,8 +205,8 @@ const GradientWaves = ({
         uEnableMouse: { value: true },
         uHorizonColor: { value: new Float32Array([1, 1, 1]) },
         uWaveColor: { value: new Float32Array([1, 1, 1]) },
-        uCrestColor: { value: new Float32Array([1, 1, 1]) }
-      }
+        uCrestColor: { value: new Float32Array([1, 1, 1]) },
+      },
     });
 
     const mesh = new Mesh(gl, { geometry, program });
@@ -226,7 +230,7 @@ const GradientWaves = ({
     const currentMouse = [0.5, 0.5];
     const targetMouse = [0.5, 0.5];
 
-    const onPointerMove = e => {
+    const onPointerMove = (e) => {
       const rect = canvas.getBoundingClientRect();
       targetMouse[0] = (e.clientX - rect.left) / rect.width;
       targetMouse[1] = 1.0 - (e.clientY - rect.top) / rect.height;
@@ -243,7 +247,7 @@ const GradientWaves = ({
     let isPageVisible = !document.hidden;
     const t0 = performance.now();
 
-    const loop = t => {
+    const loop = (t) => {
       program.uniforms.iTime.value = (t - t0) * 0.001;
       const tx = enableMouseRef.current ? targetMouse[0] : 0.5;
       const ty = enableMouseRef.current ? targetMouse[1] : 0.5;
@@ -359,7 +363,7 @@ const GradientWaves = ({
     grain,
     grainIntensity,
     mouseInteraction,
-    parallaxStrength
+    parallaxStrength,
   ]);
 
   return <div ref={containerRef} className={`gradient-waves-container ${className}`.trim()} />;

@@ -37,47 +37,59 @@ export const ResetPassword = () => {
 
   return (
     <div className="auth-page">
-    <div className="auth-container">
-      <h2>Reset Password</h2>
-      {error && <div className="error-indicator">{error}</div>}
-      {success && (
-        <div style={{ padding: '10px', border: '1px solid #000', background: '#efe', color: '#060', marginBottom: '15px' }}>
-          Password successfully reset. You can now login.
+      <div className="auth-container">
+        <h2>Reset Password</h2>
+        {error && <div className="error-indicator">{error}</div>}
+        {success && (
+          <div
+            style={{
+              padding: '10px',
+              border: '1px solid #000',
+              background: '#efe',
+              color: '#060',
+              marginBottom: '15px',
+            }}
+          >
+            Password successfully reset. You can now login.
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>New Password</label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Confirm New Password</label>
+            <input
+              type="password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="••••••••"
+            />
+          </div>
+
+          <button
+            type="submit"
+            style={{ width: '100%', background: '#000', color: '#fff', marginTop: '10px' }}
+            disabled={loading}
+          >
+            {loading ? 'Resetting...' : 'Reset Password'}
+          </button>
+        </form>
+
+        <div style={{ marginTop: '15px', fontSize: '12px', textAlign: 'center' }}>
+          <Link to="/login">Back to Login</Link>
         </div>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label>New Password</label>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Confirm New Password</label>
-          <input
-            type="password"
-            required
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="••••••••"
-          />
-        </div>
-
-        <button type="submit" style={{ width: '100%', background: '#000', color: '#fff', marginTop: '10px' }} disabled={loading}>
-          {loading ? 'Resetting...' : 'Reset Password'}
-        </button>
-      </form>
-
-      <div style={{ marginTop: '15px', fontSize: '12px', textAlign: 'center' }}>
-        <Link to="/login">Back to Login</Link>
       </div>
-    </div>
     </div>
   );
 };

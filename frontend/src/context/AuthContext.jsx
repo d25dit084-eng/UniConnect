@@ -9,7 +9,10 @@ const clearChatLocalStorage = () => {
     const keysToRemove = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && (key.startsWith('uniconnect_cached_msgs_') || key.startsWith('uniconnect_cached_convs_'))) {
+      if (
+        key &&
+        (key.startsWith('uniconnect_cached_msgs_') || key.startsWith('uniconnect_cached_convs_'))
+      ) {
         keysToRemove.push(key);
       }
     }

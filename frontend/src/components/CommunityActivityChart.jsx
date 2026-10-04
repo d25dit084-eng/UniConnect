@@ -9,7 +9,7 @@ export const CommunityActivityChart = () => {
     { label: 'Thu', value: 52 },
     { label: 'Fri', value: 47 },
     { label: 'Sat', value: 68 },
-    { label: 'Sun', value: 61 }
+    { label: 'Sun', value: 61 },
   ];
 
   // SVG dimensions
@@ -39,8 +39,25 @@ export const CommunityActivityChart = () => {
   }, '');
 
   return (
-    <div style={{ border: '1px solid #e0e0e0', padding: '16px', background: '#ffffff', borderRadius: '4px', marginBottom: '20px' }}>
-      <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: '#111111', fontWeight: 'bold', marginBottom: '4px', letterSpacing: '0.05em' }}>
+    <div
+      style={{
+        border: '1px solid #e0e0e0',
+        padding: '16px',
+        background: '#ffffff',
+        borderRadius: '4px',
+        marginBottom: '20px',
+      }}
+    >
+      <h4
+        style={{
+          fontSize: '12px',
+          textTransform: 'uppercase',
+          color: '#111111',
+          fontWeight: 'bold',
+          marginBottom: '4px',
+          letterSpacing: '0.05em',
+        }}
+      >
         Community Activity
       </h4>
       <p style={{ fontSize: '11px', color: '#666666', marginBottom: '15px' }}>
@@ -51,9 +68,32 @@ export const CommunityActivityChart = () => {
       <div style={{ position: 'relative', width: '100%', height: `${height}px` }}>
         <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: '100%' }}>
           {/* Horizontal Grid lines */}
-          <line x1={paddingLeft} y1={paddingTop} x2={width - paddingRight} y2={paddingTop} stroke="#e0e0e0" strokeWidth="0.5" strokeDasharray="3" />
-          <line x1={paddingLeft} y1={paddingTop + chartHeight / 2} x2={width - paddingRight} y2={paddingTop + chartHeight / 2} stroke="#e0e0e0" strokeWidth="0.5" strokeDasharray="3" />
-          <line x1={paddingLeft} y1={paddingTop + chartHeight} x2={width - paddingRight} y2={paddingTop + chartHeight} stroke="#e0e0e0" strokeWidth="0.5" />
+          <line
+            x1={paddingLeft}
+            y1={paddingTop}
+            x2={width - paddingRight}
+            y2={paddingTop}
+            stroke="#e0e0e0"
+            strokeWidth="0.5"
+            strokeDasharray="3"
+          />
+          <line
+            x1={paddingLeft}
+            y1={paddingTop + chartHeight / 2}
+            x2={width - paddingRight}
+            y2={paddingTop + chartHeight / 2}
+            stroke="#e0e0e0"
+            strokeWidth="0.5"
+            strokeDasharray="3"
+          />
+          <line
+            x1={paddingLeft}
+            y1={paddingTop + chartHeight}
+            x2={width - paddingRight}
+            y2={paddingTop + chartHeight}
+            stroke="#e0e0e0"
+            strokeWidth="0.5"
+          />
 
           {/* Activity Line */}
           <path d={pathD} fill="none" stroke="#1a1a1a" strokeWidth="1.5" />
@@ -75,9 +115,30 @@ export const CommunityActivityChart = () => {
           })}
 
           {/* Value Labels */}
-          <text x={paddingLeft - 4} y={paddingTop + 4} textAnchor="end" style={{ fontSize: '6px', fill: '#888888', fontFamily: 'monospace' }}>80</text>
-          <text x={paddingLeft - 4} y={paddingTop + chartHeight / 2 + 3} textAnchor="end" style={{ fontSize: '6px', fill: '#888888', fontFamily: 'monospace' }}>40</text>
-          <text x={paddingLeft - 4} y={paddingTop + chartHeight + 2} textAnchor="end" style={{ fontSize: '6px', fill: '#888888', fontFamily: 'monospace' }}>0</text>
+          <text
+            x={paddingLeft - 4}
+            y={paddingTop + 4}
+            textAnchor="end"
+            style={{ fontSize: '6px', fill: '#888888', fontFamily: 'monospace' }}
+          >
+            80
+          </text>
+          <text
+            x={paddingLeft - 4}
+            y={paddingTop + chartHeight / 2 + 3}
+            textAnchor="end"
+            style={{ fontSize: '6px', fill: '#888888', fontFamily: 'monospace' }}
+          >
+            40
+          </text>
+          <text
+            x={paddingLeft - 4}
+            y={paddingTop + chartHeight + 2}
+            textAnchor="end"
+            style={{ fontSize: '6px', fill: '#888888', fontFamily: 'monospace' }}
+          >
+            0
+          </text>
         </svg>
       </div>
     </div>

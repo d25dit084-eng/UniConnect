@@ -25,7 +25,9 @@ export const useFeedSWR = (cacheKey, fetchFn, options = {}) => {
   const [error, setError] = useState('');
 
   const fetchFnRef = useRef(fetchFn);
-  fetchFnRef.current = fetchFn;
+  useEffect(() => {
+    fetchFnRef.current = fetchFn;
+  });
 
   const revalidate = useCallback(
     async (bypassTtl = false) => {

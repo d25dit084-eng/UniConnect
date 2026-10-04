@@ -2,6 +2,7 @@ const Post = require('../models/Post');
 const Community = require('../models/Community');
 const CommunityMember = require('../models/CommunityMember');
 const Vote = require('../models/Vote');
+const SavedPost = require('../models/SavedPost');
 const { enrichPosts } = require('../helpers/feedEnricher');
 const { calculateHotRank } = require('../services/rankingService');
 const { updateKarma } = require('../services/karmaService');
