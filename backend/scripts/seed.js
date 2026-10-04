@@ -24,6 +24,10 @@ const { calculateHotRank } = require('../services/rankingService');
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/uniconnect';
 
 const seed = async () => {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ Error: This script cannot be run in production!');
+    process.exit(1);
+  }
   console.log('🌱 Connecting to MongoDB...');
   await mongoose.connect(MONGO_URI);
   console.log('✅ Connected');

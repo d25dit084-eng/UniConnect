@@ -13,6 +13,12 @@ const {
 } = require('../services/tokenService');
 const { sendPasswordResetEmail, sendVerificationEmail } = require('../services/emailService');
 
+const getCookieOptions = (isProd) => ({
+  httpOnly: true,
+  secure: isProd,
+  sameSite: isProd ? 'none' : 'lax',
+});
+
 // ─── Register ─────────────────────────────────────────────────────────────────
 
 const register = asyncHandler(async (req, res) => {
@@ -70,9 +76,7 @@ const login = asyncHandler(async (req, res) => {
 
   // Set refresh token in HttpOnly cookie for security
   res.cookie('refreshToken', refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    ...getCookieOptions(process.env.NODE_ENV === 'production'),
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 
@@ -91,11 +95,7 @@ const logout = asyncHandler(async (req, res) => {
     await revokeRefreshToken(token);
   }
 
-  res.clearCookie('refreshToken', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-  });
+  res.clearCookie('refreshToken', getCookieOptions(process.env.NODE_ENV === 'production'));
 
   sendResponse(res, 200, 'Logged out successfully');
 });
@@ -134,9 +134,7 @@ const refreshToken = asyncHandler(async (req, res) => {
   const newRefreshToken = await generateRefreshToken(user, req);
 
   res.cookie('refreshToken', newRefreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    ...getCookieOptions(process.env.NODE_ENV === 'production'),
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 

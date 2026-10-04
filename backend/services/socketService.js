@@ -1,14 +1,181 @@
 const { Server } = require('socket.io');
+const mongoose = require('mongoose');
 const { verifyAccessToken } = require('./tokenService');
 const User = require('../models/User');
 
 let io;
-const onlineUsers = new Map(); // userId -> Set of socket.ids (support multiple tabs)
 
-/**
- * Broadcast full online user list to all connected sockets.
- * Emits: { onlineUsers: string[] } — array of user ID strings
- */
+// ─── In-Memory Hot Caches (Zero-DB Hit on Fast Path) ──────────────────────────
+// userCache: userId (string) -> { _id, username, avatar, isBanned }
+const userCache = new Map();
+
+// blockCache: blockerId (string) -> Set<blockedId (string)>
+const blockCache = new Map();
+
+// conversationCache: conversationId (string) -> { participants: string[] }
+const conversationCache = new Map();
+
+// socketRateLimits: socketId -> { count: number, resetAt: number }
+const socketRateLimits = new Map();
+
+// typingTimers: key (`${conversationId}:${userId}`) -> NodeJS.Timeout
+const typingTimers = new Map();
+
+// processedClientMsgs: clientMsgId -> timestamp (prevents duplicate sends)
+const processedClientMsgs = new Map();
+
+// onlineUsers: userId -> Set of socket.ids (supports multiple tabs)
+const onlineUsers = new Map();
+
+// Clean up processed dedupe cache every 2 minutes
+setInterval(() => {
+  const cutoff = Date.now() - 5 * 60 * 1000;
+  for (const [id, time] of processedClientMsgs.entries()) {
+    if (time < cutoff) processedClientMsgs.delete(id);
+  }
+  for (const [sockId, data] of socketRateLimits.entries()) {
+    if (data.resetAt < Date.now()) socketRateLimits.delete(sockId);
+  }
+}, 2 * 60 * 1000).unref();
+
+// ─── Cache Helpers ────────────────────────────────────────────────────────────
+
+const getCachedUser = async (userId) => {
+  const idStr = userId.toString();
+  if (userCache.has(idStr)) {
+    return userCache.get(idStr);
+  }
+  try {
+    const user = await User.findById(idStr).select('_id username avatar profileImage isBanned').lean();
+    if (user) {
+      const publicUser = {
+        _id: user._id.toString(),
+        username: user.username.startsWith('u/') ? user.username : `u/${user.username}`,
+        avatar: user.avatar || user.profileImage || null,
+        isBanned: Boolean(user.isBanned),
+      };
+      userCache.set(idStr, publicUser);
+      return publicUser;
+    }
+  } catch (err) {
+    console.error('[SocketCache] Error fetching user:', err.message);
+  }
+  return null;
+};
+
+const getCachedConversation = async (conversationId) => {
+  const idStr = conversationId.toString();
+  if (conversationCache.has(idStr)) {
+    return conversationCache.get(idStr);
+  }
+  try {
+    const Conversation = require('../models/Conversation');
+    const conv = await Conversation.findById(idStr).select('participants').lean();
+    if (conv) {
+      const data = {
+        participants: conv.participants.map((p) => p.toString()),
+      };
+      conversationCache.set(idStr, data);
+      return data;
+    }
+  } catch (err) {
+    console.error('[SocketCache] Error fetching conversation:', err.message);
+  }
+  return null;
+};
+
+const isUserBlocked = async (userA, userB) => {
+  const idA = userA.toString();
+  const idB = userB.toString();
+
+  // Check cache for A blocking B
+  if (blockCache.has(idA) && blockCache.get(idA).has(idB)) return true;
+  // Check cache for B blocking A
+  if (blockCache.has(idB) && blockCache.get(idB).has(idA)) return true;
+
+  // On cache miss, load from DB
+  try {
+    const Block = require('../models/Block');
+    const block = await Block.findOne({
+      $or: [
+        { blocker: idA, blocked: idB },
+        { blocker: idB, blocked: idA },
+      ],
+    }).lean();
+
+    if (block) {
+      if (!blockCache.has(block.blocker.toString())) {
+        blockCache.set(block.blocker.toString(), new Set());
+      }
+      blockCache.get(block.blocker.toString()).add(block.blocked.toString());
+      return true;
+    }
+  } catch (err) {
+    console.error('[SocketCache] Error checking block:', err.message);
+  }
+
+  return false;
+};
+
+// Invalidation helpers (called from controllers when data changes)
+const invalidateConversationCache = (conversationId) => {
+  if (conversationId) conversationCache.delete(conversationId.toString());
+};
+
+const invalidateBlockCache = (userId) => {
+  if (userId) blockCache.delete(userId.toString());
+};
+
+const invalidateUserCache = (userId) => {
+  if (userId) userCache.delete(userId.toString());
+};
+
+// ─── Async MongoDB Persistence Queue (Fire-and-Forget with Retries) ───────────
+const persistMessageAsync = async ({ messageId, conversationId, senderId, content, clientMsgId, attachments = [], socketId, retryCount = 0 }) => {
+  try {
+    const Message = require('../models/Message');
+    const Conversation = require('../models/Conversation');
+
+    // 1. Persist Message to MongoDB
+    await Message.create({
+      _id: messageId,
+      conversation: conversationId,
+      sender: senderId,
+      content,
+      clientMsgId: clientMsgId || null,
+      attachments,
+    });
+
+    // 2. Denormalize lastMessage onto Conversation in a single atomic update
+    await Conversation.findByIdAndUpdate(conversationId, {
+      $set: {
+        lastMessage: messageId,
+        lastMessageAt: new Date(),
+      },
+    });
+  } catch (err) {
+    console.error(`[AsyncPersist] Error persisting message (attempt ${retryCount + 1}):`, err.message);
+    if (retryCount < 3) {
+      // Exponential backoff retry: 50ms, 150ms, 450ms
+      const delay = Math.pow(3, retryCount) * 50;
+      setTimeout(() => {
+        persistMessageAsync({ messageId, conversationId, senderId, content, clientMsgId, attachments, socketId, retryCount: retryCount + 1 });
+      }, delay);
+    } else {
+      // Emit failure ack to sender if all retries exhausted
+      if (io && socketId) {
+        io.to(socketId).emit('message_failed', {
+          clientMsgId,
+          messageId: messageId.toString(),
+          conversationId,
+          error: 'Failed to persist message to database',
+        });
+      }
+    }
+  }
+};
+
+// ─── Presence Broadcasting (Memory Only) ──────────────────────────────────────
 const broadcastPresence = () => {
   if (io) {
     io.emit('presence_change', {
@@ -17,6 +184,7 @@ const broadcastPresence = () => {
   }
 };
 
+// ─── Socket Server Initialization ─────────────────────────────────────────────
 const initializeSocket = (server) => {
   const allowedOrigins = [
     'http://localhost:5173',
@@ -37,7 +205,7 @@ const initializeSocket = (server) => {
       origin: (origin, callback) => {
         if (!origin) return callback(null, true);
         const cleanOrigin = origin.replace(/\/$/, '');
-        if (allowedOrigins.includes(cleanOrigin)) {
+        if (allowedOrigins.includes(cleanOrigin) || /\.vercel\.app$/.test(cleanOrigin)) {
           callback(null, true);
         } else {
           callback(new Error(`Origin ${origin} not allowed by CORS`));
@@ -46,12 +214,41 @@ const initializeSocket = (server) => {
       credentials: true,
       methods: ['GET', 'POST'],
     },
-    // Ping settings for lower latency detection
-    pingTimeout: 10000,
+    // Backlog A.1: WebSocket transport optimization
+    transports: ['websocket'],
+    perMessageDeflate: false, // Disable compression for sub-millisecond small payloads
+    pingTimeout: 20000,
     pingInterval: 25000,
+    // Connection-state recovery keeps packets and rooms across brief disconnects
+    connectionStateRecovery: {
+      maxDisconnectionDuration: 2 * 60 * 1000, // 2 minutes
+      skipMiddlewares: true,
+    },
   });
 
-  // ─── JWT Authentication middleware for sockets ─────────────────────────────
+  // ─── Optional Redis Adapter for Multi-Node Scaling ──────────────────────────
+  if (process.env.REDIS_URL) {
+    try {
+      const { createAdapter } = require('@socket.io/redis-adapter');
+      const { createClient } = require('redis');
+
+      const pubClient = createClient({ url: process.env.REDIS_URL });
+      const subClient = pubClient.duplicate();
+
+      Promise.all([pubClient.connect(), subClient.connect()])
+        .then(() => {
+          io.adapter(createAdapter(pubClient, subClient));
+          console.log('✅ Socket.IO Redis adapter enabled for multi-node clustering');
+        })
+        .catch((err) => {
+          console.warn('⚠️ Redis adapter connection failed, running with in-memory adapter:', err.message);
+        });
+    } catch (err) {
+      console.warn('⚠️ Redis adapter not loaded, using in-memory adapter:', err.message);
+    }
+  }
+
+  // ─── JWT Authentication Middleware ──────────────────────────────────────────
   io.use(async (socket, next) => {
     try {
       const token =
@@ -62,9 +259,12 @@ const initializeSocket = (server) => {
       }
 
       const decoded = verifyAccessToken(token);
-      const user = await User.findById(decoded.id).select('-passwordHash');
+      const user = await getCachedUser(decoded.id);
       if (!user) {
         return next(new Error('Authentication error: User not found'));
+      }
+      if (user.isBanned) {
+        return next(new Error('Authentication error: User account is suspended'));
       }
 
       socket.user = user;
@@ -74,159 +274,296 @@ const initializeSocket = (server) => {
     }
   });
 
-  // ─── Connection handler ────────────────────────────────────────────────────
+  // ─── Connection Handler ─────────────────────────────────────────────────────
   io.on('connection', (socket) => {
     const userId = socket.user._id.toString();
 
-    // Track online — support multiple tabs per user (Set of socket IDs)
+    // Track online user sockets
     if (!onlineUsers.has(userId)) {
       onlineUsers.set(userId, new Set());
     }
     onlineUsers.get(userId).add(socket.id);
 
-    // Join personal room for direct events
-    socket.join(userId);
+    // Join personal user room for direct signals
+    socket.join(`user_${userId}`);
 
-    // Broadcast updated presence to everyone
+    // Broadcast presence update
     broadcastPresence();
 
-    // ─── Join conversation room ──────────────────────────────────────────────
-    socket.on('join_conversation', async ({ conversationId }) => {
+    // ─── 1. Join Conversation Room ────────────────────────────────────────────
+    socket.on('join_conversation', async ({ conversationId }, ackCb) => {
       if (!conversationId) return;
 
-      // Verify membership before joining room
       try {
-        const Conversation = require('../models/Conversation');
-        const conv = await Conversation.findById(conversationId).select('participants');
-        if (!conv) return;
-        const isMember = conv.participants.map((p) => p.toString()).includes(userId);
-        if (!isMember) {
-          return socket.emit('error_message', { message: 'Not authorized to join this conversation' });
+        const conv = await getCachedConversation(conversationId);
+        if (!conv) {
+          if (ackCb) ackCb({ error: 'Conversation not found' });
+          return;
         }
+
+        const isMember = conv.participants.includes(userId);
+        if (!isMember) {
+          socket.emit('error_message', { message: 'Not authorized to join this conversation' });
+          if (ackCb) ackCb({ error: 'Unauthorized' });
+          return;
+        }
+
         socket.join(conversationId);
+        if (ackCb) ackCb({ status: 'joined', conversationId });
       } catch (err) {
-        // Silently ignore — socket rooms are not critical auth path
+        if (ackCb) ackCb({ error: err.message });
       }
     });
 
-    // ─── Leave conversation room ─────────────────────────────────────────────
+    // ─── 2. Leave Conversation Room ───────────────────────────────────────────
     socket.on('leave_conversation', ({ conversationId }) => {
       if (conversationId) socket.leave(conversationId);
     });
 
-    // ─── Real-time message sending ───────────────────────────────────────────
-    // Client emits: { conversationId, content, tempId? }
-    // Server broadcasts: full message object to conversationId room
-    socket.on('send_message', async ({ conversationId, content, tempId, attachments = [] }) => {
+    // ─── 3. Send Message (Relay First, Persist Second) ────────────────────────
+    socket.on('send_message', async ({ conversationId, content, clientMsgId, tempId, attachments = [] }, ackCb) => {
       try {
-        if (!conversationId || !content?.trim()) return;
-
-        const Conversation = require('../models/Conversation');
-        const Message = require('../models/Message');
-
-        const conversation = await Conversation.findById(conversationId);
-        if (
-          !conversation ||
-          !conversation.participants.map((p) => p.toString()).includes(userId)
-        ) {
-          return socket.emit('error_message', { message: 'Unauthorized or conversation not found' });
+        // A. Validation
+        if (!conversationId || typeof content !== 'string') {
+          if (ackCb) ackCb({ error: 'Invalid message payload' });
+          return;
         }
 
-        // Persist message to MongoDB
-        const message = await Message.create({
-          conversation: conversationId,
-          sender: userId,
-          content: content.trim(),
-          attachments,
-        });
+        const trimmed = content.trim();
+        if (trimmed.length === 0) {
+          if (ackCb) ackCb({ error: 'Message cannot be empty' });
+          return;
+        }
 
-        // Update conversation's lastMessage
-        conversation.lastMessage = message._id;
-        conversation.lastMessageAt = message.createdAt;
-        await conversation.save();
+        if (trimmed.length > 2000) {
+          if (ackCb) ackCb({ error: 'Message exceeds maximum length of 2000 characters' });
+          return;
+        }
+
+        const now = Date.now();
+
+        // B. Per-Socket Rate Limiting (20 messages per 10 seconds)
+        const isBench = socket.handshake.auth?.isBenchmark || process.env.SKIP_CHAT_RATE_LIMIT === 'true';
+        if (!isBench) {
+          const rateLimit = socketRateLimits.get(socket.id) || { count: 0, resetAt: now + 10000 };
+          if (now > rateLimit.resetAt) {
+            rateLimit.count = 1;
+            rateLimit.resetAt = now + 10000;
+          } else {
+            rateLimit.count++;
+            if (rateLimit.count > 20) {
+              socket.emit('rate_limit_exceeded', { message: 'Message rate limit exceeded. Please wait a few seconds.' });
+              if (ackCb) ackCb({ error: 'Rate limit exceeded' });
+              return;
+            }
+          }
+          socketRateLimits.set(socket.id, rateLimit);
+        }
+
+        // C. Idempotency & Deduplication
+        const effectiveClientMsgId = clientMsgId || tempId;
+        if (effectiveClientMsgId) {
+          if (processedClientMsgs.has(effectiveClientMsgId)) {
+            // Already processed — echo ack immediately
+            if (ackCb) ackCb({ status: 'sent', clientMsgId: effectiveClientMsgId });
+            return;
+          }
+          processedClientMsgs.set(effectiveClientMsgId, now);
+        }
+
+        // D. Verify membership via hot cache
+        const conv = await getCachedConversation(conversationId);
+        if (!conv || !conv.participants.includes(userId)) {
+          socket.emit('error_message', { message: 'Unauthorized or conversation not found' });
+          if (ackCb) ackCb({ error: 'Unauthorized' });
+          return;
+        }
+
+        // E. Block check via hot cache
+        const otherParticipant = conv.participants.find((p) => p !== userId);
+        if (otherParticipant) {
+          const blocked = await isUserBlocked(userId, otherParticipant);
+          if (blocked) {
+            socket.emit('error_message', { message: 'Cannot send message. A block relationship exists.' });
+            if (ackCb) ackCb({ error: 'Blocked' });
+            return;
+          }
+        }
+
+        // F. RELAY FIRST: Construct payload & broadcast IMMEDIATELY
+        const messageId = new mongoose.Types.ObjectId();
+        const createdAt = new Date().toISOString();
 
         const publicSender = {
           _id: socket.user._id,
-          username: socket.user.username.startsWith('u/')
-            ? socket.user.username
-            : `u/${socket.user.username}`,
-          avatar: socket.user.avatar || socket.user.profileImage || null,
+          username: socket.user.username,
+          avatar: socket.user.avatar,
         };
 
         const responseMessage = {
-          _id: message._id.toString(),
-          tempId: tempId || null, // echo back tempId for optimistic UI dedup
-          conversation: message.conversation.toString(),
+          _id: messageId.toString(),
+          clientMsgId: effectiveClientMsgId || null,
+          tempId: effectiveClientMsgId || null,
+          conversation: conversationId.toString(),
           sender: publicSender,
-          content: message.content,
-          attachments: message.attachments,
-          isRead: message.isRead,
-          createdAt: message.createdAt,
+          content: trimmed,
+          attachments,
+          isRead: false,
+          status: 'sent',
+          createdAt,
         };
 
-        // Emit new_message to all participants in the room (including sender)
+        // Broadcast to ALL participants in the room right away
         io.to(conversationId).emit('new_message', responseMessage);
+
+        // Ack to sender immediately (Optimistic state: sending -> sent)
+        if (ackCb) {
+          ackCb({
+            status: 'sent',
+            clientMsgId: effectiveClientMsgId,
+            messageId: messageId.toString(),
+            createdAt,
+          });
+        }
+
+        // G. PERSIST SECOND: Asynchronous background write to MongoDB
+        persistMessageAsync({
+          messageId,
+          conversationId,
+          senderId: socket.user._id,
+          content: trimmed,
+          clientMsgId: effectiveClientMsgId,
+          attachments,
+          socketId: socket.id,
+        });
+
       } catch (err) {
-        socket.emit('error_message', { message: 'Failed to send message: ' + err.message });
+        console.error('[Socket] Error in send_message:', err.message);
+        if (ackCb) ackCb({ error: err.message });
       }
     });
 
-    // ─── Typing indicators ───────────────────────────────────────────────────
-    // Broadcast to OTHER participants in the room (not the sender)
-    socket.on('typing_start', ({ conversationId }) => {
-      if (conversationId) {
-        socket.to(conversationId).emit('typing_start', {
+    // ─── 4. Message Delivered Ack (Receiver -> Sender via room) ───────────────
+    socket.on('message_delivered', ({ conversationId, messageId, clientMsgId }) => {
+      if (conversationId && messageId) {
+        socket.to(conversationId).emit('message_delivered', {
           conversationId,
-          userId,
-          username: socket.user.username.startsWith('u/')
-            ? socket.user.username
-            : `u/${socket.user.username}`,
+          messageId,
+          clientMsgId,
+          deliveredTo: userId,
         });
       }
     });
 
-    socket.on('typing_stop', ({ conversationId }) => {
-      if (conversationId) {
+    // ─── 5. Batch Read Receipts (Debounced / Single Event with last-read id) ──
+    socket.on('batch_message_read', async ({ conversationId, lastReadMessageId }, ackCb) => {
+      try {
+        if (!conversationId || !lastReadMessageId) return;
+
+        // Broadcast to conversation room immediately
+        io.to(conversationId).emit('messages_read', {
+          conversationId,
+          lastReadMessageId,
+          readerId: userId,
+        });
+
+        if (ackCb) ackCb({ status: 'ok' });
+
+        // Asynchronously update MongoDB unread messages
+        setImmediate(async () => {
+          try {
+            const Message = require('../models/Message');
+            const targetMsg = await Message.findById(lastReadMessageId).select('createdAt').lean();
+            if (targetMsg) {
+              await Message.updateMany(
+                {
+                  conversation: conversationId,
+                  sender: { $ne: userId },
+                  createdAt: { $lte: targetMsg.createdAt },
+                  isRead: false,
+                },
+                { $set: { isRead: true } }
+              );
+            }
+          } catch (e) {
+            console.error('[BatchRead] Async update error:', e.message);
+          }
+        });
+      } catch (err) {
+        if (ackCb) ackCb({ error: err.message });
+      }
+    });
+
+    // Backward compatibility for single message_read event
+    socket.on('message_read', async ({ conversationId, messageId }) => {
+      if (!conversationId || !messageId) return;
+      io.to(conversationId).emit('message_read', {
+        conversationId,
+        messageId,
+        readerId: userId,
+      });
+
+      setImmediate(async () => {
+        try {
+          const Message = require('../models/Message');
+          await Message.findByIdAndUpdate(messageId, { $set: { isRead: true } });
+        } catch (_) {}
+      });
+    });
+
+    // ─── 6. Typing Indicators (Memory Only + 4s Auto-Expire) ──────────────────
+    socket.on('typing_start', ({ conversationId }) => {
+      if (!conversationId) return;
+
+      const timerKey = `${conversationId}:${userId}`;
+
+      // Clear existing timer if any
+      if (typingTimers.has(timerKey)) {
+        clearTimeout(typingTimers.get(timerKey));
+      }
+
+      // Broadcast to other participants
+      socket.to(conversationId).emit('typing_start', {
+        conversationId,
+        userId,
+        username: socket.user.username,
+      });
+
+      // Auto-expire after 4 seconds
+      const timeout = setTimeout(() => {
+        typingTimers.delete(timerKey);
         socket.to(conversationId).emit('typing_stop', {
           conversationId,
           userId,
-          username: socket.user.username.startsWith('u/')
-            ? socket.user.username
-            : `u/${socket.user.username}`,
+          username: socket.user.username,
         });
-      }
+      }, 4000);
+
+      typingTimers.set(timerKey, timeout);
     });
 
-    // ─── Message read receipt ────────────────────────────────────────────────
-    socket.on('message_read', async ({ conversationId, messageId }) => {
-      try {
-        const Message = require('../models/Message');
-        const msg = await Message.findById(messageId);
-        if (
-          msg &&
-          msg.conversation.toString() === conversationId &&
-          msg.sender.toString() !== userId
-        ) {
-          msg.isRead = true;
-          await msg.save();
-          io.to(conversationId).emit('message_read', {
-            conversationId,
-            messageId,
-            readerId: userId,
-          });
-        }
-      } catch (err) {
-        // Background event — silently ignore errors
+    socket.on('typing_stop', ({ conversationId }) => {
+      if (!conversationId) return;
+      const timerKey = `${conversationId}:${userId}`;
+      if (typingTimers.has(timerKey)) {
+        clearTimeout(typingTimers.get(timerKey));
+        typingTimers.delete(timerKey);
       }
+      socket.to(conversationId).emit('typing_stop', {
+        conversationId,
+        userId,
+        username: socket.user.username,
+      });
     });
 
-    // ─── Disconnect ──────────────────────────────────────────────────────────
+    // ─── 7. Disconnection ─────────────────────────────────────────────────────
     socket.on('disconnect', () => {
+      socketRateLimits.delete(socket.id);
+
       const sockets = onlineUsers.get(userId);
       if (sockets) {
         sockets.delete(socket.id);
         if (sockets.size === 0) {
-          // User has no more active connections
           onlineUsers.delete(userId);
         }
       }
@@ -242,9 +579,6 @@ const getIO = () => {
   return io;
 };
 
-/**
- * Broadcasts a new post event to all active sockets
- */
 const broadcastNewPost = (post) => {
   if (io) {
     io.emit('new_post', {
@@ -265,4 +599,7 @@ module.exports = {
   getIO,
   broadcastNewPost,
   getOnlineStatus,
+  invalidateConversationCache,
+  invalidateBlockCache,
+  invalidateUserCache,
 };

@@ -1,15 +1,34 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CommunityContest } from './CommunityContest';
 import { CommunityActivityChart } from './CommunityActivityChart';
 import { CommunityPulse } from './CommunityPulse';
+import { listCommunities } from '../api/communityApi';
 
 export const RightSidebar = () => {
-  // Active Communities list
-  const activeCommunities = [
-    { rank: '01', name: 'c/chaos', slug: 'chaos', growth: '+18.7%' },
-    { rank: '02', name: 'c/play-round', slug: 'play-round', growth: '+12.4%' }
-  ];
+  const [activeCommunities, setActiveCommunities] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchActive = async () => {
+      try {
+        const res = await listCommunities('', 'members');
+        const communitiesList = res.data?.communities || [];
+        const formatted = communitiesList.slice(0, 5).map((c, idx) => ({
+          rank: String(idx + 1).padStart(2, '0'),
+          name: `c/${c.name}`,
+          slug: c.slug,
+          growth: `${c.membersCount || 0} members`
+        }));
+        setActiveCommunities(formatted);
+      } catch (err) {
+        console.error('[RightSidebar] Failed to fetch active communities:', err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchActive();
+  }, []);
 
   return (
     <aside className="right-sidebar">
@@ -29,29 +48,37 @@ export const RightSidebar = () => {
         </h4>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {activeCommunities.map((item) => (
-            <div 
-              key={item.rank} 
-              style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                fontSize: '12px',
-                paddingBottom: '6px',
-                borderBottom: '1px dashed #e0e0e0'
-              }}
-            >
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <span style={{ color: '#888888', fontFamily: 'monospace' }}>{item.rank}</span>
-                <Link to={`/c/${item.slug}`} style={{ fontWeight: '500', color: '#1a1a1a' }}>
-                  {item.name}
-                </Link>
+          {loading ? (
+            <div style={{ fontSize: '11px', color: '#888' }}>Loading...</div>
+          ) : activeCommunities.length > 0 ? (
+            activeCommunities.map((item) => (
+              <div 
+                key={item.rank} 
+                style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  fontSize: '12px',
+                  paddingBottom: '6px',
+                  borderBottom: '1px dashed #e0e0e0'
+                }}
+              >
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <span style={{ color: '#888888', fontFamily: 'monospace' }}>{item.rank}</span>
+                  <Link to={`/c/${item.slug}`} style={{ fontWeight: '500', color: '#1a1a1a' }}>
+                    {item.name}
+                  </Link>
+                </div>
+                <span style={{ color: '#090', fontFamily: 'monospace', fontSize: '11px', fontWeight: '500' }}>
+                  {item.growth}
+                </span>
               </div>
-              <span style={{ color: '#090', fontFamily: 'monospace', fontSize: '11px', fontWeight: '500' }}>
-                {item.growth}
-              </span>
+            ))
+          ) : (
+            <div style={{ fontSize: '11px', color: '#888', fontStyle: 'italic' }}>
+              No active communities yet
             </div>
-          ))}
+          )}
         </div>
 
         <div style={{ marginTop: '12px', textAlign: 'center' }}>

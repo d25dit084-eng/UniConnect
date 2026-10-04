@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import { listConversations, getMessages, deleteMessage } from '../api/chatApi';
+
+const CONVS_CACHE_KEY_PREFIX = 'uniconnect_cached_convs_';
+const MSGS_CACHE_KEY_PREFIX = 'uniconnect_cached_msgs_';
+const WINDOW_PAGE_SIZE = 60;
 
 export const ChatPage = () => {
   const { conversationId } = useParams();
@@ -17,19 +21,47 @@ export const ChatPage = () => {
     emitSendMessage,
     emitTypingStart,
     emitTypingStop,
-    emitMessageRead,
+    emitBatchRead,
+    emitMessageDelivered,
   } = useSocket();
   const navigate = useNavigate();
 
-  const [conversations, setConversations] = useState([]);
-  const [messages, setMessages] = useState([]);
+  const convsCacheKey = user?._id ? `${CONVS_CACHE_KEY_PREFIX}${user._id}` : null;
+  const msgsCacheKey = conversationId ? `${MSGS_CACHE_KEY_PREFIX}${conversationId}` : null;
+
+  // ─── 1. Preload Conversations from LocalStorage Cache ─────────────────────────
+  const [conversations, setConversations] = useState(() => {
+    if (!convsCacheKey) return [];
+    try {
+      const cached = localStorage.getItem(convsCacheKey);
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // ─── 2. Preload Message History from LocalStorage Cache ───────────────────────
+  const [messages, setMessages] = useState(() => {
+    if (!msgsCacheKey) return [];
+    try {
+      const cached = localStorage.getItem(msgsCacheKey);
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [text, setText] = useState('');
-  const [loadingConvs, setLoadingConvs] = useState(true);
-  const [loadingMsgs, setLoadingMsgs] = useState(false);
+  const [loadingConvs, setLoadingConvs] = useState(() => conversations.length === 0);
+  const [loadingMsgs, setLoadingMsgs] = useState(() => messages.length === 0);
+  const [isRefreshingMsgs, setIsRefreshingMsgs] = useState(false);
   const [error, setError] = useState('');
-  // Mobile: 'list' | 'window'
+  const [visibleCount, setVisibleCount] = useState(WINDOW_PAGE_SIZE);
+
+  // Mobile navigation: 'list' | 'window'
   const [mobileView, setMobileView] = useState(conversationId ? 'window' : 'list');
-  // Auto-scroll: track if user is near bottom
+
+  // Auto-scroll tracking
   const [showNewMsgBtn, setShowNewMsgBtn] = useState(false);
   const isNearBottom = useRef(true);
 
@@ -37,63 +69,143 @@ export const ChatPage = () => {
   const messageEndRef = useRef(null);
   const chatMessagesRef = useRef(null);
 
-  // ─── Deduplication helper ──────────────────────────────────────────────────
+  // ─── Deduplication Helper ────────────────────────────────────────────────────
   const addMessageDeduped = useCallback((newMsg) => {
     setMessages((prev) => {
-      // Check if already exists by _id
+      // 1. Check if already present by exact _id
       const existsById = prev.some((m) => m._id === newMsg._id);
       if (existsById) return prev;
 
-      // Check if there's a pending temp message with matching tempId
-      if (newMsg.tempId) {
-        const tempIdx = prev.findIndex((m) => m._id === newMsg.tempId);
+      // 2. Check if there's a pending client message with matching clientMsgId or tempId
+      const targetId = newMsg.clientMsgId || newMsg.tempId;
+      if (targetId) {
+        const tempIdx = prev.findIndex(
+          (m) => m.clientMsgId === targetId || m.tempId === targetId || m._id === targetId
+        );
         if (tempIdx !== -1) {
-          // Replace the optimistic message with the confirmed one
           const next = [...prev];
-          next[tempIdx] = { ...newMsg, _id: newMsg._id };
+          next[tempIdx] = {
+            ...next[tempIdx],
+            ...newMsg,
+            _id: newMsg._id,
+            status: newMsg.status || 'sent',
+          };
           return next;
         }
       }
-      return [...prev, newMsg];
+
+      return [...prev, { ...newMsg, status: newMsg.status || 'delivered' }];
     });
   }, []);
 
-  // ─── Fetch conversations list ──────────────────────────────────────────────
+  // ─── Fetch Conversations with Background Refresh ────────────────────────────
   const fetchConversations = useCallback(async () => {
     try {
       const res = await listConversations();
-      setConversations(res.data.conversations || []);
+      const convList = res.data?.conversations || [];
+      setConversations(convList);
+      if (convsCacheKey) {
+        try {
+          localStorage.setItem(convsCacheKey, JSON.stringify(convList));
+        } catch (_) {}
+      }
     } catch (err) {
       console.error('[ChatPage] Failed to load conversations:', err.message);
     } finally {
       setLoadingConvs(false);
     }
-  }, []);
+  }, [convsCacheKey]);
 
   useEffect(() => {
     fetchConversations();
   }, [fetchConversations]);
 
-  // ─── Fetch message history when conversationId changes ────────────────────
+  // ─── Fetch Message History with Local Cache Display ──────────────────────────
   useEffect(() => {
     if (!conversationId) return;
 
     setMobileView('window');
+    setVisibleCount(WINDOW_PAGE_SIZE);
+
+    // If cache already has messages, don't show blank loading screen
+    let hasLocalCache = false;
+    try {
+      const cached = localStorage.getItem(`${MSGS_CACHE_KEY_PREFIX}${conversationId}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed);
+          setLoadingMsgs(false);
+          hasLocalCache = true;
+        }
+      }
+    } catch (_) {}
+
+    if (!hasLocalCache) {
+      setLoadingMsgs(true);
+    }
+    setIsRefreshingMsgs(true);
+    setError('');
 
     const fetchMsgs = async () => {
-      setLoadingMsgs(true);
-      setError('');
       try {
-        const res = await getMessages(conversationId, 1, 50);
-        const sorted = (res.data.messages || []).sort(
+        const res = await getMessages(conversationId, { limit: 50 });
+        const serverMsgs = (res.data?.messages || []).sort(
           (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
         );
-        setMessages(sorted);
+
+        setMessages((prev) => {
+          // Normalize server messages with delivered / read status
+          const normalizedServer = serverMsgs.map((m) => {
+            const senderId = m.sender?._id || m.sender;
+            const isMine = senderId === user?._id || senderId?.toString?.() === user?._id;
+            return {
+              ...m,
+              status: isMine ? (m.isRead ? 'read' : 'delivered') : 'delivered',
+            };
+          });
+
+          // Retain any pending messages that are not yet persisted
+          const serverIdSet = new Set(serverMsgs.map((m) => m._id));
+          const serverClientSet = new Set(serverMsgs.map((m) => m.clientMsgId).filter(Boolean));
+
+          const pendingMine = prev.filter((m) => {
+            const isPendingState = m.status === 'sending' || m.status === 'failed';
+            const alreadyInServer = serverIdSet.has(m._id) || serverClientSet.has(m.clientMsgId);
+            return isPendingState && !alreadyInServer;
+          });
+
+          const merged = [...normalizedServer, ...pendingMine];
+
+          // Persist latest 50 messages to local cache
+          try {
+            localStorage.setItem(
+              `${MSGS_CACHE_KEY_PREFIX}${conversationId}`,
+              JSON.stringify(normalizedServer.slice(-50))
+            );
+          } catch (_) {}
+
+          return merged;
+        });
+
+        // Join socket room
         joinConversation(conversationId);
+
+        // Mark latest unread message from peer as read
+        const lastPeerMsg = [...serverMsgs]
+          .reverse()
+          .find((m) => {
+            const sId = m.sender?._id || m.sender;
+            return sId !== user?._id && sId?.toString?.() !== user?._id;
+          });
+        if (lastPeerMsg) {
+          emitBatchRead(conversationId, lastPeerMsg._id);
+        }
       } catch (err) {
         setError(err.response?.data?.message || err.message || 'Failed to load messages');
       } finally {
         setLoadingMsgs(false);
+        setIsRefreshingMsgs(false);
       }
     };
 
@@ -102,18 +214,29 @@ export const ChatPage = () => {
     return () => {
       leaveConversation(conversationId);
     };
-  }, [conversationId, joinConversation, leaveConversation]);
+  }, [conversationId, user?._id, joinConversation, leaveConversation, emitBatchRead]);
 
-  // ─── Socket: incoming new_message ─────────────────────────────────────────
+  // ─── Socket Event Handlers ──────────────────────────────────────────────────
   useEffect(() => {
     if (!socket) return;
 
+    // A. Incoming new message
     const handleIncomingMessage = (data) => {
-      // data is now the full message object (not wrapped in { message: ... })
       if (!data?._id) return;
       const msgConvId = data.conversation?.toString?.() || data.conversation;
       if (msgConvId === conversationId) {
+        const senderId = data.sender?._id || data.sender;
+        const isFromMe = senderId === user?._id || senderId?.toString?.() === user?._id;
+
         addMessageDeduped(data);
+
+        if (!isFromMe) {
+          // Immediately acknowledge delivery to the room
+          emitMessageDelivered(conversationId, data._id, data.clientMsgId);
+          // Debounced batch read
+          emitBatchRead(conversationId, data._id);
+        }
+
         // Auto-scroll if near bottom
         if (isNearBottom.current) {
           setTimeout(() => messageEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
@@ -121,43 +244,109 @@ export const ChatPage = () => {
           setShowNewMsgBtn(true);
         }
       }
-      // Refresh conversation list to update lastMessage preview
+
+      // Refresh conversations list to update preview and order
       fetchConversations();
     };
 
+    // B. Delivery Ack: Move status from sending/sent -> delivered
+    const handleMessageDelivered = ({ conversationId: cId, messageId, clientMsgId }) => {
+      if (cId !== conversationId) return;
+      setMessages((prev) =>
+        prev.map((m) => {
+          const match = m._id === messageId || (clientMsgId && m.clientMsgId === clientMsgId);
+          if (match && (m.status === 'sending' || m.status === 'sent')) {
+            return { ...m, status: 'delivered' };
+          }
+          return m;
+        })
+      );
+    };
+
+    // C. Batch Read Receipts: Move delivered -> read
+    const handleMessagesRead = ({ conversationId: cId, lastReadMessageId, readerId }) => {
+      if (cId !== conversationId || readerId === user?._id) return;
+      setMessages((prev) => {
+        const target = prev.find((m) => m._id === lastReadMessageId);
+        const targetDate = target ? new Date(target.createdAt) : new Date();
+
+        return prev.map((m) => {
+          const senderId = m.sender?._id || m.sender;
+          const isMine = senderId === user?._id || senderId?.toString?.() === user?._id;
+          if (isMine && new Date(m.createdAt) <= targetDate) {
+            return { ...m, status: 'read', isRead: true };
+          }
+          return m;
+        });
+      });
+    };
+
+    // D. Single message read backwards compatibility
+    const handleSingleMessageRead = ({ conversationId: cId, messageId, readerId }) => {
+      if (cId !== conversationId || readerId === user?._id) return;
+      setMessages((prev) =>
+        prev.map((m) => (m._id === messageId ? { ...m, status: 'read', isRead: true } : m))
+      );
+    };
+
+    // E. Message persist failure notification
+    const handleMessageFailed = ({ clientMsgId, messageId }) => {
+      setMessages((prev) =>
+        prev.map((m) => {
+          const match = m._id === messageId || (clientMsgId && m.clientMsgId === clientMsgId);
+          return match ? { ...m, status: 'failed' } : m;
+        })
+      );
+    };
+
     socket.on('new_message', handleIncomingMessage);
+    socket.on('message_delivered', handleMessageDelivered);
+    socket.on('messages_read', handleMessagesRead);
+    socket.on('message_read', handleSingleMessageRead);
+    socket.on('message_failed', handleMessageFailed);
+
     return () => {
       socket.off('new_message', handleIncomingMessage);
+      socket.off('message_delivered', handleMessageDelivered);
+      socket.off('messages_read', handleMessagesRead);
+      socket.off('message_read', handleSingleMessageRead);
+      socket.off('message_failed', handleMessageFailed);
     };
-  }, [socket, conversationId, addMessageDeduped, fetchConversations]);
+  }, [
+    socket,
+    conversationId,
+    user?._id,
+    addMessageDeduped,
+    fetchConversations,
+    emitMessageDelivered,
+    emitBatchRead,
+  ]);
 
-  // ─── Re-join conversation after reconnect ──────────────────────────────────
+  // Re-join conversation after reconnect
   useEffect(() => {
     if (socketStatus === 'connected' && conversationId) {
       joinConversation(conversationId);
     }
   }, [socketStatus, conversationId, joinConversation]);
 
-  // ─── Scroll behaviour ──────────────────────────────────────────────────────
-  // Scroll to bottom when messages first load
+  // Auto-scroll on initial message render
   useEffect(() => {
-    if (!loadingMsgs && messages.length > 0) {
+    if (!loadingMsgs && messages.length > 0 && isNearBottom.current) {
       messageEndRef.current?.scrollIntoView({ behavior: 'auto' });
-      isNearBottom.current = true;
     }
-  }, [loadingMsgs]);
+  }, [loadingMsgs, messages.length]);
 
   // Track scroll position to decide whether to auto-scroll
   const handleScroll = useCallback(() => {
     const el = chatMessagesRef.current;
     if (!el) return;
-    const threshold = 80; // px from bottom
+    const threshold = 100;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
     isNearBottom.current = atBottom;
     if (atBottom) setShowNewMsgBtn(false);
   }, []);
 
-  // ─── Typing debounce ───────────────────────────────────────────────────────
+  // Typing debounce (Throttled by SocketContext)
   const handleInputChange = (e) => {
     setText(e.target.value);
     emitTypingStart(conversationId);
@@ -167,9 +356,9 @@ export const ChatPage = () => {
     }, 1500);
   };
 
-  // ─── Send message via Socket (optimistic) ─────────────────────────────────
+  // ─── Optimistic Send with State Progression ──────────────────────────────────
   const handleSend = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!text.trim() || !conversationId) return;
 
     if (typingTimeoutRef.current) {
@@ -180,42 +369,79 @@ export const ChatPage = () => {
     const messageContent = text.trim();
     setText('');
 
-    if (socketStatus === 'connected') {
-      // OPTIMISTIC: show immediately with a temp ID
-      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const optimisticMsg = {
-        _id: tempId,
-        tempId,
-        conversation: conversationId,
-        sender: { _id: user._id, username: user.username },
-        content: messageContent,
-        createdAt: new Date().toISOString(),
-        _pending: true,
-      };
-      setMessages((prev) => [...prev, optimisticMsg]);
-      setTimeout(() => messageEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    // Generate unique clientMsgId for idempotency and optimistic UI
+    const clientMsgId = `cmsg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const optimisticMsg = {
+      _id: clientMsgId,
+      clientMsgId,
+      tempId: clientMsgId,
+      conversation: conversationId,
+      sender: { _id: user._id, username: user.username },
+      content: messageContent,
+      createdAt: new Date().toISOString(),
+      status: 'sending',
+    };
 
-      // Emit via socket — server will broadcast new_message back to room
-      // We pass the same tempId so we can dedup when server echoes it back
-      if (socket) {
-        socket.emit('send_message', { conversationId, content: messageContent, tempId });
+    setMessages((prev) => [...prev, optimisticMsg]);
+    setTimeout(() => messageEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 30);
+
+    try {
+      const ack = await emitSendMessage(conversationId, messageContent, clientMsgId);
+
+      if (ack?.status === 'queued_offline') {
+        // Enqueued in offline buffer, will auto-flush on reconnect
+        return;
       }
-    } else {
-      // Fallback: REST API if socket not connected
-      try {
-        const { sendMessage } = await import('../api/chatApi');
-        const res = await sendMessage(conversationId, messageContent);
-        addMessageDeduped(res.data.message);
-        fetchConversations();
-      } catch (err) {
-        alert(`Send failed: ${err.response?.data?.message || err.message}`);
-        setText(messageContent); // restore text on failure
-      }
+
+      // Update message status to 'sent'
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.clientMsgId === clientMsgId || m._id === clientMsgId
+            ? { ...m, status: 'sent', _id: ack?.messageId || m._id }
+            : m
+        )
+      );
+    } catch (err) {
+      console.error('[ChatPage] Send failed:', err.message);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.clientMsgId === clientMsgId || m._id === clientMsgId
+            ? { ...m, status: 'failed' }
+            : m
+        )
+      );
+    }
+  };
+
+  // ─── Retry Failed Message ────────────────────────────────────────────────────
+  const handleRetry = async (msg) => {
+    if (!msg || !conversationId) return;
+
+    // Reset status back to sending
+    setMessages((prev) =>
+      prev.map((m) => (m._id === msg._id ? { ...m, status: 'sending' } : m))
+    );
+
+    try {
+      const ack = await emitSendMessage(conversationId, msg.content, msg.clientMsgId || msg._id);
+      if (ack?.status === 'queued_offline') return;
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m._id === msg._id
+            ? { ...m, status: 'sent', _id: ack?.messageId || m._id }
+            : m
+        )
+      );
+    } catch (err) {
+      setMessages((prev) =>
+        prev.map((m) => (m._id === msg._id ? { ...m, status: 'failed' } : m))
+      );
     }
   };
 
   const handleDeleteMsg = async (msgId) => {
-    if (msgId.startsWith('temp-')) return; // can't delete unsent
+    if (msgId.startsWith('cmsg_') || msgId.startsWith('temp-')) return;
     if (!window.confirm('Delete this message?')) return;
     try {
       await deleteMessage(msgId);
@@ -227,51 +453,52 @@ export const ChatPage = () => {
 
   const getPartnerInfo = (conv) => {
     if (!conv || !conv.participants) return { username: 'deleted', _id: '' };
-    return conv.participants.find((p) => p._id !== user._id) || { username: 'deleted', _id: '' };
+    return conv.participants.find((p) => p._id !== user?._id) || { username: 'deleted', _id: '' };
   };
 
   const activeConversation = conversations.find((c) => c._id === conversationId);
   const partner = getPartnerInfo(activeConversation);
   const isPartnerOnline = onlineUsers.includes(partner._id);
 
-  // Typing: get usernames of people typing in this conversation (excluding self)
+  // Typing state
   const typingInThisConv = typingUsers[conversationId] || {};
   const otherTypingUsernames = Object.entries(typingInThisConv)
     .filter(([uid]) => uid !== user?._id)
     .map(([, uname]) => uname);
   const isTyping = otherTypingUsernames.length > 0;
 
-  // Handle mobile back button
   const handleMobileBack = () => {
     setMobileView('list');
     navigate('/chat');
   };
 
-  // ─── Reconnect notification ────────────────────────────────────────────────
+  // ─── Virtualized / Windowed Slice of Messages ───────────────────────────────
+  const visibleMessages = useMemo(() => {
+    if (messages.length <= visibleCount) return messages;
+    return messages.slice(-visibleCount);
+  }, [messages, visibleCount]);
+
+  const hasEarlierMessages = messages.length > visibleCount;
+
+  const handleLoadEarlier = () => {
+    setVisibleCount((prev) => prev + WINDOW_PAGE_SIZE);
+  };
+
   const renderReconnectBanner = () => {
     if (socketStatus === 'reconnecting') {
-      return <div className="chat-reconnect-banner">🔄 Reconnecting...</div>;
+      return <div className="chat-reconnect-banner">🔄 Reconnecting to real-time chat...</div>;
     }
     if (socketStatus === 'disconnected') {
-      return <div className="chat-reconnect-banner">⚠️ Connection lost. Messages may be delayed.</div>;
+      return <div className="chat-reconnect-banner">⚠️ Connection offline. Outgoing messages will auto-send on reconnect.</div>;
     }
     return null;
   };
 
   return (
     <div className="chat-page-wrapper">
-      <div
-        className="chat-grid"
-        data-mobile-view={mobileView}
-      >
+      <div className="chat-grid" data-mobile-view={mobileView}>
         {/* ─── Left Pane: Conversations List ─────────────────────────────── */}
-        <div
-          className="conversation-list"
-          style={{
-            // On mobile: hide when window is open
-            display: undefined,
-          }}
-        >
+        <div className="conversation-list">
           <div className="conversation-list-header">Conversations</div>
 
           {loadingConvs ? (
@@ -310,7 +537,7 @@ export const ChatPage = () => {
         <div className="chat-window">
           {conversationId ? (
             <>
-              {/* Chat header */}
+              {/* Chat Header */}
               <div className="chat-header">
                 <button
                   type="button"
@@ -333,6 +560,9 @@ export const ChatPage = () => {
                       >
                         ({isPartnerOnline ? 'Online' : 'Offline'})
                       </span>
+                      {isRefreshingMsgs && (
+                        <span className="chat-window-cache-badge">· syncing...</span>
+                      )}
                     </>
                   ) : (
                     'Loading...'
@@ -340,52 +570,85 @@ export const ChatPage = () => {
                 </div>
               </div>
 
-              {/* Reconnect banner */}
+              {/* Reconnect Banner */}
               {renderReconnectBanner()}
 
-              {/* Messages */}
+              {/* Message List */}
               <div
                 className="chat-messages"
                 ref={chatMessagesRef}
                 onScroll={handleScroll}
               >
+                {hasEarlierMessages && (
+                  <button
+                    type="button"
+                    className="chat-load-earlier-btn"
+                    onClick={handleLoadEarlier}
+                  >
+                    ↑ Load earlier messages ({messages.length - visibleCount} more)
+                  </button>
+                )}
+
                 {loadingMsgs ? (
                   <div className="loading-indicator">Loading message history...</div>
                 ) : error ? (
                   <div className="error-indicator">{error}</div>
-                ) : messages.length > 0 ? (
-                  messages.map((msg) => {
+                ) : visibleMessages.length > 0 ? (
+                  visibleMessages.map((msg) => {
                     const senderId = msg.sender?._id || msg.sender;
-                    const isMine = senderId === user._id || senderId?.toString?.() === user._id;
-                    const isPending = msg._pending === true;
-                    const isFailed = msg._failed === true;
+                    const isMine = senderId === user?._id || senderId?.toString?.() === user?._id;
+                    const status = msg.status || (msg.isRead ? 'read' : 'delivered');
+                    const isFailed = status === 'failed';
+                    const isSending = status === 'sending';
+
                     return (
                       <div
-                        key={msg._id}
-                        className={`message-bubble ${isMine ? 'mine' : 'other'}${isPending ? ' pending' : ''}${isFailed ? ' failed' : ''}`}
+                        key={msg._id || msg.clientMsgId}
+                        className={`message-bubble ${isMine ? 'mine' : 'other'}${isSending ? ' pending' : ''}${isFailed ? ' failed' : ''}`}
                       >
                         <div>{msg.content}</div>
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            fontSize: '9px',
-                            color: isMine ? 'rgba(255,255,255,0.6)' : '#888',
-                            marginTop: '4px',
-                          }}
-                        >
-                          <span>
-                            {isPending
-                              ? '⏳ Sending...'
-                              : isFailed
-                              ? '❌ Failed'
-                              : new Date(msg.createdAt).toLocaleTimeString([], {
+                        <div className="msg-meta-row">
+                          <div className="msg-status-indicator">
+                            {isSending ? (
+                              <span>🕒 Sending...</span>
+                            ) : isFailed ? (
+                              <span>
+                                ⚠️ Undelivered
+                                <button
+                                  type="button"
+                                  className="msg-retry-btn"
+                                  onClick={() => handleRetry(msg)}
+                                >
+                                  Retry
+                                </button>
+                              </span>
+                            ) : (
+                              <span>
+                                {new Date(msg.createdAt).toLocaleTimeString([], {
                                   hour: '2-digit',
                                   minute: '2-digit',
                                 })}
-                          </span>
-                          {isMine && !isPending && (
+                              </span>
+                            )}
+
+                            {/* Status Ticks for outgoing messages */}
+                            {isMine && !isSending && !isFailed && (
+                              <span
+                                className={`msg-tick${status === 'read' ? ' read' : ''}`}
+                                title={
+                                  status === 'read'
+                                    ? 'Read'
+                                    : status === 'delivered'
+                                    ? 'Delivered'
+                                    : 'Sent'
+                                }
+                              >
+                                {status === 'read' ? '✓✓' : status === 'delivered' ? '✓✓' : '✓'}
+                              </span>
+                            )}
+                          </div>
+
+                          {isMine && !isSending && (
                             <button
                               type="button"
                               onClick={() => handleDeleteMsg(msg._id)}
@@ -398,7 +661,6 @@ export const ChatPage = () => {
                                 fontSize: '9px',
                                 marginLeft: '10px',
                                 cursor: 'pointer',
-                                minHeight: 'auto',
                               }}
                             >
                               Delete
@@ -414,7 +676,7 @@ export const ChatPage = () => {
                   </div>
                 )}
 
-                {/* Typing indicator */}
+                {/* Typing Indicator */}
                 {isTyping && (
                   <div
                     style={{
@@ -433,7 +695,7 @@ export const ChatPage = () => {
                 <div ref={messageEndRef} />
               </div>
 
-              {/* New messages button */}
+              {/* Jump to New Messages Button */}
               {showNewMsgBtn && (
                 <button
                   type="button"
@@ -447,13 +709,14 @@ export const ChatPage = () => {
                 </button>
               )}
 
-              {/* Message input */}
+              {/* Message Input Bar */}
               <form onSubmit={handleSend} className="chat-input-area">
                 <input
                   type="text"
                   value={text}
                   onChange={handleInputChange}
                   placeholder="Type a message..."
+                  maxLength={2000}
                   required
                   aria-label="Message input"
                   autoComplete="off"
@@ -471,7 +734,6 @@ export const ChatPage = () => {
         </div>
       </div>
 
-      {/* Mobile CSS: show only active panel */}
       <style>{`
         @media (max-width: 768px) {
           .chat-grid[data-mobile-view="list"] .chat-window {
@@ -488,4 +750,5 @@ export const ChatPage = () => {
     </div>
   );
 };
+
 export default ChatPage;

@@ -14,10 +14,12 @@ export const AuthProvider = ({ children }) => {
     const bootstrap = async () => {
       const storedToken = localStorage.getItem('accessToken');
       if (storedToken) {
-        setAccessToken(storedToken);
         try {
           const profileRes = await getProfile();
           setUser(profileRes.data.user);
+          // Get the latest token from localStorage in case it got refreshed during getProfile()
+          const latestToken = localStorage.getItem('accessToken');
+          setAccessToken(latestToken);
         } catch (err) {
           console.error('[AuthBootstrap] Session validation failed:', err.message);
           // Token expired or invalid
@@ -30,17 +32,27 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     };
 
-    bootstrap();
-
     // Listen for global logout events (from axios interceptor on session expiry)
     const handleGlobalLogout = () => {
       setAccessToken(null);
       setUser(null);
     };
+
+    // Listen for global token refresh events
+    const handleTokenRefreshed = (e) => {
+      if (e.detail?.accessToken) {
+        setAccessToken(e.detail.accessToken);
+      }
+    };
+
     window.addEventListener('auth-logout', handleGlobalLogout);
+    window.addEventListener('auth-token-refreshed', handleTokenRefreshed);
+
+    bootstrap();
 
     return () => {
       window.removeEventListener('auth-logout', handleGlobalLogout);
+      window.removeEventListener('auth-token-refreshed', handleTokenRefreshed);
     };
   }, []);
 

@@ -10,7 +10,11 @@ export const SocketProvider = ({ children }) => {
   const [onlineUsers, setOnlineUsers] = useState([]); // array of userId strings
   const [typingUsers, setTypingUsers] = useState({}); // conversationId -> { userId: username }
   const [socketStatus, setSocketStatus] = useState('disconnected'); // 'connected'|'disconnected'|'reconnecting'
+
   const socketRef = useRef(null);
+  const offlineQueueRef = useRef([]); // { conversationId, content, clientMsgId, resolve, reject }
+  const lastTypingSentRef = useRef({}); // conversationId -> timestamp (throttle 2s)
+  const batchReadTimeoutRef = useRef({}); // conversationId -> timer
 
   useEffect(() => {
     // Cleanup previous socket if token changes
@@ -25,33 +29,50 @@ export const SocketProvider = ({ children }) => {
 
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 
+    // Backlog A.1: WebSocket transport only, skipping HTTP long-polling upgrade
     const newSocket = io(socketUrl, {
-      auth: {
-        token: accessToken,
+      auth: (cb) => {
+        cb({
+          token: localStorage.getItem('accessToken') || accessToken,
+        });
       },
       transports: ['websocket'],
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 15,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
+      reconnectionDelayMax: 5000, // Exponential backoff max 5s
+      timeout: 10000,
     });
 
     socketRef.current = newSocket;
 
-    // ─── Connection lifecycle ──────────────────────────────────────────────
+    // ─── Connection Lifecycle ──────────────────────────────────────────────
     newSocket.on('connect', () => {
-      console.log('[Socket] Connected:', newSocket.id);
       setSocketStatus('connected');
+
+      // Backlog A.10: Flush offline queue upon reconnect
+      if (offlineQueueRef.current.length > 0) {
+        const queueToFlush = [...offlineQueueRef.current];
+        offlineQueueRef.current = [];
+
+        queueToFlush.forEach(({ conversationId, content, clientMsgId, resolve, reject }) => {
+          newSocket.emit('send_message', { conversationId, content, clientMsgId }, (response) => {
+            if (response && response.error) {
+              if (reject) reject(new Error(response.error));
+            } else {
+              if (resolve) resolve(response);
+            }
+          });
+        });
+      }
     });
 
     newSocket.on('disconnect', (reason) => {
-      console.warn('[Socket] Disconnected:', reason);
       setSocketStatus('disconnected');
       setOnlineUsers([]);
     });
 
-    newSocket.on('connect_error', (err) => {
-      console.error('[Socket] Connection error:', err.message);
+    newSocket.on('connect_error', () => {
       setSocketStatus('reconnecting');
     });
 
@@ -60,18 +81,17 @@ export const SocketProvider = ({ children }) => {
     });
 
     newSocket.io.on('reconnect', () => {
-      console.log('[Socket] Reconnected');
       setSocketStatus('connected');
     });
 
-    // ─── Presence: server emits { onlineUsers: string[] } ─────────────────
+    // ─── Presence ──────────────────────────────────────────────────────────
     newSocket.on('presence_change', (data) => {
       if (data && Array.isArray(data.onlineUsers)) {
         setOnlineUsers(data.onlineUsers);
       }
     });
 
-    // ─── Typing: server emits { conversationId, userId, username } ─────────
+    // ─── Typing Indicators (Memory Only) ───────────────────────────────────
     newSocket.on('typing_start', (data) => {
       if (!data?.conversationId || !data?.userId) return;
       setTypingUsers((prev) => {
@@ -107,7 +127,7 @@ export const SocketProvider = ({ children }) => {
     };
   }, [accessToken]);
 
-  // ─── Helpers exposed via context ───────────────────────────────────────────
+  // ─── Exposed Methods ─────────────────────────────────────────────────────
 
   const joinConversation = useCallback((conversationId) => {
     if (socketRef.current?.connected && conversationId) {
@@ -122,33 +142,95 @@ export const SocketProvider = ({ children }) => {
   }, []);
 
   /**
-   * Send a message via WebSocket (real-time path).
-   * Returns a tempId that the server will echo back in new_message for dedup.
+   * Backlog A.2 & A.3 & A.10:
+   * Send message with clientMsgId, immediate ack response, and offline queue fallback.
    */
-  const emitSendMessage = useCallback((conversationId, content) => {
-    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    if (socketRef.current?.connected) {
-      socketRef.current.emit('send_message', { conversationId, content, tempId });
-      return tempId;
-    }
-    return null;
+  const emitSendMessage = useCallback((conversationId, content, clientMsgId) => {
+    const effectiveMsgId = clientMsgId || `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
+    return new Promise((resolve, reject) => {
+      if (socketRef.current?.connected) {
+        socketRef.current.emit(
+          'send_message',
+          {
+            conversationId,
+            content,
+            clientMsgId: effectiveMsgId,
+            tempId: effectiveMsgId,
+          },
+          (response) => {
+            if (response && response.error) {
+              reject(new Error(response.error));
+            } else {
+              resolve(response || { status: 'sent', clientMsgId: effectiveMsgId });
+            }
+          }
+        );
+      } else {
+        // Enqueue offline message to flush upon reconnect
+        offlineQueueRef.current.push({
+          conversationId,
+          content,
+          clientMsgId: effectiveMsgId,
+          resolve,
+          reject,
+        });
+        resolve({ status: 'queued_offline', clientMsgId: effectiveMsgId });
+      }
+    });
   }, []);
 
+  /**
+   * Backlog A.5: Throttle typing_start to at most one per 2 seconds
+   */
   const emitTypingStart = useCallback((conversationId) => {
-    if (socketRef.current?.connected && conversationId) {
+    if (!conversationId || !socketRef.current?.connected) return;
+    const now = Date.now();
+    const lastSent = lastTypingSentRef.current[conversationId] || 0;
+    if (now - lastSent >= 2000) {
+      lastTypingSentRef.current[conversationId] = now;
       socketRef.current.emit('typing_start', { conversationId });
     }
   }, []);
 
   const emitTypingStop = useCallback((conversationId) => {
     if (socketRef.current?.connected && conversationId) {
+      delete lastTypingSentRef.current[conversationId];
       socketRef.current.emit('typing_stop', { conversationId });
     }
   }, []);
 
-  const emitMessageRead = useCallback((conversationId, messageId) => {
-    if (socketRef.current?.connected) {
-      socketRef.current.emit('message_read', { conversationId, messageId });
+  /**
+   * Backlog A.6: Batch read receipts with last-read message ID, debounced by 300 ms
+   */
+  const emitBatchRead = useCallback((conversationId, lastReadMessageId) => {
+    if (!conversationId || !lastReadMessageId) return;
+
+    if (batchReadTimeoutRef.current[conversationId]) {
+      clearTimeout(batchReadTimeoutRef.current[conversationId]);
+    }
+
+    batchReadTimeoutRef.current[conversationId] = setTimeout(() => {
+      if (socketRef.current?.connected) {
+        socketRef.current.emit('batch_message_read', {
+          conversationId,
+          lastReadMessageId,
+        });
+      }
+      delete batchReadTimeoutRef.current[conversationId];
+    }, 300);
+  }, []);
+
+  /**
+   * Notify room that a message has been delivered to this client
+   */
+  const emitMessageDelivered = useCallback((conversationId, messageId, clientMsgId) => {
+    if (socketRef.current?.connected && conversationId && messageId) {
+      socketRef.current.emit('message_delivered', {
+        conversationId,
+        messageId,
+        clientMsgId,
+      });
     }
   }, []);
 
@@ -164,7 +246,8 @@ export const SocketProvider = ({ children }) => {
         emitSendMessage,
         emitTypingStart,
         emitTypingStop,
-        emitMessageRead,
+        emitBatchRead,
+        emitMessageDelivered,
       }}
     >
       {children}

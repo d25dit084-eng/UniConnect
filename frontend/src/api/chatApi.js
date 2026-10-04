@@ -10,9 +10,10 @@ export const listConversations = async () => {
   return res.data;
 };
 
-export const getMessages = async (conversationId, page = 1, limit = 50) => {
+export const getMessages = async (conversationId, params = {}) => {
+  const queryParams = typeof params === 'object' ? params : { page: params, limit: 50 };
   const res = await api.get(`/chat/conversations/${conversationId}/messages`, {
-    params: { page, limit },
+    params: queryParams,
   });
   return res.data;
 };

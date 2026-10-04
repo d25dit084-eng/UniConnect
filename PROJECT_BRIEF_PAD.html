@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UniConnect — Project Brief & Tech Stack Textpad</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0d14;
+      --bg-secondary: #101522;
+      --bg-card: rgba(18, 24, 38, 0.85);
+      --bg-card-hover: rgba(26, 35, 56, 0.95);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --border-glow: rgba(99, 102, 241, 0.35);
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --accent: #06b6d4;
+      --accent-green: #10b981;
+      --accent-purple: #a855f7;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --code-bg: #07090e;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Ambient background gradient glow */
+    .ambient-glow {
+      position: fixed;
+      top: -150px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 900px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(6, 182, 212, 0.08) 50%, transparent 80%);
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Header & Navigation Bar */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(16px);
+      background: rgba(10, 13, 20, 0.85);
+      border-bottom: 1px solid var(--border-color);
+      padding: 1rem 1.5rem;
+    }
+
+    .header-content {
+      max-width: 1300px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+    }
+
+    .title-text h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .title-text p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .stats-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: var(--accent-green);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.6rem;
+      border-radius: 20px;
+    }
+
+    .action-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .btn {
+      appearance: none;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.6rem 1.1rem;
+      border-radius: 8px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: #ffffff;
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #4f46e5, #4338ca);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+
+    .btn-success {
+      background: #10b981 !important;
+      color: #fff !important;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4) !important;
+    }
+
+    /* Subheader Tabs & Search */
+    .subnav {
+      max-width: 1300px;
+      margin: 1.25rem auto 0 auto;
+      padding: 0 1.5rem;
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      z-index: 10;
+    }
+
+    .tab-group {
+      display: inline-flex;
+      background: rgba(16, 21, 34, 0.8);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 0.25rem;
+      gap: 0.25rem;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 0.5rem 1rem;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    }
+
+    .meta-info {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .meta-badge {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-family: 'Fira Code', monospace;
+      color: var(--text-muted);
+    }
+
+    /* Main Container */
+    main {
+      max-width: 1300px;
+      margin: 1.25rem auto 3rem auto;
+      padding: 0 1.5rem;
+      width: 100%;
+      flex: 1;
+      z-index: 10;
+    }
+
+    /* Textpad Editor / Box */
+    .textpad-wrapper {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .textpad-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.25rem;
+      background: rgba(10, 14, 24, 0.95);
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .window-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #eab308; }
+    .dot-green { background: #10b981; }
+
+    .file-name {
+      font-family: 'Fira Code', monospace;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .textpad-content {
+      width: 100%;
+      min-height: 680px;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 1.75rem;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.9rem;
+      line-height: 1.65;
+      background-color: var(--code-bg);
+      color: #e2e8f0;
+      border: none;
+      outline: none;
+      resize: vertical;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      tab-size: 2;
+    }
+
+    .textpad-content:focus {
+      box-shadow: inset 0 0 0 1px var(--primary);
+    }
+
+    /* Section Jump Bar */
+    .quick-jump-container {
+      margin-bottom: 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .quick-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      letter-spacing: 0.05em;
+      margin-right: 0.25rem;
+    }
+
+    .jump-tag {
+      font-size: 0.75rem;
+      font-weight: 500;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-muted);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 0.3rem 0.65rem;
+      border-radius: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+
+    .jump-tag:hover {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: #10b981;
+      color: #ffffff;
+      padding: 0.85rem 1.4rem;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090d16;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #252e42;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3b4763;
+    }
+
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 1.25rem 1.5rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient-glow"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="header-content">
+      <div class="brand-title">
+        <div class="brand-badge">U</div>
+        <div class="title-text">
+          <h1>
+            UniConnect Project Textpad
+            <span class="stats-pill">● Ready to Copy</span>
+          </h1>
+          <p>Full Project Brief, Tech Stack, Schemas & System Specifications</p>
+        </div>
+      </div>
+
+      <div class="action-controls">
+        <button id="copyAllBtn" class="btn btn-primary" onclick="copyCurrentContent()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          Copy Entire Brief
+        </button>
+        <button class="btn btn-secondary" onclick="downloadFile()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Download File
+        </button>
+        <button class="btn btn-secondary" onclick="selectAllText()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+          Select All
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Subnav Tabs & Stats -->
+  <div class="subnav">
+    <div class="tab-group">
+      <button class="tab-btn active" id="tabText" onclick="switchFormat('txt')">Plain Text (.txt)</button>
+      <button class="tab-btn" id="tabMd" onclick="switchFormat('md')">Markdown (.md)</button>
+      <button class="tab-btn" id="tabJson" onclick="switchFormat('json')">Summary JSON</button>
+    </div>
+
+    <div class="meta-info">
+      <div class="meta-item">Lines: <span id="lineCount" class="meta-badge">0</span></div>
+      <div class="meta-item">Words: <span id="wordCount" class="meta-badge">0</span></div>
+      <div class="meta-item">Characters: <span id="charCount" class="meta-badge">0</span></div>
+    </div>
+  </div>
+
+  <!-- Main Content Area -->
+  <main>
+    <div class="quick-jump-container">
+      <span class="quick-label">Jump to Section:</span>
+      <button class="jump-tag" onclick="jumpToText('1. EXECUTIVE SUMMARY')">Overview</button>
+      <button class="jump-tag" onclick="jumpToText('2. COMPLETE TECHNOLOGY STACK')">Tech Stack</button>
+      <button class="jump-tag" onclick="jumpToText('3. CORE FEATURES')">Features</button>
+      <button class="jump-tag" onclick="jumpToText('4. DATABASE ARCHITECTURE')">Database & Models</button>
+      <button class="jump-tag" onclick="jumpToText('5. API ENDPOINTS')">API Endpoints</button>
+      <button class="jump-tag" onclick="jumpToText('6. REAL-TIME WEBSOCKET')">WebSockets</button>
+      <button class="jump-tag" onclick="jumpToText('7. ENVIRONMENT')">Environment Config</button>
+      <button class="jump-tag" onclick="jumpToText('8. QUICK START')">Setup & Run</button>
+    </div>
+
+    <div class="textpad-wrapper">
+      <div class="textpad-topbar">
+        <div class="topbar-left">
+          <div class="window-dots">
+            <span class="dot dot-red"></span>
+            <span class="dot dot-yellow"></span>
+            <span class="dot dot-green"></span>
+          </div>
+          <span id="currentFilename" class="file-name">UNICONNECT_BRIEF.txt</span>
+        </div>
+        <div class="topbar-right">
+          <span>Click anywhere to select or edit • Press Ctrl+A to select all</span>
+        </div>
+      </div>
+
+      <textarea id="textpadEditor" class="textpad-content" spellcheck="false" oninput="updateStats()"></textarea>
+    </div>
+  </main>
+
+  <div id="toast" class="toast">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+    <span id="toastMsg">Copied full brief to clipboard!</span>
+  </div>
+
+  <footer>
+    UniConnect Engineering & Architecture Documentation • Local Dev Server: http://localhost:5000 (Backend) & http://localhost:5173 (Frontend)
+  </footer>
+
+  <script>
+    const CONTENT_TXT = `================================================================================
+UNICONNECT — FULL PROJECT BRIEF & TECHNICAL SPECIFICATION
+Anonymous Reddit-Style Social Networking Platform Built for College Communities
+================================================================================
+
+1. EXECUTIVE SUMMARY & PROJECT OVERVIEW
+--------------------------------------------------------------------------------
+UniConnect is a full-stack, anonymous, and pseudonymous social media platform
+custom-engineered for university and college ecosystems. Drawing structural and
+functional inspiration from platforms like Reddit, UniConnect empowers students,
+faculty, and campus members to converse, ask questions, share resources, review
+courses, and participate in candid discussions through unique pseudonymous
+identities (e.g., u/campus_coder, c/cs-department) rather than their legal names.
+
+By decoupling real-world identities from campus discourse, UniConnect eliminates
+social friction, fear of peer judgment, and institutional retaliation, while
+maintaining accountability through karma reputation systems, community-level
+moderation, and reporting mechanisms.
+
+Key Platform Stats & Architecture:
+- Architecture: Client-Server Decoupled Monorepo (React SPA + Node/Express REST API + Socket.IO WebSockets)
+- Primary Database: MongoDB with Mongoose ODM (13 collections/schemas)
+- Real-Time Communication: Full-duplex WebSocket messaging engine
+- Authentication: Stateless JWT access tokens + persistent refresh token rotation
+- UI Architecture: Vanilla CSS mobile-first responsive layout (320px to 1440px+)
+
+
+2. COMPLETE TECHNOLOGY STACK
+--------------------------------------------------------------------------------
+FRONTEND LAYER:
+- Framework: React 18.3.1 (Single Page Application)
+- Bundler & Dev Tooling: Vite 6.4.3 (ESM, Fast HMR)
+- Routing: React Router DOM v6.28.2
+- HTTP Client: Axios 1.7.9 (configured with automated JWT interceptors & token refresh logic)
+- Real-Time Client: Socket.io-client 4.8.3
+- Visuals & Micro-interactions: OGL 1.0.11 (WebGL canvas effects)
+- Styling & Theming: Vanilla CSS with custom design tokens, CSS variables, dark/light theme support, responsive CSS Grid and Flexbox layouts.
+- Component System: Bespoke modular components (PostCard, CommentTree, CommunitySidebar, ChatBox, VoteWidget, NotificationBell, etc.)
+
+BACKEND LAYER:
+- Runtime Environment: Node.js (v18.x - v22.x)
+- Web Application Framework: Express 5.2.1
+- Real-Time Server: Socket.IO 4.8.3
+- Database & Modeling: MongoDB (v6.0+) via Mongoose 9.9.1
+- Authentication & Hashing: JSON Web Tokens (jsonwebtoken 9.0.3), bcrypt 6.0.0 (12 salt rounds)
+- File Upload Pipeline: Multer 2.2.0 (local disk storage with configurable Cloudinary bridge)
+- Security & Middleware:
+  * Helmet 8.3.0 (Strict Content Security Policies, X-Frame-Options, DNS prefetch control)
+  * CORS 2.8.6 (Configured for localhost:5173 with credentials support)
+  * Cookie-Parser 1.4.7 (HttpOnly cookie management for refresh tokens)
+  * Morgan 1.11.0 (HTTP request logger)
+- Email & Notifications: Nodemailer 6.10.1 (SMTP transport with developer console fallback for local password resets)
+- Process Manager: Nodemon 3.1.14 (Dev reloading)
+
+
+3. CORE FEATURES & FUNCTIONAL MODULES
+--------------------------------------------------------------------------------
+1. PSEUDONYMOUS IDENTITY & USER PROFILES
+   - Users register with a unique username (u/handle) and verified college email.
+   - Real identities, student IDs, and personal names are never exposed.
+   - Dynamic profile screens displaying joined communities, submitted posts, comments, total karma score, and bio.
+   - Customizable privacy controls: toggle DM permissions, toggle online presence indicator, and hide post history.
+
+2. COMMUNITIES (c/community-name)
+   - Dynamic subreddit-style micro-communities categorized by department, batch, interest, or club.
+   - Creator ownership with moderator privileges.
+   - Join/leave capabilities with real-time membership counts.
+   - Custom community rules, descriptions, icons, and banner media.
+
+3. POST CREATION & RICH MEDIA
+   - Multi-format post authoring: Text posts, image uploads, and external link previews.
+   - Anonymous posting toggle: allows posting even without showing your standard username (true anonymity).
+   - Feed categorization: Home Feed (aggregated from joined communities), Popular Feed (ranked by karma), Latest Feed (chronological).
+
+4. NESTED THREADED COMMENTS ENGINE
+   - Recursive unlimited-depth comment trees.
+   - Contextual replying, markdown text support, and collapse/expand comment threads.
+   - Upvoting and downvoting on individual comments with dynamic score recalculation.
+
+5. KARMA & REPUTATION ENGINE
+   - Democratic upvoting (+1) and downvoting (-1) on both posts and comments.
+   - Prevents duplicate voting via atomic compound-indexed Vote schemas.
+   - Author aggregate karma updates dynamically, incentivizing constructive campus participation.
+
+6. REAL-TIME DIRECT MESSAGING (CHAT)
+   - 1-on-1 private messaging powered by WebSockets (Socket.IO).
+   - Instant message delivery with database persistence.
+   - Live typing indicators ("u/student is typing...").
+   - Online/offline presence detection and broadcasting.
+   - Read receipts and message delivery timestamps.
+   - User blocking capability to eliminate harassment.
+
+7. IN-APP NOTIFICATIONS
+   - Real-time notification badges for post upvotes, comment replies, mentions, and community announcements.
+   - Mark as read, mark all read, and click-through navigation directly to relevant threads.
+
+8. BOOKMARKS & SAVED POSTS
+   - Private personal library of bookmarked posts for easy later retrieval.
+
+9. MODERATION & ADMIN SUITE
+   - Community-level moderation panel for community creators and mods.
+   - Global platform admin dashboard (/admin) for site-wide governance.
+   - Flagging & Reporting system: Users can flag objectionable posts, comments, or users with predefined reasons.
+   - Content removal, temporary muting, and permanent account ban actions.
+
+10. GLOBAL SEARCH
+    - Unified search bar with real-time querying across posts, community names, and pseudonymous usernames.
+
+
+4. DATABASE ARCHITECTURE & DATA MODELS
+--------------------------------------------------------------------------------
+The MongoDB database uniconnect is structured with 13 specialized collections:
+
+1. User
+   - Fields: username, email, passwordHash, avatar, bio, karma, role (user/admin), isBanned, settings (allowDMs, showOnlineStatus, privateProfile), createdAt, updatedAt
+2. Community
+   - Fields: name, slug, description, rules, icon, banner, privacy (public/restricted/private), creator (User ref), membersCount, postCount, createdAt
+3. CommunityMember
+   - Fields: community (ref), user (ref), role (member/moderator/admin), joinedAt [Compound Index: community + user]
+4. Post
+   - Fields: title, content, type (text/image/link), mediaUrl, linkUrl, community (ref), author (ref), isAnonymous, upvotes, downvotes, score, commentCount, isLocked, isPinned, createdAt
+5. Comment
+   - Fields: post (ref), parentComment (ref for nesting), author (ref), isAnonymous, content, upvotes, downvotes, score, isDeleted, createdAt
+6. Vote
+   - Fields: user (ref), targetType ('Post' or 'Comment'), targetId, value (1 or -1) [Compound Index: user + targetId]
+7. SavedPost
+   - Fields: user (ref), post (ref), savedAt [Compound Index: user + post]
+8. Conversation
+   - Fields: participants [User refs], lastMessage (ref), lastMessageAt, unreadCounts
+9. Message
+   - Fields: conversationId (ref), sender (ref), text, mediaUrl, readBy [User refs], isDeleted, createdAt
+10. Notification
+    - Fields: recipient (ref), sender (ref), type (upvote/comment/reply/mention/mod), targetType, targetId, isRead, createdAt
+11. Report
+    - Fields: reporter (ref), targetType ('Post'/'Comment'/'User'), targetId, reason, details, status (pending/reviewed/dismissed), resolvedBy, createdAt
+12. Block
+    - Fields: blocker (ref), blockedUser (ref), createdAt [Compound Index: blocker + blockedUser]
+13. RefreshToken
+    - Fields: token, user (ref), expiresAt, createdAt (TTL index for automatic cleanup)
+
+
+5. API ENDPOINTS SPECIFICATION
+--------------------------------------------------------------------------------
+AUTH ROUTES (/api/auth)
+- POST /register          — Register a new student account
+- POST /login             — Authenticate user and receive access token + refresh cookie
+- POST /logout            — Revoke refresh token and clear auth cookies
+- POST /refresh           — Exchange refresh token for new short-lived access token
+- POST /forgot-password   — Request password reset email / console link
+- POST /reset-password/:token — Update password via reset token
+- GET  /me                — Retrieve current authenticated user profile
+
+POST ROUTES (/api/posts)
+- GET    /                — Fetch posts with sorting (hot, new, top) & pagination
+- POST   /                — Create a new text/image/link post
+- GET    /:id             — Get post details including author and community info
+- PUT    /:id             — Edit existing post content (author only)
+- DELETE /:id             — Soft/hard delete post (author or moderator)
+- POST   /:id/vote        — Cast upvote (+1), downvote (-1), or clear vote (0)
+- POST   /:id/save        — Save or unsave post to user bookmarks
+
+FEED ROUTES (/api/feed)
+- GET /home               — Aggregated feed from user's joined communities
+- GET /popular            — Sitewide high-karma posts
+- GET /latest             — Chronological sitewide posts
+
+COMMUNITY ROUTES (/api/communities)
+- GET    /                — List all public communities with metadata
+- POST   /                — Create a new community
+- GET    /:slug           — Get community profile, rules, and moderation staff
+- POST   /:slug/join      — Join community
+- POST   /:slug/leave     — Leave community
+- GET    /:slug/posts     — Paginated posts for specific community
+
+COMMENT ROUTES (/api/comments)
+- GET    /post/:postId    — Fetch nested comment tree for a specific post
+- POST   /post/:postId    — Submit a new top-level or reply comment
+- PUT    /:id             — Edit comment text
+- DELETE /:id             — Delete comment (preserves subtree if replies exist)
+- POST   /:id/vote        — Upvote or downvote comment
+
+CHAT & MESSAGING ROUTES (/api/chat)
+- GET  /conversations     — Retrieve user conversation list with last messages
+- POST /conversations     — Initiate a 1-on-1 direct conversation with a user
+- GET  /conversations/:id/messages — Fetch message history with cursor pagination
+
+NOTIFICATIONS ROUTES (/api/notifications)
+- GET  /                  — Fetch recent notifications
+- PUT  /:id/read          — Mark single notification as read
+- PUT  /read-all          — Mark all unread notifications as read
+
+SEARCH & DISCOVERY ROUTES (/api/search)
+- GET  /?q=:term          — Full-text search across posts, communities, and users
+
+USER & PROFILE ROUTES (/api/users)
+- GET  /:username         — Public pseudonymous profile & karma breakdown
+- PUT  /profile           — Update avatar, bio, and settings
+- POST /:id/block         — Block or unblock a user
+
+ADMIN & REPORT ROUTES (/api/admin & /api/reports)
+- POST /reports           — Submit a content/user violation report
+- GET  /admin/reports     — View all pending reports (Admin only)
+- PUT  /admin/reports/:id — Resolve or dismiss a report
+- POST /admin/ban/:userId — Ban or unban a user from the platform
+
+
+6. REAL-TIME WEBSOCKET ARCHITECTURE (SOCKET.IO)
+--------------------------------------------------------------------------------
+Connection Lifecycle:
+1. Client connects with handshake auth: { token: JWT_ACCESS_TOKEN }.
+2. Server validates JWT, extracts userId, binds socket to user_\${userId} room, and emits presence_change.
+3. Disconnection updates online presence table and broadcasts status.
+
+Socket Event Catalog:
+- join_conversation   : Subscribes socket to private room conv_\${conversationId}
+- leave_conversation  : Unsubscribes socket from conversation room
+- send_message        : Validates membership, persists Message document to MongoDB, updates Conversation lastMessage, and emits new_message to room
+- new_message         : Received by clients inside the conversation room in real-time
+- typing_start        : Broadcasts typing notification to conversation members
+- typing_stop         : Clears typing indicator
+- message_read        : Updates read status in database and notifies sender
+
+
+7. ENVIRONMENT CONFIGURATION
+--------------------------------------------------------------------------------
+BACKEND CONFIGURATION (backend/.env):
+  PORT=5000
+  NODE_ENV=development
+  MONGO_URI=mongodb://127.0.0.1:27017/uniconnect
+  JWT_SECRET=uniconnect_jwt_secret_dev_2024_change_in_prod
+  JWT_REFRESH_SECRET=uniconnect_refresh_secret_dev_2024_change_in_prod
+  JWT_EXPIRE=15m
+  JWT_REFRESH_EXPIRE=7d
+  CLIENT_URL=http://localhost:5173
+  EMAIL_HOST=smtp.example.com (optional)
+  EMAIL_PORT=587 (optional)
+  EMAIL_USER=noreply@domain.com (optional)
+  EMAIL_PASS=secret (optional)
+  EMAIL_FROM=noreply@uniconnect.dev (optional)
+
+FRONTEND CONFIGURATION (frontend/.env):
+  VITE_API_URL=http://localhost:5000/api
+  VITE_SOCKET_URL=http://localhost:5000
+
+
+8. QUICK START & RUNNING INSTRUCTIONS
+--------------------------------------------------------------------------------
+Prerequisites:
+- Node.js >= 18.x
+- MongoDB Server running on port 27017 (Local service or MongoDB Atlas)
+
+Step 1: Start MongoDB
+Ensure MongoDB is running locally (Get-Service MongoDB on Windows).
+
+Step 2: Start Backend Server
+  cd backend
+  npm install
+  npm run dev
+  -> Running at: http://localhost:5000
+  -> API Health: http://localhost:5000/api/health
+
+Step 3: Start Frontend Client
+  cd frontend
+  npm install
+  npm run dev
+  -> Running at: http://localhost:5173
+
+Step 4: Optional Database Seeding
+  cd backend
+  npm run seed             (Seeds sample communities & admin user)
+  npm run seed:categories  (Seeds predefined category tags)
+
+================================================================================
+END OF SPECIFICATION
+================================================================================`;
+
+    const CONTENT_MD = `# UniConnect — Comprehensive Project Brief & Technical Specification
+> **Anonymous Reddit-Style Social Networking Platform Built for College Communities**
+
+---
+
+## 1. Executive Summary & Project Overview
+
+**UniConnect** is a full-stack, anonymous, and pseudonymous social media platform tailored for university and college ecosystems. Drawing inspiration from platforms like Reddit, UniConnect empowers students, faculty, and campus members to converse, ask questions, share resources, review courses, and participate in candid discussions through unique pseudonymous identities (e.g., \`u/campus_coder\`, \`c/cs-department\`) rather than their legal names.
+
+By decoupling real-world identities from campus discourse, UniConnect eliminates social friction, fear of peer judgment, and institutional retaliation, while maintaining accountability through karma reputation systems, community-level moderation, and reporting mechanisms.
+
+### Platform Key Stats & Architecture
+- **Architecture:** Client-Server Decoupled Monorepo (React SPA + Node/Express REST API + Socket.IO WebSockets)
+- **Primary Database:** MongoDB with Mongoose ODM (13 collections/schemas)
+- **Real-Time Engine:** Full-duplex WebSocket messaging engine
+- **Authentication:** Stateless JWT access tokens (15m) + persistent refresh token rotation (7d)
+- **UI Architecture:** Vanilla CSS mobile-first responsive layout (320px to 1440px+)
+
+---
+
+## 2. Complete Technology Stack
+
+### Frontend Layer
+| Component | Technology | Version | Purpose |
+|---|---|---|---|
+| **Framework** | React | \`18.3.1\` | Single Page Application UI engine |
+| **Bundler & Tooling** | Vite | \`6.4.3\` | Ultra-fast ESM compilation & Hot Module Replacement |
+| **Routing** | React Router DOM | \`6.28.2\` | Declarative client-side routing & page guards |
+| **HTTP Client** | Axios | \`1.7.9\` | Request/response interceptors with automatic token refresh |
+| **Real-Time Client** | Socket.io-client | \`4.8.3\` | WebSocket bidirectional connection with auto-reconnect |
+| **Graphics & FX** | OGL | \`1.0.11\` | High-performance WebGL canvas effects |
+| **Styling** | Vanilla CSS | Modern CSS | Design tokens, CSS variables, dark/light themes, zero bulky frameworks |
+
+### Backend Layer
+| Component | Technology | Version | Purpose |
+|---|---|---|---|
+| **Runtime** | Node.js | \`>= 18.x\` | JavaScript asynchronous server runtime |
+| **Web Framework** | Express | \`5.2.1\` | REST API routing, middleware chaining, and controller handlers |
+| **Real-Time Server**| Socket.IO | \`4.8.3\` | WebSocket events, room subscriptions, typing status, presence |
+| **Database ODM** | Mongoose | \`9.9.1\` | Schema validation, indexing, and MongoDB queries |
+| **Database** | MongoDB | \`>= 6.0\` | Document database for accounts, posts, messages, votes |
+| **Auth & Hashing** | JSON Web Tokens & bcrypt | \`9.0.3\` / \`6.0.0\` | JWT authentication + bcrypt (12 salt rounds) |
+| **File Uploads** | Multer | \`2.2.0\` | Multi-part form parsing & local disk storage |
+| **Security & Headers** | Helmet & CORS | \`8.3.0\` / \`2.8.6\` | HTTP security headers, CORS origin whitelisting |
+| **Cookie Parsing** | Cookie-Parser | \`1.4.7\` | HttpOnly cookie management for refresh tokens |
+| **Logging** | Morgan | \`1.11.0\` | Structured HTTP request logs |
+| **Mailer** | Nodemailer | \`6.10.1\` | SMTP email dispatch with dev console fallback |
+
+---
+
+## 3. Core Features & Functional Modules
+
+1. **Pseudonymous Identity & User Profiles**
+   - Register with username (\`u/handle\`) and verified college email.
+   - Real names and student IDs are never exposed publicly.
+   - Dynamic profile screens showing joined communities, submitted posts, comments, total karma score, and bio.
+   - Privacy controls: toggle DM permissions, online presence indicator, and profile visibility.
+
+2. **Communities (\`c/community-name\`)**
+   - Micro-communities categorized by department, batch, interest, or club.
+   - Creator ownership with moderator privileges.
+   - Join/leave capabilities with real-time membership counts.
+   - Community rules, descriptions, icons, and banner media.
+
+3. **Post Creation & Rich Media**
+   - Multi-format authoring: Text posts, image uploads, and external link previews.
+   - **True Anonymity Toggle:** Post without displaying even your pseudonym.
+   - Tri-feed categorization: **Home Feed** (joined communities), **Popular Feed** (karma-ranked), and **Latest Feed** (chronological).
+
+4. **Nested Threaded Comments Engine**
+   - Recursive unlimited-depth comment trees.
+   - Contextual replying, markdown formatting, collapse/expand comment threads.
+   - Upvoting and downvoting on individual comments with dynamic score recalculation.
+
+5. **Karma & Reputation Engine**
+   - Democratic upvoting (+1) and downvoting (-1) on both posts and comments.
+   - Atomic compound-indexed \`Vote\` schemas prevent double voting.
+   - Dynamic author aggregate karma calculation.
+
+6. **Real-Time Direct Messaging (Chat)**
+   - 1-on-1 private messaging powered by WebSockets.
+   - Instant message delivery with database persistence.
+   - Live typing indicators (\`u/student is typing...\`).
+   - Online/offline presence detection and broadcasting.
+   - Read receipts and message delivery timestamps.
+   - User blocking capability to prevent harassment.
+
+7. **In-App Notifications**
+   - Notification badges for post upvotes, comment replies, mentions, and community alerts.
+   - Read / unread status and instant click-through routing to target discussions.
+
+8. **Bookmarks & Saved Posts**
+   - Private personal collection of bookmarked posts.
+
+9. **Moderation & Admin Suite**
+   - Community-level moderation panel for community creators and mods.
+   - Global platform admin dashboard (\`/admin\`) for site-wide governance.
+   - Content flagging and reporting with predefined violation reasons.
+   - Content removal, temporary muting, and account ban actions.
+
+10. **Global Search**
+    - Unified search bar with real-time querying across posts, communities, and pseudonymous usernames.
+
+---
+
+## 4. Database Schema Architecture
+
+The MongoDB database contains **13 specialized collections**:
+
+- \`User\`: Username, email, passwordHash, avatar, bio, karma, role (\`user\`/\`admin\`), isBanned, privacy settings.
+- \`Community\`: Name, slug, description, rules, icon, banner, privacy (\`public\`/\`restricted\`/\`private\`), creator ref, member counts.
+- \`CommunityMember\`: Composite tracking of users in communities with roles (\`member\`, \`moderator\`, \`admin\`).
+- \`Post\`: Title, content, type (\`text\`/\`image\`/\`link\`), mediaUrl, linkUrl, community ref, author ref, isAnonymous, score, upvotes, downvotes, commentCount.
+- \`Comment\`: Post ref, parentComment ref (recursive nesting), author ref, isAnonymous, content, score.
+- \`Vote\`: User ref, targetType (\`Post\`/\`Comment\`), targetId, value (\`1\`/\`-1\`) with unique compound index.
+- \`SavedPost\`: User ref, post ref, saved timestamp.
+- \`Conversation\`: Direct messaging conversation between participant user refs, last message reference.
+- \`Message\`: Conversation ref, sender ref, text, mediaUrl, readBy array.
+- \`Notification\`: Recipient ref, sender ref, type, targetType, targetId, isRead.
+- \`Report\`: Reporter ref, targetType, targetId, reason, details, status (\`pending\`/\`reviewed\`/\`dismissed\`).
+- \`Block\`: Blocker ref, blockedUser ref (prevents DMs).
+- \`RefreshToken\`: Cryptographic refresh tokens with automatic MongoDB TTL expiration.
+
+---
+
+## 5. API Endpoints Table
+
+| Category | Method | Path | Description |
+|---|---|---|---|
+| **Auth** | \`POST\` | \`/api/auth/register\` | Register new user |
+| **Auth** | \`POST\` | \`/api/auth/login\` | Login & receive tokens |
+| **Auth** | \`POST\` | \`/api/auth/logout\` | Revoke session & clear cookies |
+| **Auth** | \`POST\` | \`/api/auth/refresh\` | Issue fresh access token |
+| **Auth** | \`POST\` | \`/api/auth/forgot-password\` | Request password reset token |
+| **Auth** | \`POST\` | \`/api/auth/reset-password/:token\`| Complete password reset |
+| **Auth** | \`GET\` | \`/api/auth/me\` | Fetch authenticated session |
+| **Feed** | \`GET\` | \`/api/feed/home\` | Personalized home feed |
+| **Feed** | \`GET\` | \`/api/feed/popular\` | Global popular feed |
+| **Feed** | \`GET\` | \`/api/feed/latest\` | Chronological latest feed |
+| **Posts** | \`GET\` | \`/api/posts\` | Paginated post listing |
+| **Posts** | \`POST\` | \`/api/posts\` | Create new post |
+| **Posts** | \`GET\` | \`/api/posts/:id\` | Post detail + metadata |
+| **Posts** | \`POST\` | \`/api/posts/:id/vote\` | Cast or clear post vote |
+| **Posts** | \`POST\` | \`/api/posts/:id/save\` | Bookmark / unbookmark post |
+| **Comments**| \`GET\` | \`/api/comments/post/:postId\` | Nested comment tree |
+| **Comments**| \`POST\` | \`/api/comments/post/:postId\` | Submit top-level or reply comment |
+| **Communities**| \`GET\` | \`/api/communities\` | List all communities |
+| **Communities**| \`POST\` | \`/api/communities\` | Create community |
+| **Communities**| \`POST\` | \`/api/communities/:slug/join\` | Join community |
+| **Chat** | \`GET\` | \`/api/chat/conversations\` | User conversation list |
+| **Chat** | \`GET\` | \`/api/chat/conversations/:id/messages\` | Message history |
+| **Notifications**| \`GET\` | \`/api/notifications\` | Fetch notifications |
+| **Search** | \`GET\` | \`/api/search?q=:term\` | Multi-entity full-text search |
+| **Users** | \`GET\` | \`/api/users/:username\` | Pseudonymous profile & karma |
+| **Admin** | \`GET\` | \`/api/admin/reports\` | Platform moderation queue |
+
+---
+
+## 6. Real-Time WebSocket Events (Socket.IO)
+
+| Event Name | Direction | Payload & Action |
+|---|---|---|
+| \`connection\` | Client -> Server | Handshake with \`{ auth: { token } }\`, registers socket & binds to user room |
+| \`join_conversation\` | Client -> Server | Joins private conversation channel \`conv_\${id}\` |
+| \`send_message\` | Client -> Server | Persists message to DB, broadcasts to conversation room |
+| \`new_message\` | Server -> Client | Real-time message push delivered to conversation participants |
+| \`typing_start\` | Client -> Server | Broadcasts typing indicator to active conversation members |
+| \`typing_stop\` | Client -> Server | Clears typing indicator |
+| \`message_read\` | Client -> Server | Marks message as read and informs sender |
+| \`presence_change\` | Server -> Client | Broadcasts updated online/offline user status |
+
+---
+
+## 7. Setup & Running Instructions
+
+### Prerequisites
+- Node.js ≥ 18.x
+- MongoDB running locally on port 27017 (or MongoDB Atlas)
+
+### Starting Services
+\`\`\`bash
+# Terminal 1 — Backend
+cd backend
+npm run dev
+# Server ready on: http://localhost:5000 (Health: http://localhost:5000/api/health)
+
+# Terminal 2 — Frontend
+cd frontend
+npm run dev
+# Frontend ready on: http://localhost:5173
+\`\`\`
+`;
+
+    const CONTENT_JSON = JSON.stringify({
+      projectName: "UniConnect",
+      tagline: "Anonymous Reddit-Style Social Networking Platform Built for College Communities",
+      architecture: "Client-Server Decoupled Monorepo (React SPA + Express REST API + Socket.IO)",
+      ports: {
+        frontend: 5173,
+        backend: 5000,
+        mongodb: 27017
+      },
+      techStack: {
+        frontend: ["React 18.3.1", "Vite 6.4.3", "React Router v6.28.2", "Axios 1.7.9", "Socket.io-client 4.8.3", "OGL 1.0.11", "Vanilla CSS"],
+        backend: ["Node.js", "Express 5.2.1", "MongoDB", "Mongoose 9.9.1", "Socket.IO 4.8.3", "JWT", "bcrypt", "Helmet", "Multer", "Nodemailer"]
+      },
+      keyFeatures: [
+        "Pseudonymous identity (u/username) with complete real-name detachment",
+        "Subreddit-style campus communities (c/community-name)",
+        "Post creation with text, image uploads, link previews & true anonymous mode",
+        "Recursive unlimited-depth threaded comment tree",
+        "Democratic upvoting, downvoting and user karma accumulation",
+        "Full-duplex real-time direct messaging with typing status and read receipts",
+        "In-app push notifications for upvotes, comments, mentions and replies",
+        "Private bookmarks / saved posts system",
+        "Community & platform-level moderation suites with reporting & ban mechanics",
+        "Full-text search querying across posts, communities and pseudonyms"
+      ],
+      schemas: ["User", "Community", "CommunityMember", "Post", "Comment", "Vote", "SavedPost", "Conversation", "Message", "Notification", "Report", "Block", "RefreshToken"]
+    }, null, 2);
+
+    let currentFormat = 'txt';
+    const editor = document.getElementById('textpadEditor');
+    const filenameLabel = document.getElementById('currentFilename');
+    const toast = document.getElementById('toast');
+    const toastMsg = document.getElementById('toastMsg');
+
+    // Initialize editor with plain text
+    editor.value = CONTENT_TXT;
+    updateStats();
+
+    function switchFormat(format) {
+      currentFormat = format;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+      if (format === 'txt') {
+        document.getElementById('tabText').classList.add('active');
+        editor.value = CONTENT_TXT;
+        filenameLabel.textContent = 'UNICONNECT_BRIEF.txt';
+      } else if (format === 'md') {
+        document.getElementById('tabMd').classList.add('active');
+        editor.value = CONTENT_MD;
+        filenameLabel.textContent = 'UNICONNECT_BRIEF.md';
+      } else if (format === 'json') {
+        document.getElementById('tabJson').classList.add('active');
+        editor.value = CONTENT_JSON;
+        filenameLabel.textContent = 'UNICONNECT_BRIEF.json';
+      }
+      updateStats();
+    }
+
+    function updateStats() {
+      const text = editor.value;
+      const lines = text.length === 0 ? 0 : text.split('\\n').length;
+      const words = text.trim() === '' ? 0 : text.trim().split(/\\s+/).length;
+      const chars = text.length;
+
+      document.getElementById('lineCount').textContent = lines.toLocaleString();
+      document.getElementById('wordCount').textContent = words.toLocaleString();
+      document.getElementById('charCount').textContent = chars.toLocaleString();
+    }
+
+    function showToast(message) {
+      toastMsg.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2500);
+    }
+
+    async function copyCurrentContent() {
+      try {
+        await navigator.clipboard.writeText(editor.value);
+        const btn = document.getElementById('copyAllBtn');
+        const originalText = btn.innerHTML;
+        btn.classList.add('btn-success');
+        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg> Copied to Clipboard!`;
+        showToast('✓ Copied entire brief to clipboard!');
+        setTimeout(() => {
+          btn.classList.remove('btn-success');
+          btn.innerHTML = originalText;
+        }, 2200);
+      } catch (err) {
+        // Fallback for older browsers
+        editor.select();
+        document.execCommand('copy');
+        showToast('✓ Copied entire brief to clipboard!');
+      }
+    }
+
+    function selectAllText() {
+      editor.focus();
+      editor.select();
+      showToast('All text selected! Press Ctrl+C to copy');
+    }
+
+    function jumpToText(phrase) {
+      const pos = editor.value.indexOf(phrase);
+      if (pos !== -1) {
+        editor.focus();
+        editor.setSelectionRange(pos, pos + phrase.length);
+        const linesBefore = editor.value.substring(0, pos).split('\\n').length;
+        const lineHeight = 24;
+        editor.scrollTop = Math.max(0, (linesBefore - 3) * lineHeight);
+        showToast('Jumped to: ' + phrase);
+      } else {
+        showToast('Section heading not found in current format');
+      }
+    }
+
+    function downloadFile() {
+      const ext = currentFormat === 'json' ? 'json' : (currentFormat === 'md' ? 'md' : 'txt');
+      const filename = \`UniConnect_Brief.\${ext}\`;
+      const blob = new Blob([editor.value], { type: 'text/plain;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast(\`Downloaded \${filename}\`);
+    }
+  </script>
+</body>
+</html>

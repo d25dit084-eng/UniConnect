@@ -38,6 +38,7 @@ const refreshTokenSchema = new mongoose.Schema(
 // Auto-expire documents using MongoDB TTL index
 refreshTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 refreshTokenSchema.index({ user: 1 });
+refreshTokenSchema.index({ tokenHash: 1 });
 
 const RefreshToken = mongoose.model('RefreshToken', refreshTokenSchema);
 

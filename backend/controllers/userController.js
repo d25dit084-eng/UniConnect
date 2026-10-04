@@ -8,6 +8,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const sendResponse = require('../utils/sendResponse');
 const { sendVerificationEmail } = require('../services/emailService');
+const { invalidateBlockCache, invalidateUserCache } = require('../services/socketService');
 
 // Helper to clean up "u/" prefix from username input
 const cleanUsername = (username) => {
@@ -125,6 +126,8 @@ const updateProfile = asyncHandler(async (req, res) => {
     { returnDocument: 'after', runValidators: true }
   );
 
+  invalidateUserCache(req.user._id);
+
   const privateProfile = {
     _id: updatedUser._id,
     username: updatedUser.username.startsWith('u/') ? updatedUser.username : `u/${updatedUser.username}`,
@@ -171,6 +174,7 @@ const blockUser = asyncHandler(async (req, res) => {
       blocker: blockerId,
       blocked: targetUser._id,
     });
+    invalidateBlockCache(blockerId);
   } catch (err) {
     if (err.code === 11000) {
       throw new ApiError(409, 'You have already blocked this user');
@@ -203,6 +207,8 @@ const unblockUser = asyncHandler(async (req, res) => {
   if (result.deletedCount === 0) {
     throw new ApiError(404, 'You have not blocked this user');
   }
+
+  invalidateBlockCache(blockerId);
 
   sendResponse(res, 200, `Unblocked u/${targetUser.username} successfully`);
 });
@@ -289,6 +295,8 @@ const uploadProfileImage = asyncHandler(async (req, res) => {
     { avatar: imageUrl, profileImage: imageUrl },
     { returnDocument: 'after' }
   );
+
+  invalidateUserCache(req.user._id);
 
   sendResponse(res, 200, 'Profile image uploaded successfully', {
     avatar: imageUrl,

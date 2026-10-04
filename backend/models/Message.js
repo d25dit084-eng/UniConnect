@@ -16,7 +16,12 @@ const messageSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Message content cannot be empty'],
       trim: true,
-      maxlength: [1000, 'Message content cannot exceed 1000 characters'],
+      maxlength: [2000, 'Message content cannot exceed 2000 characters'],
+    },
+    clientMsgId: {
+      type: String,
+      default: null,
+      trim: true,
     },
     attachments: {
       type: [String],
@@ -32,8 +37,10 @@ const messageSchema = new mongoose.Schema(
   }
 );
 
-// Index for loading a conversation's messages chronologically
-messageSchema.index({ conversation: 1, createdAt: 1 });
+// High-performance compound indexes for cursor pagination & history
+messageSchema.index({ conversation: 1, createdAt: -1 });
+messageSchema.index({ conversation: 1, isRead: 1 });
+messageSchema.index({ clientMsgId: 1 }, { sparse: true });
 
 const Message = mongoose.model('Message', messageSchema);
 

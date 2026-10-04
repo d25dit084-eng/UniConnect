@@ -1,0 +1,275 @@
+================================================================================
+UNICONNECT — FULL PROJECT BRIEF & TECHNICAL SPECIFICATION
+Anonymous Reddit-Style Social Networking Platform Built for College Communities
+================================================================================
+
+1. EXECUTIVE SUMMARY & PROJECT OVERVIEW
+--------------------------------------------------------------------------------
+UniConnect is a full-stack, anonymous, and pseudonymous social media platform
+custom-engineered for university and college ecosystems. Drawing structural and
+functional inspiration from platforms like Reddit, UniConnect empowers students,
+faculty, and campus members to converse, ask questions, share resources, review
+courses, and participate in candid discussions through unique pseudonymous
+identities (e.g., u/campus_coder, c/cs-department) rather than their legal names.
+
+By decoupling real-world identities from campus discourse, UniConnect eliminates
+social friction, fear of peer judgment, and institutional retaliation, while
+maintaining accountability through karma reputation systems, community-level
+moderation, and reporting mechanisms.
+
+Key Platform Stats & Architecture:
+- Architecture: Client-Server Decoupled Monorepo (React SPA + Node/Express REST API + Socket.IO WebSockets)
+- Primary Database: MongoDB with Mongoose ODM (13 collections/schemas)
+- Real-Time Communication: Full-duplex WebSocket messaging engine
+- Authentication: Stateless JWT access tokens + persistent refresh token rotation
+- UI Architecture: Vanilla CSS mobile-first responsive layout (320px to 1440px+)
+
+
+2. COMPLETE TECHNOLOGY STACK
+--------------------------------------------------------------------------------
+FRONTEND LAYER:
+- Framework: React 18.3.1 (Single Page Application)
+- Bundler & Dev Tooling: Vite 6.4.3 (ESM, Fast HMR)
+- Routing: React Router DOM v6.28.2
+- HTTP Client: Axios 1.7.9 (configured with automated JWT interceptors & token refresh logic)
+- Real-Time Client: Socket.io-client 4.8.3
+- Visuals & Micro-interactions: OGL 1.0.11 (WebGL canvas effects)
+- Styling & Theming: Vanilla CSS with custom design tokens, CSS variables, dark/light theme support, responsive CSS Grid and Flexbox layouts.
+- Component System: Bespoke modular components (PostCard, CommentTree, CommunitySidebar, ChatBox, VoteWidget, NotificationBell, etc.)
+
+BACKEND LAYER:
+- Runtime Environment: Node.js (v18.x - v22.x)
+- Web Application Framework: Express 5.2.1
+- Real-Time Server: Socket.IO 4.8.3
+- Database & Modeling: MongoDB (v6.0+) via Mongoose 9.9.1
+- Authentication & Hashing: JSON Web Tokens (jsonwebtoken 9.0.3), bcrypt 6.0.0 (12 salt rounds)
+- File Upload Pipeline: Multer 2.2.0 (local disk storage with configurable Cloudinary bridge)
+- Security & Middleware:
+  * Helmet 8.3.0 (Strict Content Security Policies, X-Frame-Options, DNS prefetch control)
+  * CORS 2.8.6 (Configured for localhost:5173 with credentials support)
+  * Cookie-Parser 1.4.7 (HttpOnly cookie management for refresh tokens)
+  * Morgan 1.11.0 (HTTP request logger)
+- Email & Notifications: Nodemailer 6.10.1 (SMTP transport with developer console fallback for local password resets)
+- Process Manager: Nodemon 3.1.14 (Dev reloading)
+
+
+3. CORE FEATURES & FUNCTIONAL MODULES
+--------------------------------------------------------------------------------
+1. PSEUDONYMOUS IDENTITY & USER PROFILES
+   - Users register with a unique username (u/handle) and verified college email.
+   - Real identities, student IDs, and personal names are never exposed.
+   - Dynamic profile screens displaying joined communities, submitted posts, comments, total karma score, and bio.
+   - Customizable privacy controls: toggle DM permissions, toggle online presence indicator, and hide post history.
+
+2. COMMUNITIES (c/community-name)
+   - Dynamic subreddit-style micro-communities categorized by department, batch, interest, or club.
+   - Creator ownership with moderator privileges.
+   - Join/leave capabilities with real-time membership counts.
+   - Custom community rules, descriptions, icons, and banner media.
+
+3. POST CREATION & RICH MEDIA
+   - Multi-format post authoring: Text posts, image uploads, and external link previews.
+   - Anonymous posting toggle: allows posting even without showing your standard username (true anonymity).
+   - Feed categorization: Home Feed (aggregated from joined communities), Popular Feed (ranked by karma), Latest Feed (chronological).
+
+4. NESTED THREADED COMMENTS ENGINE
+   - Recursive unlimited-depth comment trees.
+   - Contextual replying, markdown text support, and collapse/expand comment threads.
+   - Upvoting and downvoting on individual comments with dynamic score recalculation.
+
+5. KARMA & REPUTATION ENGINE
+   - Democratic upvoting (+1) and downvoting (-1) on both posts and comments.
+   - Prevents duplicate voting via atomic compound-indexed Vote schemas.
+   - Author aggregate karma updates dynamically, incentivizing constructive campus participation.
+
+6. REAL-TIME DIRECT MESSAGING (CHAT)
+   - 1-on-1 private messaging powered by WebSockets (Socket.IO).
+   - Instant message delivery with database persistence.
+   - Live typing indicators ("u/student is typing...").
+   - Online/offline presence detection and broadcasting.
+   - Read receipts and message delivery timestamps.
+   - User blocking capability to eliminate harassment.
+
+7. IN-APP NOTIFICATIONS
+   - Real-time notification badges for post upvotes, comment replies, mentions, and community announcements.
+   - Mark as read, mark all read, and click-through navigation directly to relevant threads.
+
+8. BOOKMARKS & SAVED POSTS
+   - Private personal library of bookmarked posts for easy later retrieval.
+
+9. MODERATION & ADMIN SUITE
+   - Community-level moderation panel for community creators and mods.
+   - Global platform admin dashboard (`/admin`) for site-wide governance.
+   - Flagging & Reporting system: Users can flag objectionable posts, comments, or users with predefined reasons.
+   - Content removal, temporary muting, and permanent account ban actions.
+
+10. GLOBAL SEARCH
+    - Unified search bar with real-time querying across posts, community names, and pseudonymous usernames.
+
+
+4. DATABASE ARCHITECTURE & DATA MODELS
+--------------------------------------------------------------------------------
+The MongoDB database `uniconnect` is structured with 13 specialized collections:
+
+1. User
+   - Fields: username, email, passwordHash, avatar, bio, karma, role (user/admin), isBanned, settings (allowDMs, showOnlineStatus, privateProfile), createdAt, updatedAt
+2. Community
+   - Fields: name, slug, description, rules, icon, banner, privacy (public/restricted/private), creator (User ref), membersCount, postCount, createdAt
+3. CommunityMember
+   - Fields: community (ref), user (ref), role (member/moderator/admin), joinedAt [Compound Index: community + user]
+4. Post
+   - Fields: title, content, type (text/image/link), mediaUrl, linkUrl, community (ref), author (ref), isAnonymous, upvotes, downvotes, score, commentCount, isLocked, isPinned, createdAt
+5. Comment
+   - Fields: post (ref), parentComment (ref for nesting), author (ref), isAnonymous, content, upvotes, downvotes, score, isDeleted, createdAt
+6. Vote
+   - Fields: user (ref), targetType ('Post' or 'Comment'), targetId, value (1 or -1) [Compound Index: user + targetId]
+7. SavedPost
+   - Fields: user (ref), post (ref), savedAt [Compound Index: user + post]
+8. Conversation
+   - Fields: participants [User refs], lastMessage (ref), lastMessageAt, unreadCounts
+9. Message
+   - Fields: conversationId (ref), sender (ref), text, mediaUrl, readBy [User refs], isDeleted, createdAt
+10. Notification
+    - Fields: recipient (ref), sender (ref), type (upvote/comment/reply/mention/mod), targetType, targetId, isRead, createdAt
+11. Report
+    - Fields: reporter (ref), targetType ('Post'/'Comment'/'User'), targetId, reason, details, status (pending/reviewed/dismissed), resolvedBy, createdAt
+12. Block
+    - Fields: blocker (ref), blockedUser (ref), createdAt [Compound Index: blocker + blockedUser]
+13. RefreshToken
+    - Fields: token, user (ref), expiresAt, createdAt (TTL index for automatic cleanup)
+
+
+5. API ENDPOINTS SPECIFICATION
+--------------------------------------------------------------------------------
+AUTH ROUTES (`/api/auth`)
+- POST /register          — Register a new student account
+- POST /login             — Authenticate user and receive access token + refresh cookie
+- POST /logout            — Revoke refresh token and clear auth cookies
+- POST /refresh           — Exchange refresh token for new short-lived access token
+- POST /forgot-password   — Request password reset email / console link
+- POST /reset-password/:token — Update password via reset token
+- GET  /me                — Retrieve current authenticated user profile
+
+POST ROUTES (`/api/posts`)
+- GET    /                — Fetch posts with sorting (hot, new, top) & pagination
+- POST   /                — Create a new text/image/link post
+- GET    /:id             — Get post details including author and community info
+- PUT    /:id             — Edit existing post content (author only)
+- DELETE /:id             — Soft/hard delete post (author or moderator)
+- POST   /:id/vote        — Cast upvote (+1), downvote (-1), or clear vote (0)
+- POST   /:id/save        — Save or unsave post to user bookmarks
+
+FEED ROUTES (`/api/feed`)
+- GET /home               — Aggregated feed from user's joined communities
+- GET /popular            — Sitewide high-karma posts
+- GET /latest             — Chronological sitewide posts
+
+COMMUNITY ROUTES (`/api/communities`)
+- GET    /                — List all public communities with metadata
+- POST   /                — Create a new community
+- GET    /:slug           — Get community profile, rules, and moderation staff
+- POST   /:slug/join      — Join community
+- POST   /:slug/leave     — Leave community
+- GET    /:slug/posts     — Paginated posts for specific community
+
+COMMENT ROUTES (`/api/comments`)
+- GET    /post/:postId    — Fetch nested comment tree for a specific post
+- POST   /post/:postId    — Submit a new top-level or reply comment
+- PUT    /:id             — Edit comment text
+- DELETE /:id             — Delete comment (preserves subtree if replies exist)
+- POST   /:id/vote        — Upvote or downvote comment
+
+CHAT & MESSAGING ROUTES (`/api/chat`)
+- GET  /conversations     — Retrieve user conversation list with last messages
+- POST /conversations     — Initiate a 1-on-1 direct conversation with a user
+- GET  /conversations/:id/messages — Fetch message history with cursor pagination
+
+NOTIFICATIONS ROUTES (`/api/notifications`)
+- GET  /                  — Fetch recent notifications
+- PUT  /:id/read          — Mark single notification as read
+- PUT  /read-all          — Mark all unread notifications as read
+
+SEARCH & DISCOVERY ROUTES (`/api/search`)
+- GET  /?q=:term          — Full-text search across posts, communities, and users
+
+USER & PROFILE ROUTES (`/api/users`)
+- GET  /:username         — Public pseudonymous profile & karma breakdown
+- PUT  /profile           — Update avatar, bio, and settings
+- POST /:id/block         — Block or unblock a user
+
+ADMIN & REPORT ROUTES (`/api/admin` & `/api/reports`)
+- POST /reports           — Submit a content/user violation report
+- GET  /admin/reports     — View all pending reports (Admin only)
+- PUT  /admin/reports/:id — Resolve or dismiss a report
+- POST /admin/ban/:userId — Ban or unban a user from the platform
+
+
+6. REAL-TIME WEBSOCKET ARCHITECTURE (SOCKET.IO)
+--------------------------------------------------------------------------------
+Connection Lifecycle:
+1. Client connects with handshake `auth: { token: JWT_ACCESS_TOKEN }`.
+2. Server validates JWT, extracts `userId`, binds socket to `user_${userId}` room, and emits `presence_change`.
+3. Disconnection updates online presence table and broadcasts status.
+
+Socket Event Catalog:
+- `join_conversation`   : Subscribes socket to private room `conv_${conversationId}`
+- `leave_conversation`  : Unsubscribes socket from conversation room
+- `send_message`        : Validates membership, persists Message document to MongoDB, updates Conversation lastMessage, and emits `new_message` to room
+- `new_message`         : Received by clients inside the conversation room in real-time
+- `typing_start`        : Broadcasts typing notification to conversation members
+- `typing_stop`         : Clears typing indicator
+- `message_read`        : Updates read status in database and notifies sender
+
+
+7. ENVIRONMENT CONFIGURATION
+--------------------------------------------------------------------------------
+BACKEND CONFIGURATION (`backend/.env`):
+  PORT=5000
+  NODE_ENV=development
+  MONGO_URI=mongodb://127.0.0.1:27017/uniconnect
+  JWT_SECRET=uniconnect_jwt_secret_dev_2024_change_in_prod
+  JWT_REFRESH_SECRET=uniconnect_refresh_secret_dev_2024_change_in_prod
+  JWT_EXPIRE=15m
+  JWT_REFRESH_EXPIRE=7d
+  CLIENT_URL=http://localhost:5173
+  EMAIL_HOST=smtp.example.com (optional)
+  EMAIL_PORT=587 (optional)
+  EMAIL_USER=noreply@domain.com (optional)
+  EMAIL_PASS=secret (optional)
+  EMAIL_FROM=noreply@uniconnect.dev (optional)
+
+FRONTEND CONFIGURATION (`frontend/.env`):
+  VITE_API_URL=http://localhost:5000/api
+  VITE_SOCKET_URL=http://localhost:5000
+
+
+8. QUICK START & RUNNING INSTRUCTIONS
+--------------------------------------------------------------------------------
+Prerequisites:
+- Node.js >= 18.x
+- MongoDB Server running on port 27017 (Local service or MongoDB Atlas)
+
+Step 1: Start MongoDB
+Ensure MongoDB is running locally (`Get-Service MongoDB` on Windows).
+
+Step 2: Start Backend Server
+  cd backend
+  npm install
+  npm run dev
+  -> Running at: http://localhost:5000
+  -> API Health: http://localhost:5000/api/health
+
+Step 3: Start Frontend Client
+  cd frontend
+  npm install
+  npm run dev
+  -> Running at: http://localhost:5173
+
+Step 4: Optional Database Seeding
+  cd backend
+  npm run seed             (Seeds sample communities & admin user)
+  npm run seed:categories  (Seeds predefined category tags)
+
+================================================================================
+END OF SPECIFICATION
+================================================================================

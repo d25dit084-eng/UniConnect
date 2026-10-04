@@ -1,5 +1,9 @@
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const mongoose = require('mongoose');
+if (process.env.NODE_ENV === 'production') {
+  console.error('❌ Error: This script cannot be run in production!');
+  process.exit(1);
+}
 mongoose.connect(process.env.MONGO_URI).then(async () => {
   const Like = require('../models/Like');
   const SavedPost = require('../models/SavedPost');

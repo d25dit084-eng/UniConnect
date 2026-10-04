@@ -9,6 +9,10 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 
 const seedAdmin = async () => {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ Error: This script cannot be run in production!');
+    process.exit(1);
+  }
   await mongoose.connect(process.env.MONGO_URI);
   console.log('✅ Connected');
 

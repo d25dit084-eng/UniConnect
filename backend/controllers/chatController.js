@@ -2,7 +2,7 @@ const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const User = require('../models/User');
 const Block = require('../models/Block');
-const { getIO } = require('../services/socketService');
+const { getIO, invalidateConversationCache } = require('../services/socketService');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
 const sendResponse = require('../utils/sendResponse');
@@ -64,6 +64,8 @@ const createConversation = asyncHandler(async (req, res) => {
     });
   }
 
+  invalidateConversationCache(conversation._id);
+
   sendResponse(res, 201, 'Conversation initialized successfully', { conversation });
 });
 
@@ -115,9 +117,11 @@ const getConversations = asyncHandler(async (req, res) => {
 const getMessages = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const userId = req.user._id;
-  const { page = 1, limit = 50 } = req.query;
+  const { before, page = 1, limit = 50 } = req.query;
 
-  const conversation = await Conversation.findById(id);
+  const parsedLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
+
+  const conversation = await Conversation.findById(id).select('participants').lean();
   if (!conversation) {
     throw new ApiError(404, 'Conversation not found');
   }
@@ -127,33 +131,50 @@ const getMessages = asyncHandler(async (req, res) => {
     throw new ApiError(403, 'You do not have access to this conversation');
   }
 
-  const skip = (Number(page) - 1) * Number(limit);
+  const query = { conversation: id };
 
-  const messages = await Message.find({ conversation: id })
-    .sort({ createdAt: -1 }) // Sort newest first for pagination, client can reverse
-    .skip(skip)
-    .limit(Number(limit))
-    .populate('sender', 'username avatar');
+  // Cursor-based pagination (before=<messageId>) for O(1) index seek
+  if (before) {
+    const beforeMsg = await Message.findById(before).select('createdAt').lean();
+    if (beforeMsg) {
+      query.createdAt = { $lt: beforeMsg.createdAt };
+    } else {
+      query._id = { $lt: before };
+    }
+  }
 
-  const total = await Message.countDocuments({ conversation: id });
+  let messageQuery = Message.find(query)
+    .sort({ createdAt: -1 })
+    .limit(parsedLimit)
+    .select('_id conversation sender content attachments isRead clientMsgId createdAt')
+    .populate('sender', 'username avatar')
+    .lean();
+
+  if (!before && page && Number(page) > 1) {
+    // Fallback offset skip for legacy pagination
+    const skip = (Number(page) - 1) * parsedLimit;
+    messageQuery = messageQuery.skip(skip);
+  }
+
+  const messages = await messageQuery;
 
   // Format usernames to u/username in sender info
   const responseData = messages.map((m) => {
-    const obj = m.toObject();
-    if (obj.sender) {
-      obj.sender.username = obj.sender.username.startsWith('u/') ? obj.sender.username : `u/${obj.sender.username}`;
-      obj.sender.avatar = obj.sender.avatar || obj.sender.profileImage || null;
+    if (m.sender) {
+      m.sender.username = m.sender.username.startsWith('u/') ? m.sender.username : `u/${m.sender.username}`;
+      m.sender.avatar = m.sender.avatar || m.sender.profileImage || null;
     }
-    return obj;
+    return m;
   });
+
+  const nextCursor = responseData.length === parsedLimit ? responseData[responseData.length - 1]._id : null;
 
   sendResponse(res, 200, 'Messages retrieved successfully', {
     messages: responseData,
     pagination: {
-      page: Number(page),
-      limit: Number(limit),
-      total,
-      pages: Math.ceil(total / Number(limit)),
+      limit: parsedLimit,
+      nextCursor,
+      hasMore: responseData.length === parsedLimit,
     },
   });
 });
@@ -161,10 +182,18 @@ const getMessages = asyncHandler(async (req, res) => {
 // ─── Send Message (HTTP Endpoint fallback / alternative) ───────────────────────
 const sendMessage = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { content, attachments } = req.body;
+  const { content, attachments, clientMsgId } = req.body;
   const userId = req.user._id;
 
-  const conversation = await Conversation.findById(id);
+  if (!content || !content.trim()) {
+    throw new ApiError(400, 'Message content cannot be empty');
+  }
+
+  if (content.length > 2000) {
+    throw new ApiError(400, 'Message content cannot exceed 2000 characters');
+  }
+
+  const conversation = await Conversation.findById(id).select('participants').lean();
   if (!conversation) {
     throw new ApiError(404, 'Conversation not found');
   }
@@ -181,7 +210,7 @@ const sendMessage = asyncHandler(async (req, res) => {
       { blocker: userId, blocked: otherParticipant },
       { blocker: otherParticipant, blocked: userId },
     ],
-  });
+  }).lean();
 
   if (isBlocked) {
     throw new ApiError(403, 'Cannot send message. A block relationship exists.');
@@ -191,13 +220,17 @@ const sendMessage = asyncHandler(async (req, res) => {
     conversation: id,
     sender: userId,
     content: content.trim(),
+    clientMsgId: clientMsgId || null,
     attachments: attachments || [],
   });
 
-  // Update conversation
-  conversation.lastMessage = message._id;
-  conversation.lastMessageAt = message.createdAt;
-  await conversation.save();
+  // Atomic denormalized update on conversation
+  await Conversation.findByIdAndUpdate(id, {
+    $set: {
+      lastMessage: message._id,
+      lastMessageAt: message.createdAt,
+    },
+  });
 
   // Emits real-time notification/message via socket.io
   try {
