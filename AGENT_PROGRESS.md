@@ -258,6 +258,11 @@
   - Added `votePoll` API call in `frontend/src/api/postApi.js`.
   - Extended `CreatePost.jsx` with dedicated "Poll Post" tab, dynamic option adding/removal (2-6 options), and duration selector (1, 3, 7, 14, 30 days).
   - Verified with clean ESLint (0 errors) and production Vite build (1.66s, 0 errors).
+- [x] **Q5.3a — Academic Resource Library Engine (Backend)**:
+  - Created `Resource.js` Mongoose model with course linkage (`course`, `courseCode`), category taxonomy (`syllabus`, `lecture_notes`, `past_exam`, `assignment`, `cheatsheet`, `other`), download counter, and anonymity support (`isAnonymous`, AES-256-GCM `encryptedAuthor`).
+  - Built `resourceController.js` and `resourceRoutes.js`: endpoints for listing/filtering (`GET /api/resources`), details (`GET /api/resources/:id`), upload (`POST /api/resources`), download tracking (`POST /api/resources/:id/download`), voting (`POST /api/resources/:id/vote`), and deletion (`DELETE /api/resources/:id`).
+  - Integrated `serializeAuthor` ensuring zero identity leaks for anonymous uploads (`author.alias` present, `_id` null, real username suppressed).
+  - Built Jest integration test suite (`backend/tests/resources.test.js`) verifying public uploads, anonymous uploads with identity assertion, filter queries, atomic download counting, and author-only deletion (8/8 suites passing, 29/29 tests).
 
 ---
 
@@ -438,7 +443,8 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 5.1b Course & professor reviews (Frontend: Reviews browse view, course/professor profile modal, rating metrics, anonymous submission toggle)
 - [x] 5.2a Polls in posts (Backend: Post.poll schema, PollVote model, atomic vote controller & routes, expiry validation, and Jest tests)
 - [x] 5.2b Polls in posts (Frontend: Poll creation UI in CreatePost, interactive poll cards in PostCard & PostDetailPage with animated progress bars)
-- [ ] 5.3 Resource library
+- [x] 5.3a Resource library (Backend: Resource model, course linkage, resourceController, download tracker, anonymity support, and Jest test suite)
+- [ ] 5.3b Resource library (Frontend: ResourceLibraryPage, search & filter by course/type, upload modal, and navigation)
 - [ ] 5.4 Hot ranking
 - [ ] 5.5 Mentions & autocomplete
 - [ ] 5.6 Study groups
