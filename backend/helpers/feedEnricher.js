@@ -1,11 +1,12 @@
 const Vote = require('../models/Vote');
 const SavedPost = require('../models/SavedPost');
+const { serializeAuthor } = require('./authorSerializer');
 
 /**
  * Enriches a list of posts with voteStatus, savedByMe, and isOwner flags for a user.
- * It also strips any sensitive user data, formatting the author as a pseudonymous public profile.
+ * It also strips any sensitive user data, formatting the author as a pseudonymous public profile or anonymous alias.
  * 
- * @param {Array} posts - Array of Mongoose Post documents
+ * @param {Array} posts - Array of Mongoose Post documents or plain objects
  * @param {string|null} userId - The ID of the authenticated user (optional)
  * @returns {Array} List of enriched plain JSON post objects
  */
@@ -14,23 +15,14 @@ const enrichPosts = async (posts, userId) => {
 
   // Convert mongoose documents to plain JSON objects
   const postObjects = posts.map((p) => {
-    const obj = p.toObject();
+    const obj = p.toObject ? p.toObject() : { ...p };
     
-    // Ensure pseudonymous author display format (u/username)
-    if (obj.author) {
-      obj.author = {
-        _id: obj.author._id,
-        username: obj.author.username.startsWith('u/') ? obj.author.username : `u/${obj.author.username}`,
-        avatar: obj.author.avatar || obj.author.profileImage || null,
-        bio: obj.author.bio || '',
-        karma: obj.author.karma || { post: 0, comment: 0, total: 0 },
-      };
-    } else {
-      obj.author = { username: '[deleted]', avatar: null };
-    }
+    // Centralized zero-leak serialization
+    obj.author = serializeAuthor(obj, userId);
+    delete obj.encryptedAuthor;
 
     // Format community display name / slug if populated
-    if (obj.community) {
+    if (obj.community && typeof obj.community === 'object') {
       obj.community = {
         _id: obj.community._id,
         name: obj.community.name,
@@ -74,7 +66,7 @@ const enrichPosts = async (posts, userId) => {
     const postIdStr = p._id.toString();
     p.voteStatus = votesMap.get(postIdStr) || 0; // 1 (upvoted), -1 (downvoted), 0 (none)
     p.savedByMe = savedSet.has(postIdStr);
-    p.isOwner = userId ? (p.author && p.author._id && p.author._id.toString() === userId.toString()) : false;
+    p.isOwner = p.author ? Boolean(p.author.isMine) : false;
   });
 
   return postObjects;

@@ -8,40 +8,37 @@ const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const sendResponse = require('../utils/sendResponse');
 
+const { serializeAuthor } = require('../helpers/authorSerializer');
+const { encryptAuthor } = require('../utils/encryption');
+
 const MAX_DEPTH = 8;
 
 // ─── Helper: Sanitize Comment for Public Response ──────────────────────────────
-const sanitizeComment = (comment, requestingUserId = null) => {
+const sanitizeComment = (comment, requestingUserId = null, opAuthorId = null) => {
   const obj = comment.toObject ? comment.toObject() : { ...comment };
 
-  const isOwner =
-    requestingUserId &&
-    obj.author &&
-    obj.author._id &&
-    obj.author._id.toString() === requestingUserId.toString();
-
-  // Enforce pseudonymous public representation
-  if (obj.author && typeof obj.author === 'object') {
-    obj.author = {
-      _id: obj.author._id,
-      username: obj.author.username.startsWith('u/') ? obj.author.username : `u/${obj.author.username}`,
-      avatar: obj.author.avatar || obj.author.profileImage || null,
-      bio: obj.author.bio || '',
-      karma: obj.author.karma || { post: 0, comment: 0, total: 0 },
-    };
-  } else {
-    obj.author = { username: '[deleted]', avatar: null };
-  }
+  // Centralized zero-leak serialization
+  obj.author = serializeAuthor(obj, requestingUserId, { opAuthorId });
+  delete obj.encryptedAuthor;
 
   // Soft-deleted content placeholder
   if (obj.isDeleted) {
     obj.content = '[Comment deleted]';
-    obj.author = { username: '[deleted]', avatar: null };
+    obj.author = {
+      _id: null,
+      username: '[deleted]',
+      avatar: null,
+      bio: '',
+      karma: { post: 0, comment: 0, total: 0 },
+      isAnonymous: false,
+      isOP: false,
+      isMine: false,
+    };
   }
 
   return {
     ...obj,
-    isOwner: isOwner || false,
+    isOwner: obj.author ? Boolean(obj.author.isMine) : false,
   };
 };
 
@@ -71,7 +68,7 @@ const enrichCommentsWithVotes = async (comments, userId) => {
 
 // ─── Create Top-Level Comment ──────────────────────────────────────────────────
 const createComment = asyncHandler(async (req, res) => {
-  const { postId, content } = req.body;
+  const { postId, content, isAnonymous = false } = req.body;
   const authorId = req.user._id;
 
   if (!mongoose.Types.ObjectId.isValid(postId)) {
@@ -90,6 +87,8 @@ const createComment = asyncHandler(async (req, res) => {
     content: content.trim(),
     parentComment: null,
     depth: 0,
+    isAnonymous: Boolean(isAnonymous),
+    encryptedAuthor: isAnonymous ? encryptAuthor(authorId.toString()) : null,
     upvoteCount: 1,
     downvoteCount: 0,
     score: 1,
@@ -111,10 +110,12 @@ const createComment = asyncHandler(async (req, res) => {
 
   // Trigger Notification to post owner (if not self-interaction)
   if (post.author.toString() !== authorId.toString()) {
-    const formattedMessage = `u/${req.user.username} commented on your post.`;
+    const formattedMessage = isAnonymous
+      ? 'Someone commented on your post.'
+      : `u/${req.user.username} commented on your post.`;
     await Notification.create({
       recipient: post.author,
-      actor: authorId,
+      actor: isAnonymous ? null : authorId,
       type: 'post_comment',
       post: post._id,
       comment: comment._id,
@@ -123,7 +124,7 @@ const createComment = asyncHandler(async (req, res) => {
   }
 
   const populated = await Comment.findById(comment._id).populate('author', 'username avatar bio karma');
-  const sanitized = sanitizeComment(populated, authorId);
+  const sanitized = sanitizeComment(populated, authorId, post.author.toString());
   const [enriched] = await enrichCommentsWithVotes([sanitized], authorId);
 
   sendResponse(res, 201, 'Comment posted successfully', { comment: enriched });
@@ -132,7 +133,7 @@ const createComment = asyncHandler(async (req, res) => {
 // ─── Reply to Comment ─────────────────────────────────────────────────────────
 const replyToComment = asyncHandler(async (req, res) => {
   const { id: parentCommentId } = req.params;
-  const { content } = req.body;
+  const { content, isAnonymous = false } = req.body;
   const authorId = req.user._id;
 
   const parentComment = await Comment.findById(parentCommentId);
@@ -157,6 +158,8 @@ const replyToComment = asyncHandler(async (req, res) => {
     parentComment: parentCommentId,
     depth: newDepth,
     content: content.trim(),
+    isAnonymous: Boolean(isAnonymous),
+    encryptedAuthor: isAnonymous ? encryptAuthor(authorId.toString()) : null,
     upvoteCount: 1,
     downvoteCount: 0,
     score: 1,
@@ -179,10 +182,12 @@ const replyToComment = asyncHandler(async (req, res) => {
 
   // Trigger Notification to parent comment owner (if not self-interaction)
   if (parentComment.author.toString() !== authorId.toString()) {
-    const formattedMessage = `u/${req.user.username} replied to your comment.`;
+    const formattedMessage = isAnonymous
+      ? 'Someone replied to your comment.'
+      : `u/${req.user.username} replied to your comment.`;
     await Notification.create({
       recipient: parentComment.author,
-      actor: authorId,
+      actor: isAnonymous ? null : authorId,
       type: 'comment_reply',
       post: parentComment.post,
       comment: reply._id,
@@ -191,7 +196,7 @@ const replyToComment = asyncHandler(async (req, res) => {
   }
 
   const populated = await Comment.findById(reply._id).populate('author', 'username avatar bio karma');
-  const sanitized = sanitizeComment(populated, authorId);
+  const sanitized = sanitizeComment(populated, authorId, post.author.toString());
   const [enriched] = await enrichCommentsWithVotes([sanitized], authorId);
 
   sendResponse(res, 201, 'Reply posted successfully', { comment: enriched });
@@ -220,8 +225,9 @@ const getPostComments = asyncHandler(async (req, res) => {
     .populate('author', 'username avatar bio karma')
     .lean();
 
-  // Sanitize
-  const sanitized = comments.map((c) => sanitizeComment(c, userId));
+  // Sanitize with OP author ID
+  const opAuthorId = post.author ? post.author.toString() : null;
+  const sanitized = comments.map((c) => sanitizeComment(c, userId, opAuthorId));
 
   // Enrich with user vote statuses
   const enriched = await enrichCommentsWithVotes(sanitized, userId);
@@ -273,8 +279,11 @@ const updateComment = asyncHandler(async (req, res) => {
   comment.edited = true;
   await comment.save();
 
+  const post = await Post.findById(comment.post);
+  const opAuthorId = post && post.author ? post.author.toString() : null;
+
   const populated = await Comment.findById(comment._id).populate('author', 'username avatar bio karma');
-  const sanitized = sanitizeComment(populated, userId);
+  const sanitized = sanitizeComment(populated, userId, opAuthorId);
   const [enriched] = await enrichCommentsWithVotes([sanitized], userId);
 
   sendResponse(res, 200, 'Comment updated successfully', { comment: enriched });

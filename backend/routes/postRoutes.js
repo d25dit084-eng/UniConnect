@@ -7,6 +7,7 @@ const {
   updatePost,
   deletePost,
   searchPosts,
+  getCommunityPosts,
 } = require('../controllers/postController');
 
 const { protect, optionalAuth } = require('../middleware/authMiddleware');
@@ -20,6 +21,7 @@ const {
 
 // Specific paths before parameterized
 router.get('/search', validateSearchQuery, validatePaginationQuery, optionalAuth, searchPosts);
+router.get('/community/:slug', optionalAuth, getCommunityPosts);
 
 // Core POST
 router.post('/', protect, validateCreatePost, createPost);

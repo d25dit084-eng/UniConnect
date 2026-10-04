@@ -87,6 +87,11 @@ const postSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    encryptedAuthor: {
+      type: String,
+      default: null,
+      select: false,
+    },
   },
   {
     timestamps: true,

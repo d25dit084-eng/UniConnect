@@ -8,6 +8,7 @@ const {
   moderatePost,
   moderateComment,
   getUsers,
+  revealAuthor,
 } = require('../controllers/adminController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorize } = require('../middleware/roleMiddleware');
@@ -22,5 +23,6 @@ router.get('/reports', getReports);
 router.patch('/reports/:id', validateObjectId(), reviewReport);
 router.patch('/posts/:id/moderate', validateObjectId(), moderatePost);
 router.patch('/comments/:id/moderate', validateObjectId(), moderateComment);
+router.post('/reveal-author', revealAuthor);
 
 module.exports = router;

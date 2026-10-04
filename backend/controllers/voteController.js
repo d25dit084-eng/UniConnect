@@ -2,7 +2,7 @@ const Vote = require('../models/Vote');
 const Post = require('../models/Post');
 const Comment = require('../models/Comment');
 const Notification = require('../models/Notification');
-const { updateKarma } = require('../services/karmaService');
+const { updateKarma, queueDelayedKarma } = require('../services/karmaService');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
 const sendResponse = require('../utils/sendResponse');
@@ -85,15 +85,19 @@ const votePost = asyncHandler(async (req, res) => {
 
   // Sync author karma (score change equals karma change)
   if (post.author.toString() !== userId.toString()) {
-    await updateKarma(post.author, 'post', scoreDiff);
+    if (post.isAnonymous) {
+      queueDelayedKarma(post.author, 'post', scoreDiff);
+    } else {
+      await updateKarma(post.author, 'post', scoreDiff);
+    }
   }
 
   // Trigger Notification for upvote (and not self-interaction)
   if (newValue === 1 && post.author.toString() !== userId.toString() && oldValue !== 1) {
-    const formattedMessage = `u/${req.user.username} upvoted your post.`;
+    const formattedMessage = 'Someone upvoted your post.';
     await Notification.create({
       recipient: post.author,
-      actor: userId,
+      actor: null,
       type: 'post_vote',
       post: post._id,
       message: formattedMessage,
@@ -175,17 +179,21 @@ const voteComment = asyncHandler(async (req, res) => {
   updatedComment.score = updatedComment.upvoteCount - updatedComment.downvoteCount;
   await updatedComment.save();
 
-  // Sync author karma
+  // Sync author karma (delayed for anonymous comments)
   if (comment.author.toString() !== userId.toString()) {
-    await updateKarma(comment.author, 'comment', scoreDiff);
+    if (comment.isAnonymous) {
+      queueDelayedKarma(comment.author, 'comment', scoreDiff);
+    } else {
+      await updateKarma(comment.author, 'comment', scoreDiff);
+    }
   }
 
   // Trigger Notification
   if (newValue === 1 && comment.author.toString() !== userId.toString() && oldValue !== 1) {
-    const formattedMessage = `u/${req.user.username} upvoted your comment.`;
+    const formattedMessage = 'Someone upvoted your comment.';
     await Notification.create({
       recipient: comment.author,
-      actor: userId,
+      actor: null,
       type: 'comment_vote',
       post: comment.post,
       comment: comment._id,

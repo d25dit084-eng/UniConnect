@@ -85,6 +85,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/saved', savedPostRoutes);
+app.use('/api/saved-posts', savedPostRoutes);
 app.use('/api/communities', communityRoutes);
 app.use('/api/votes', voteRoutes);
 app.use('/api/feed', feedRoutes);

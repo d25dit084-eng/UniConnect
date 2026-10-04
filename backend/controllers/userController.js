@@ -85,7 +85,11 @@ const getPublicPosts = asyncHandler(async (req, res) => {
   }
 
   const skip = (Number(page) - 1) * Number(limit);
+  const isSelf = req.user && req.user._id.toString() === user._id.toString();
   const filter = { author: user._id, status: 'active' };
+  if (!isSelf) {
+    filter.isAnonymous = false;
+  }
 
   const posts = await Post.find(filter)
     .sort({ createdAt: -1 })

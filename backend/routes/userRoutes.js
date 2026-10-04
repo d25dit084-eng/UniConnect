@@ -35,8 +35,10 @@ router.get('/blocked', protect, getBlockedUsers);
 router.post('/:username/block', protect, blockUser);
 router.delete('/:username/block', protect, unblockUser);
 
-// Parameterized public queries last
-router.get('/:username', optionalAuth, getPublicProfile);
+// Parameterized public queries
+router.get('/u/:username/posts', optionalAuth, getPublicPosts);
+router.get('/u/:username', optionalAuth, getPublicProfile);
 router.get('/:username/posts', optionalAuth, getPublicPosts);
+router.get('/:username', optionalAuth, getPublicProfile);
 
 module.exports = router;

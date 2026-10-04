@@ -6,13 +6,14 @@ const { enrichPosts } = require('../helpers/feedEnricher');
 const { calculateHotRank } = require('../services/rankingService');
 const { updateKarma } = require('../services/karmaService');
 const { broadcastNewPost } = require('../services/socketService');
+const { encryptAuthor } = require('../utils/encryption');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const sendResponse = require('../utils/sendResponse');
 
 // ─── Create Post ──────────────────────────────────────────────────────────────
 const createPost = asyncHandler(async (req, res) => {
-  const { communityId, type = 'text', title, content, url, media } = req.body;
+  const { communityId, type = 'text', title, content, url, media, isAnonymous = false } = req.body;
   const authorId = req.user._id;
 
   // 1. Verify community exists
@@ -49,6 +50,8 @@ const createPost = asyncHandler(async (req, res) => {
     content: content ? content.trim() : '',
     url: type === 'link' ? url.trim() : null,
     media: type === 'image' ? (Array.isArray(media) ? media : [media]) : [],
+    isAnonymous: Boolean(isAnonymous),
+    encryptedAuthor: isAnonymous ? encryptAuthor(authorId.toString()) : null,
     upvoteCount: 1,
     downvoteCount: 0,
     score: 1,

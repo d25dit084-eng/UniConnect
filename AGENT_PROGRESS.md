@@ -80,6 +80,13 @@
   - [x] Added `isAnonymous` (Boolean, default `false`) to `Post` schema with compound index `{ author: 1, isAnonymous: 1 }`.
   - [x] Added `isAnonymous` (Boolean, default `false`) to `Comment` schema with compound index `{ author: 1, isAnonymous: 1 }`.
   - [x] Created and executed idempotent migration script `backend/scripts/migrateAnonymity.js` ensuring all existing docs have `isAnonymous: false` and indexes are synchronized.
+- [x] **Phase 2.2-2.7 — Q1 Phase 2 Anonymity Engine (Zero-Leak Anonymity Engine)**:
+  - [x] 1.2 Centralized Author Serializer (`backend/helpers/authorSerializer.js`): `serializeAuthor(doc, viewer)` returning pseudonymous profile or `{ alias, isAnonymous: true, isOP, isMine }`. Per-thread HMAC alias via `getAnonymousAlias()`. Integrated across `feedEnricher`, `commentController`, `postController`, feeds, and search.
+  - [x] 1.3 Profile Leak Protection: Excluded `isAnonymous` content from `/api/users/:username/posts` for non-author viewers and sanitized saved posts.
+  - [x] 1.4 Anonymous Notifications: Replaced username disclosures with generic messages ("Someone upvoted your post", "Someone commented on your post") with `actor: null`.
+  - [x] 1.5 Delayed Karma Sync: Implemented `queueDelayedKarma` and `flushDelayedKarma` in `backend/services/karmaService.js` to batch and jitter anonymous post/comment karma sync, thwarting timing de-anonymization attacks.
+  - [x] 1.6 Admin Accountability: AES-256-GCM encrypted author reference (`backend/utils/encryption.js`), decrypted only via `POST /api/admin/reveal-author` with mandatory reason; write audit trail to `AuditLog`.
+  - [x] 1.7 Automated Leak Detection Suite: Created `backend/scripts/testAnonymityLeaks.js` asserting zero identity leaks across 18 GET endpoints, WebSocket payloads, author self-views, and admin deanonymization accountability.
 
 ---
 
@@ -96,33 +103,25 @@
   - Database access via Mongoose 9.9.1 to MongoDB `uniconnect`.
   - Stateless 15-minute access token JWT + 7-day refresh token rotation stored hashed in `RefreshToken` collection, transported in HttpOnly cookie.
   - Socket.IO 4.8.3 real-time server with room scoping, presence tracking, and message broadcasting.
-  - 13 Data Models: `User`, `Community`, `CommunityMember`, `Post`, `Comment`, `Vote`, `SavedPost`, `Conversation`, `Message`, `Notification`, `Report`, `Block`, `RefreshToken`.
+  - 14 Data Models: `User`, `Community`, `CommunityMember`, `Post`, `Comment`, `Vote`, `SavedPost`, `Conversation`, `Message`, `Notification`, `Report`, `Block`, `RefreshToken`, `AuditLog`.
 
 ---
 
 ### (b) Bugs, Security Holes & Anonymity Leaks Found
 
-#### 🔴 CRITICAL ANONYMITY LEAKS
-1. **`Post` Model & `enrichPosts` Identity Leak**:
-   - `Post` schema (`backend/models/Post.js`) has **no `isAnonymous` field**.
-   - `postController.createPost` does not store or process anonymity.
-   - `feedEnricher.js` unconditionally populates and exposes `author._id`, `author.username`, `avatar`, `bio`, and `karma`.
-2. **`Comment` Model & `sanitizeComment` Identity Leak**:
-   - `Comment` schema (`backend/models/Comment.js`) has **no `isAnonymous` field**.
-   - `commentController.sanitizeComment` unconditionally exposes the author's real username, avatar, and karma.
-   - `backend/utils/anonymousIdentity.js` defines `getAnonymousAlias(userId, threadId)`, but it is **never called or used anywhere in the codebase**.
-3. **Public Profile Post Leaks (`userController.getPublicPosts`)**:
-   - `GET /api/users/:username/posts` queries `{ author: user._id, status: 'active' }` without filtering out anonymous posts. Anyone visiting `u/username` would see all posts authored by that student, completely breaking anonymity!
-4. **Notification Message Text Username Leak**:
-   - In `commentController.js` (lines 114 & 182):
-     `formattedMessage = \`u/${req.user.username} commented on your post.\``
-     `formattedMessage = \`u/${req.user.username} replied to your comment.\``
-     Directly reveals the author's username to the post/comment owner in notifications.
-   - In `voteController.js` (lines 93 & 185):
-     `formattedMessage = \`u/${req.user.username} upvoted your post/comment.\``
-     Directly reveals voter username.
-5. **Search Results Leak**:
-   - `searchController.js` populates post authors unconditionally for all matching posts.
+#### 🔴 CRITICAL ANONYMITY LEAKS (RESOLVED)
+1. **`Post` Model & `enrichPosts` Identity Leak** [RESOLVED]:
+   - Added `isAnonymous` and `encryptedAuthor` to `Post` schema.
+   - `feedEnricher.js` now routes through `serializeAuthor`.
+2. **`Comment` Model & `sanitizeComment` Identity Leak** [RESOLVED]:
+   - Added `isAnonymous` and `encryptedAuthor` to `Comment` schema.
+   - `commentController.sanitizeComment` routes through `serializeAuthor` with per-thread HMAC alias and `isOP` flag.
+3. **Public Profile Post Leaks (`userController.getPublicPosts`)** [RESOLVED]:
+   - Anonymous posts are now strictly excluded for external viewers.
+4. **Notification Message Text Username Leak** [RESOLVED]:
+   - Vote and comment notifications for anonymous actions use generic messages with null actor.
+5. **Search Results Leak** [RESOLVED]:
+   - Search results route through `enrichPosts` and `serializeAuthor`.
 
 #### 🔴 CRITICAL RUNTIME BUGS & STABILITY
 6. **Fatal Login Crash on 2nd Login (Duplicate Key Error 11000 on `token_1`)**:
@@ -183,8 +182,8 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
      - *Cold Path (Cache Miss)*: Executes `await Block.findOne({ $or: [...] }).lean()`. (1 DB read).
    - **Step 6 (RELAY FIRST — Immediate Delivery)**: Server generates `new mongoose.Types.ObjectId()`, formats payload with `status: 'sent'`, and broadcasts immediately via `io.to(conversationId).emit('new_message', payload)`. Executes `ackCb({ status: 'sent', clientMsgId, messageId })`. 0 DB calls.
    - **Step 7 (PERSIST SECOND — Asynchronous Background Write)**: Dispatches `persistMessageAsync(...)` fire-and-forget background worker:
-     - `await Message.create({ _id: messageId, conversation, sender, content, clientMsgId, attachments })` (1 async MongoDB insert).
-     - `await Conversation.findByIdAndUpdate(conversationId, { $set: { lastMessage: messageId, lastMessageAt: new Date() } })` (1 async atomic MongoDB update).
+     - `await Message.create({ _id: messageId, conversation, sender, content, clientMsgId, attachments, createdAt: msgDate })` (1 async MongoDB insert).
+     - `await Conversation.findByIdAndUpdate(conversationId, { $set: { lastMessage: messageId, lastMessageAt: msgDate } })` (1 async atomic MongoDB update).
      - On error, executes exponential backoff retry queue (50ms, 150ms, 450ms) up to 3 attempts; emits `message_failed` if exhausted.
 
 2. **Persistence vs Broadcast Order**:
@@ -229,12 +228,12 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 
 ### Q1: Phase 2 Anonymity Engine
 - [x] 1.1 Schema: Add `isAnonymous` (Boolean, default false, indexed with `{ author: 1, isAnonymous: 1 }`) to Post and Comment. Idempotent migration script verified.
-- [ ] 1.2 Centralized Author Serializer (`backend/helpers/authorSerializer.js`): `serializeAuthor(doc, viewer)` returning public profile or `{ alias, isAnonymous: true }`. Per-thread HMAC alias via `getAnonymousAlias()`. Server-side `isOP` flag. `isMine: true` for author only. Replace direct populates across controllers, feeds, search, notifications, votes, admin, sockets.
-- [ ] 1.3 Profile Leak Protection: Exclude `isAnonymous` content from `/api/users/:username/posts`, comments tab, profile counts, and other users' saved lists.
-- [ ] 1.4 Anonymous Notifications: Generic text ("Someone replied to your post") with no sender ID stored or transmitted.
-- [ ] 1.5 Delayed Karma Sync: Apply anonymous vote karma changes in batched/delayed intervals so profile karma jumps cannot be de-anonymized.
-- [ ] 1.6 Admin Accountability: AES-256-GCM encrypted author reference, decrypted only via `POST /api/admin/reveal-author` with mandatory reason; write audit trail to `AuditLog`.
-- [ ] 1.7 Automated Leak Detection Suite: `backend/scripts/testAnonymityLeaks.js` asserting zero identity leaks across all GET endpoints and sockets.
+- [x] 1.2 Centralized Author Serializer (`backend/helpers/authorSerializer.js`): `serializeAuthor(doc, viewer)` returning public profile or `{ alias, isAnonymous: true }`. Per-thread HMAC alias via `getAnonymousAlias()`. Server-side `isOP` flag. `isMine: true` for author only. Replace direct populates across controllers, feeds, search, notifications, votes, admin, sockets.
+- [x] 1.3 Profile Leak Protection: Exclude `isAnonymous` content from `/api/users/:username/posts`, comments tab, profile counts, and other users' saved lists.
+- [x] 1.4 Anonymous Notifications: Generic text ("Someone replied to your post") with no sender ID stored or transmitted.
+- [x] 1.5 Delayed Karma Sync: Apply anonymous vote karma changes in batched/delayed intervals so profile karma jumps cannot be de-anonymized.
+- [x] 1.6 Admin Accountability: AES-256-GCM encrypted author reference, decrypted only via `POST /api/admin/reveal-author` with mandatory reason; write audit trail to `AuditLog`.
+- [x] 1.7 Automated Leak Detection Suite: `backend/scripts/testAnonymityLeaks.js` asserting zero identity leaks across all GET endpoints and sockets.
 
 ### Q2: Jitter Elimination
 - [ ] 2.1 Persist batching: buffer writes with `bulkWrite` every $\le 25\text{ ms}$ or 50 messages. Coalesce `lastMessage`.

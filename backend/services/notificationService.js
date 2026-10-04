@@ -54,9 +54,9 @@ const createNotification = async ({
 const notifyPostLiked = async ({ postAuthorId, actorId, actorAlias, postId }) => {
   await createNotification({
     recipientId: postAuthorId,
-    actorId,
+    actorId: actorAlias ? actorId : null,
     type: 'post_like',
-    message: `${actorAlias} liked your post.`,
+    message: actorAlias ? `${actorAlias} liked your post.` : 'Someone liked your post.',
     postId,
   });
 };
@@ -67,9 +67,9 @@ const notifyPostLiked = async ({ postAuthorId, actorId, actorAlias, postId }) =>
 const notifyCommentLiked = async ({ commentAuthorId, actorId, actorAlias, postId, commentId }) => {
   await createNotification({
     recipientId: commentAuthorId,
-    actorId,
+    actorId: actorAlias ? actorId : null,
     type: 'comment_like',
-    message: `${actorAlias} liked your comment.`,
+    message: actorAlias ? `${actorAlias} liked your comment.` : 'Someone liked your comment.',
     postId,
     commentId,
   });
@@ -81,9 +81,9 @@ const notifyCommentLiked = async ({ commentAuthorId, actorId, actorAlias, postId
 const notifyPostCommented = async ({ postAuthorId, actorId, actorAlias, postId, commentId }) => {
   await createNotification({
     recipientId: postAuthorId,
-    actorId,
+    actorId: actorAlias ? actorId : null,
     type: 'post_comment',
-    message: `${actorAlias} commented on your post.`,
+    message: actorAlias ? `${actorAlias} commented on your post.` : 'Someone commented on your post.',
     postId,
     commentId,
   });
@@ -95,9 +95,9 @@ const notifyPostCommented = async ({ postAuthorId, actorId, actorAlias, postId, 
 const notifyCommentReplied = async ({ commentAuthorId, actorId, actorAlias, postId, commentId }) => {
   await createNotification({
     recipientId: commentAuthorId,
-    actorId,
+    actorId: actorAlias ? actorId : null,
     type: 'comment_reply',
-    message: `${actorAlias} replied to your comment.`,
+    message: actorAlias ? `${actorAlias} replied to your comment.` : 'Someone replied to your comment.',
     postId,
     commentId,
   });
