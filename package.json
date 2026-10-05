@@ -1,0 +1,12 @@
+{
+  "name": "uniconnect-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "UniConnect — Campus Community Platform Monorepo",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "start": "cd backend && npm start",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev"
+  }
+}
