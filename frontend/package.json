@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
+    "check:colors": "node ../scripts/checkColors.js",
     "format": "prettier --write \"src/**/*.{js,jsx,css,json}\""
   },
   "dependencies": {

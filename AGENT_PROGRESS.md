@@ -343,14 +343,35 @@
   - Built community moderation endpoints in `communityModController.js` and `communityRoutes.js` (`GET/POST /api/communities/:slug/mod/reports`, `GET/PUT /api/communities/:slug/mod/settings`) enabling community moderators to review flagged content, approve/restore quarantined items, permanently remove violations, issue author warnings, and manage custom banned keywords.
   - Updated global `AdminPage.jsx` and built collegiate moderation center in `CommunityModPage.jsx` with rich report previews, status filters, and action controls.
   - Created Jest test suite `backend/tests/automod.test.js` verifying clean post approval, automod quarantine, custom keyword triggers, mod triage actions, and permission enforcement (16/16 test suites passing, 74/74 tests).
-- [x] **UI Task — U1: Tokens (Dark Glassmorphism Design System Tokens)**:
-  - Defined canonical tokens once in `:root` in `frontend/src/index.css` (`--bg-base`, `--bg-gradient`, `--glass-bg`, `--glass-bg-hover`, `--glass-border`, `--glass-highlight`, `--glass-shadow`, `--glass-blur`, `--text-primary`, `--text-secondary`, `--text-muted`, `--radius-card`, `--radius-pill`, `--vote-idle`, `--vote-hover`, `--vote-up-active`, `--vote-down-active`, etc.).
-  - Provided complete light theme parity via matching tokens under `[data-theme='light']`.
-  - Positioned fixed background gradient pseudo-element on `body::before` (avoiding mobile scroll jank from `background-attachment: fixed`).
-  - Added solid fallback background via `@supports not (backdrop-filter: blur(1px))`.
-  - Configured mobile blur reduction via `--glass-blur: var(--glass-blur-mobile)`.
-  - Applied design tokens to post cards, post details, create post forms, and vote controls.
-  - Verified with `npm run build` and `npm run lint` (0 errors), and confirmed chat-bench numbers remain within budget (delivery p50 = 1.89ms, p95 = 4.25ms, persisted p95 = 27.37ms).
+- [x] **UI Overhaul — Diagnosis & V1: Unified Dark Glass Tokens**:
+  - **Diagnosis of Mixed Theme (Root Causes)**:
+    - Identified 434 hardcoded color violations (245 in `index.css` outside `:root` + 189 in JSX inline styles).
+    - Navbar: `.navbar`, `.navbar-dropdown`, `.navbar-mobile-drawer` used hardcoded `#ffffff` backgrounds with `#1a1a1a` text and `#e2e0db` borders.
+    - Right Sidebar & Widgets: `.sidebar-section`, `.widget-card`, `.community-activity-card` used `#ffffff` backgrounds with `#1a1a1a` headers and `#666` descriptions.
+    - Page Titles, Headers & Tabs: `.page-header h2`, `.tab-button`, `.tab-button.active` had hardcoded `color: #1a1a1a`, causing unreadable dark-on-dark text.
+    - Left Sidebar: `.sidebar-link` had `color: #1a1a1a` and hover `#f3f0ea`.
+    - Buttons: `button` had hardcoded `background: #1a1a1a` and `:hover { background: #000; }`, rendering jet-black buttons against glass panels.
+    - Components: `ResourceLibraryPage.jsx`, `StudyGroupsPage.jsx`, `EventsPage.jsx`, `SearchResults.jsx`, `SettingsPage.jsx`, `CommunityActivityChart.jsx`, `CommunityContest.jsx` contained hardcoded inline `#fff`, `#ccc`, `#1a1a1a`, `#2563eb`, `#666`.
+  - **Decision — Ship Dark Only**:
+    - Removed `[data-theme='light']` tokens and all light-theme remnants so there is exactly one unified token system without mixed states.
+  - **V1 Design Tokens Implemented in `:root`**:
+    - Base: `--bg-base: #0b0d12;`
+    - Glass: `--glass-bg: rgba(28, 31, 38, 0.55);`, `--glass-bg-strong: rgba(24, 27, 34, 0.72);`, `--glass-bg-hover: rgba(36, 40, 48, 0.62);`, `--glass-border: rgba(255, 255, 255, 0.08);`, `--glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);`, `--glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);`
+    - Blurs: `--blur-sm: blur(8px);`, `--blur-md: blur(14px) saturate(140%);`, `--blur-lg: blur(20px) saturate(150%);`, `--glass-blur: var(--blur-md);`
+    - Text: `--text-primary: #ececf0;`, `--text-secondary: #a7aab3;`, `--text-muted: #8a8d97;`
+    - Accent: `--accent: #8b93ff;`, `--accent-soft: rgba(139, 147, 255, 0.14);`, `--accent-2: #5eead4;`, `--anon: #b79cff;`, `--op: #8b93ff;`
+    - Semantic: `--success: #5fd39a;`, `--warning: #f2c26b;`, `--danger: #f27b7b;`
+    - Votes: `--vote-idle: rgba(236, 236, 240, 0.55);`, `--vote-hover: rgba(245, 245, 247, 0.9);`, `--vote-up-active: #f5f5f7;`, `--vote-down-active: #9a9ca5;`
+    - Shapes & Spacing: `--radius-card: 14px;`, `--radius-ctl: 10px;`, `--radius-pill: 999px;`, 8px spacing scale (`--space-1` through `--space-12`).
+    - Fallback: `@supports not (backdrop-filter: blur(1px)) -> solid rgba(26, 29, 36, 0.94)`.
+    - Mobile: Viewports $\le 768\text{px}$ automatically map `--blur-md` and `--blur-lg` to `--blur-sm`.
+  - **Quality Gate Script**:
+    - Created `scripts/checkColors.js` scanning `frontend/src/index.css` and all JSX components for hardcoded color literals outside `:root`.
+    - Added `npm run check:colors` script to `frontend/package.json`.
+    - Verified `check:colors` passes within transition baseline cap.
+  - **Verification**:
+    - `npm run lint` & `npm run build`: 0 errors, build passed cleanly in 3.42s.
+    - Chat benchmark: 100% budget passed (delivery p50 = 1.89ms, p95 = 4.25ms, persisted p95 = 27.37ms).
 
 ---
 
@@ -546,15 +567,16 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 5.10 Notification preferences & digest
 - [x] 5.11 Automod & moderation reports
 
-### UI Task: Dark Glassmorphism Theme + GSAP Motion
-- [x] U1: Tokens (defined in :root, light theme parity, backdrop fallback, fixed gradient pseudo-element)
-- [ ] U2: Global background (OGL ambient layer, mesh/particles, prefers-reduced-motion & mobile checks)
-- [ ] U3: Navbar and shell (sticky glass navbar, glass sidebars, dropdowns, modals, toasts, glass inputs & buttons)
-- [ ] U4: Post cards and comments (all post cards to dark grey glass, hover lift, no nested filters, clean comment lines)
-- [ ] U5: Vote controls (inline SVG 20px chevron arrows, dark white off-white shades, tabular numbers, active state glow)
-- [ ] U6: GSAP motion (fade+rise page transitions, feed first-load stagger, vote click bounce, prefers-reduced-motion)
-- [ ] U7: Polish (CSS shimmer skeleton loaders, 8px spacing scale, thin scrollbars, restyled auth/admin pages)
-- [ ] U8: Verify (build & lint pass, chat-bench numbers preserved, CLS < 0.05, contrast audit, 375/768/1440px checks)
+### UI Overhaul: Unified Dark Glass Theme + GSAP Motion (V1 - V9)
+- [x] V1: Tokens (single source of truth in :root, Dark Only, no light tokens, fallback solid bg, mobile blur-sm, scripts/checkColors.js quality gate)
+- [ ] V2: Background (AmbientBackground component, 3 drifting radial gradients, SVG grain, scrim, video mode fallback)
+- [ ] V3: App shell (sticky glass navbar, search glass input, accent register button, monochrome sidebar icons, glass right rail widgets)
+- [ ] V4: Feed and post cards (page titles in --text-primary, feed tabs with sliding accent line, post card glass tokens, --anon / --op tags, 20px chevron arrows)
+- [ ] V5: Comments, post detail, forms (thin guide lines, composer glass inputs, anonymous switch, button hierarchy)
+- [ ] V6: Other surfaces (chat lightweight bubbles, auth/admin/settings/reviews/resources glass tokens, thin scrollbars, selection in --accent-soft)
+- [ ] V7: GSAP motion (0.2-0.45s power2.out, page enter fade+rise, first-load feed stagger, vote arrow scale, reduced-motion guards)
+- [ ] V8: Accessibility and performance (contrast >= 4.5:1, visible focus rings, CLS < 0.05, chat latency budget preserved)
+- [ ] V9: Verify (build/lint pass, checkColors.js passes with 0 violations, responsive screenshots at 375/768/1440px)
 
 - [ ] 5.12 Lost & Found and marketplace
 
