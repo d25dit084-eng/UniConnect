@@ -2,7 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMe
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket, usePresence, useTyping } from '../context/SocketContext';
-import { listConversations, getMessages, deleteMessage } from '../api/chatApi';
+import { listConversations, getMessages, sendMessage, deleteMessage } from '../api/chatApi';
 import { ConversationSkeleton, MessageSkeleton } from '../components/Skeleton';
 
 const CONVS_CACHE_KEY_PREFIX = 'uniconnect_cached_convs_';
@@ -622,7 +622,7 @@ export const ChatPage = () => {
     return () => clearInterval(syncInterval);
   }, [conversationId, socketStatus]);
 
-  // ─── Optimistic Send with State Progression ──────────────────────────────────
+  // ─── Optimistic Send with Immediate HTTP Confirmation ───────────────────────
   const handleSend = useCallback(
     async (messageContent) => {
       if (!messageContent || !conversationId) return;
@@ -644,21 +644,29 @@ export const ChatPage = () => {
       setTimeout(() => messageEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 30);
 
       try {
-        const ack = await emitSendMessage(conversationId, messageContent, clientMsgId);
+        // Direct reliable HTTP send to live Atlas database
+        const res = await sendMessage(conversationId, messageContent);
+        const savedMsg = res?.data?.message || res?.data;
 
-        // Update message status to 'sent' while preserving stable clientMsgId and position
+        // Immediately update optimistic bubble to sent
         setMessages((prev) =>
           prev.map((m) =>
             m.clientMsgId === clientMsgId || m._id === clientMsgId
               ? {
                   ...m,
                   status: 'sent',
-                  _id: ack?.messageId || ack?._id || m._id,
-                  clientMsgId: m.clientMsgId || clientMsgId,
+                  _id: savedMsg?._id || m._id,
+                  createdAt: savedMsg?.createdAt || m.createdAt,
+                  clientMsgId,
                 }
               : m
           )
         );
+
+        // Also broadcast via socket if peer socket is active
+        if (socket?.connected) {
+          socket.emit('send_message', { conversationId, content: messageContent, clientMsgId });
+        }
       } catch (err) {
         console.error('[ChatPage] Send failed:', err.message);
         setMessages((prev) =>
@@ -668,7 +676,7 @@ export const ChatPage = () => {
         );
       }
     },
-    [conversationId, user?._id, user?.username, emitSendMessage]
+    [conversationId, user?._id, user?.username, socket]
   );
 
   // ─── Retry Failed Message ────────────────────────────────────────────────────
@@ -679,21 +687,25 @@ export const ChatPage = () => {
       setMessages((prev) => prev.map((m) => (m._id === msg._id ? { ...m, status: 'sending' } : m)));
 
       try {
-        const ack = await emitSendMessage(conversationId, msg.content, msg.clientMsgId || msg._id);
-        if (ack?.status === 'queued_offline') return;
+        const res = await sendMessage(conversationId, msg.content);
+        const savedMsg = res?.data?.message || res?.data;
 
         setMessages((prev) =>
           prev.map((m) =>
-            m._id === msg._id ? { ...m, status: 'sent', _id: ack?.messageId || m._id } : m
+            m._id === msg._id ? { ...m, status: 'sent', _id: savedMsg?._id || m._id } : m
           )
         );
+
+        if (socket?.connected) {
+          socket.emit('send_message', { conversationId, content: msg.content, clientMsgId: msg.clientMsgId });
+        }
       } catch (err) {
         setMessages((prev) =>
           prev.map((m) => (m._id === msg._id ? { ...m, status: 'failed' } : m))
         );
       }
     },
-    [conversationId, emitSendMessage]
+    [conversationId, socket]
   );
 
   // ─── Delete Message ──────────────────────────────────────────────────────────

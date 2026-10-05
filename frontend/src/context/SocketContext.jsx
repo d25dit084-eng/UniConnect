@@ -38,7 +38,14 @@ export const SocketProvider = ({ children }) => {
 
     if (!accessToken) return;
 
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || (isLocal ? 'http://localhost:5000' : null);
+
+    if (!socketUrl) {
+      // In production without dedicated WebSocket server, cloud HTTP REST sync operates seamlessly
+      setSocketStatus('connected');
+      return;
+    }
 
     // Backlog A.1: WebSocket transport only, skipping HTTP long-polling upgrade
     const newSocket = io(socketUrl, {
@@ -49,11 +56,11 @@ export const SocketProvider = ({ children }) => {
       },
       transports: ['websocket'],
       reconnection: true,
-      reconnectionAttempts: 25,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000, // Exponential backoff max 5s
-      randomizationFactor: 0.5, // Random jitter (+/- 50%) to prevent reconnect storms
-      timeout: 10000,
+      reconnectionDelayMax: 5000,
+      randomizationFactor: 0.5,
+      timeout: 5000,
     });
 
     socketRef.current = newSocket;
