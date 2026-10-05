@@ -336,6 +336,13 @@
   - Added user preference endpoints in `userController.js` and `userRoutes.js`: `GET /api/users/preferences/notifications`, `PUT /api/users/preferences/notifications`, and `POST /api/users/preferences/notifications/test-digest`.
   - Built frontend API client methods in `frontend/src/api/userApi.js` and responsive preference management cards in `frontend/src/pages/SettingsPage.jsx` with category toggles, digest frequency selection, optimistic updates, and manual test digest trigger.
   - Created automated test suite `backend/tests/notificationPreferences.test.js` validating preference retrieval, persistence, and digest generation (15/15 test suites passing, 68/68 tests).
+- [x] **Q5.11 — Automod & Moderation Reports Queue (Backend & Frontend)**:
+  - Built automated content filtering engine (`backend/services/automodService.js`) detecting academic dishonesty (exam leaks, essay solicitation), financial scams/phishing, toxic slurs, and community-specific custom keyword triggers.
+  - Extended `Report` model with `isAutomod`, `automodRule`, `automodMatched` fields and made `reporter` optional for system-generated triage records. Extended `Community` model with `automodKeywords` and `automodEnabled`.
+  - Integrated automod evaluation into post (`postController.js`) and comment (`commentController.js`) creation: flagged content is quarantined (`status: 'hidden'`) and automatically queued in the moderation reports triage queue.
+  - Built community moderation endpoints in `communityModController.js` and `communityRoutes.js` (`GET/POST /api/communities/:slug/mod/reports`, `GET/PUT /api/communities/:slug/mod/settings`) enabling community moderators to review flagged content, approve/restore quarantined items, permanently remove violations, issue author warnings, and manage custom banned keywords.
+  - Updated global `AdminPage.jsx` and built collegiate moderation center in `CommunityModPage.jsx` with rich report previews, status filters, and action controls.
+  - Created Jest test suite `backend/tests/automod.test.js` verifying clean post approval, automod quarantine, custom keyword triggers, mod triage actions, and permission enforcement (16/16 test suites passing, 74/74 tests).
 
 ---
 
@@ -525,11 +532,11 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 5.6b Study groups (Frontend: StudyGroupsPage, filter by course/meeting type, group creation modal, join/leave UI, and group chat link)
 - [x] 5.7a Campus events & RSVP (Backend: Event model, RSVP tracking, date/time/venue/virtual link, capacity cap, reminder notifications, Jest tests)
 - [x] 5.7b Campus events & RSVP (Frontend: Events browse view, date/format filters, RSVP toggling with optimistic state, event creation modal)
-- [x] 5.8a PWA (Frontend: Web App Manifest, Service Worker caching strategies, offline detection banner, PWA install prompt support)
+- [x] 5.8a PWA (Frontend: Web App Manifest, Service Worker caching strate gies, offline detection banner, PWA install prompt support)
 - [x] 5.8b Web Push (Backend & Frontend: VAPID keys, push subscription endpoints, Web Push dispatch service, browser permission toggle and Jest tests)
 - [x] 5.9 Onboarding
 - [x] 5.10 Notification preferences & digest
-- [ ] 5.11 Automod & moderation reports
+- [x] 5.11 Automod & moderation reports
 - [ ] 5.12 Lost & Found and marketplace
 
 ### Q6: Final Polish

@@ -13,6 +13,7 @@ const { encryptAuthor } = require('../utils/encryption');
 const { sanitizeContent } = require('../utils/sanitizer');
 const { calculateHotRank } = require('../services/rankingService');
 const { processMentions } = require('../services/mentionService');
+const { evaluateContent, recordAutomodReport } = require('../services/automodService');
 
 const MAX_DEPTH = 8;
 
@@ -83,11 +84,22 @@ const createComment = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Post not found');
   }
 
+  const sanitizedContent = sanitizeContent(content);
+
+  // Automod evaluation
+  const automodEvaluation = await evaluateContent({
+    content: sanitizedContent,
+    communityId: post.community,
+  });
+
+  const isQuarantined = automodEvaluation.flagged && automodEvaluation.action === 'quarantine';
+  const initialStatus = isQuarantined ? 'hidden' : 'active';
+
   // Create comment (Starts with 1 upvote from the author)
   const comment = await Comment.create({
     post: postId,
     author: authorId,
-    content: sanitizeContent(content),
+    content: sanitizedContent,
     parentComment: null,
     depth: 0,
     isAnonymous: Boolean(isAnonymous),
@@ -95,6 +107,7 @@ const createComment = asyncHandler(async (req, res) => {
     upvoteCount: 1,
     downvoteCount: 0,
     score: 1,
+    status: initialStatus,
   });
 
   // Create vote record for the self-upvote
@@ -125,35 +138,48 @@ const createComment = asyncHandler(async (req, res) => {
     await Post.updateOne({ _id: postId }, { $set: { hotRank } });
   }
 
-  // Trigger Notification to post owner (if not self-interaction)
-  if (post.author.toString() !== authorId.toString()) {
-    const formattedMessage = isAnonymous
-      ? 'Someone commented on your post.'
-      : `u/${req.user.username} commented on your post.`;
-    await Notification.create({
-      recipient: post.author,
-      actor: isAnonymous ? null : authorId,
-      type: 'post_comment',
-      post: post._id,
-      comment: comment._id,
-      message: formattedMessage,
+  if (isQuarantined) {
+    await recordAutomodReport({
+      targetType: 'comment',
+      targetId: comment._id,
+      communityId: post.community,
+      evaluation: automodEvaluation,
     });
-  }
+  } else {
+    // Trigger Notification to post owner (if not self-interaction)
+    if (post.author.toString() !== authorId.toString()) {
+      const formattedMessage = isAnonymous
+        ? 'Someone commented on your post.'
+        : `u/${req.user.username} commented on your post.`;
+      await Notification.create({
+        recipient: post.author,
+        actor: isAnonymous ? null : authorId,
+        type: 'post_comment',
+        post: post._id,
+        comment: comment._id,
+        message: formattedMessage,
+      });
+    }
 
-  // Dispatch notifications for any @mentions
-  processMentions({
-    text: content,
-    author: req.user,
-    isAnonymous: Boolean(isAnonymous),
-    postId: post._id,
-    commentId: comment._id,
-  }).catch((err) => console.error('[Mentions] Error processing comment mentions:', err.message));
+    // Dispatch notifications for any @mentions
+    processMentions({
+      text: content,
+      author: req.user,
+      isAnonymous: Boolean(isAnonymous),
+      postId: post._id,
+      commentId: comment._id,
+    }).catch((err) => console.error('[Mentions] Error processing comment mentions:', err.message));
+  }
 
   const populated = await Comment.findById(comment._id).populate('author', 'username avatar bio karma');
   const sanitized = sanitizeComment(populated, authorId, post.author.toString());
   const [enriched] = await enrichCommentsWithVotes([sanitized], authorId);
 
-  sendResponse(res, 201, 'Comment posted successfully', { comment: enriched });
+  const successMessage = isQuarantined
+    ? 'Comment submitted and queued for moderation review due to community filters.'
+    : 'Comment posted successfully';
+
+  sendResponse(res, 201, successMessage, { comment: enriched });
 });
 
 // ─── Reply to Comment ─────────────────────────────────────────────────────────
@@ -177,18 +203,30 @@ const replyToComment = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Post not found or no longer active');
   }
 
+  const sanitizedContent = sanitizeContent(content);
+
+  // Automod evaluation
+  const automodEvaluation = await evaluateContent({
+    content: sanitizedContent,
+    communityId: post.community,
+  });
+
+  const isQuarantined = automodEvaluation.flagged && automodEvaluation.action === 'quarantine';
+  const initialStatus = isQuarantined ? 'hidden' : 'active';
+
   // Create reply (Starts with 1 upvote from the author)
   const reply = await Comment.create({
     post: parentComment.post,
     author: authorId,
     parentComment: parentCommentId,
     depth: newDepth,
-    content: sanitizeContent(content),
+    content: sanitizedContent,
     isAnonymous: Boolean(isAnonymous),
     encryptedAuthor: isAnonymous ? encryptAuthor(authorId.toString()) : null,
     upvoteCount: 1,
     downvoteCount: 0,
     score: 1,
+    status: initialStatus,
   });
 
   // Create vote record for the self-upvote
@@ -220,35 +258,48 @@ const replyToComment = asyncHandler(async (req, res) => {
     await Post.updateOne({ _id: parentComment.post }, { $set: { hotRank } });
   }
 
-  // Trigger Notification to parent comment owner (if not self-interaction)
-  if (parentComment.author.toString() !== authorId.toString()) {
-    const formattedMessage = isAnonymous
-      ? 'Someone replied to your comment.'
-      : `u/${req.user.username} replied to your comment.`;
-    await Notification.create({
-      recipient: parentComment.author,
-      actor: isAnonymous ? null : authorId,
-      type: 'comment_reply',
-      post: parentComment.post,
-      comment: reply._id,
-      message: formattedMessage,
+  if (isQuarantined) {
+    await recordAutomodReport({
+      targetType: 'comment',
+      targetId: reply._id,
+      communityId: post.community,
+      evaluation: automodEvaluation,
     });
-  }
+  } else {
+    // Trigger Notification to parent comment owner (if not self-interaction)
+    if (parentComment.author.toString() !== authorId.toString()) {
+      const formattedMessage = isAnonymous
+        ? 'Someone replied to your comment.'
+        : `u/${req.user.username} replied to your comment.`;
+      await Notification.create({
+        recipient: parentComment.author,
+        actor: isAnonymous ? null : authorId,
+        type: 'comment_reply',
+        post: parentComment.post,
+        comment: reply._id,
+        message: formattedMessage,
+      });
+    }
 
-  // Dispatch notifications for any @mentions
-  processMentions({
-    text: content,
-    author: req.user,
-    isAnonymous: Boolean(isAnonymous),
-    postId: parentComment.post,
-    commentId: reply._id,
-  }).catch((err) => console.error('[Mentions] Error processing reply mentions:', err.message));
+    // Dispatch notifications for any @mentions
+    processMentions({
+      text: content,
+      author: req.user,
+      isAnonymous: Boolean(isAnonymous),
+      postId: parentComment.post,
+      commentId: reply._id,
+    }).catch((err) => console.error('[Mentions] Error processing reply mentions:', err.message));
+  }
 
   const populated = await Comment.findById(reply._id).populate('author', 'username avatar bio karma');
   const sanitized = sanitizeComment(populated, authorId, post.author.toString());
   const [enriched] = await enrichCommentsWithVotes([sanitized], authorId);
 
-  sendResponse(res, 201, 'Reply posted successfully', { comment: enriched });
+  const successMessage = isQuarantined
+    ? 'Reply submitted and queued for moderation review due to community filters.'
+    : 'Reply posted successfully';
+
+  sendResponse(res, 201, successMessage, { comment: enriched });
 });
 
 // ─── Get Post Comments (threaded) ─────────────────────────────────────────────

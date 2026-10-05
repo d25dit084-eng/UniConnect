@@ -13,6 +13,13 @@ const {
   getCommunityMembers,
 } = require('../controllers/communityController');
 
+const {
+  getCommunityModReports,
+  actionCommunityModReport,
+  getCommunityModSettings,
+  updateCommunityModSettings,
+} = require('../controllers/communityModController');
+
 const { protect, optionalAuth } = require('../middleware/authMiddleware');
 const validateObjectId = require('../middleware/validateObjectId');
 
@@ -20,6 +27,12 @@ const validateObjectId = require('../middleware/validateObjectId');
 router.get('/', optionalAuth, getCommunities);
 router.post('/', protect, createCommunity);
 router.get('/joined', protect, getJoinedCommunities);
+
+// Community Moderation Endpoints
+router.get('/:slug/mod/reports', protect, getCommunityModReports);
+router.post('/:slug/mod/reports/:id/action', protect, validateObjectId('id'), actionCommunityModReport);
+router.get('/:slug/mod/settings', protect, getCommunityModSettings);
+router.put('/:slug/mod/settings', protect, updateCommunityModSettings);
 
 router.get('/:slug', optionalAuth, getCommunityBySlug);
 router.put('/:id', protect, validateObjectId(), updateCommunity);

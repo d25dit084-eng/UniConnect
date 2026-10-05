@@ -7,6 +7,7 @@ const REPORT_REASONS = [
   'misinformation',
   'inappropriate',
   'privacy',
+  'automod',
   'other',
 ];
 const REPORT_STATUSES = ['pending', 'reviewed', 'dismissed', 'actioned'];
@@ -17,7 +18,20 @@ const reportSchema = new mongoose.Schema(
     reporter: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      default: null,
+    },
+    isAutomod: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    automodRule: {
+      type: String,
+      default: null,
+    },
+    automodMatched: {
+      type: String,
+      default: null,
     },
     targetType: {
       type: String,

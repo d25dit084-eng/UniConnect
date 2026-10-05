@@ -15,6 +15,7 @@ const ApiError = require('../utils/ApiError');
 const sendResponse = require('../utils/sendResponse');
 
 const { sanitizeContent, sanitizeTitle } = require('../utils/sanitizer');
+const { evaluateContent, recordAutomodReport } = require('../services/automodService');
 
 // ─── Create Post ──────────────────────────────────────────────────────────────
 const createPost = asyncHandler(async (req, res) => {
@@ -68,7 +69,17 @@ const createPost = asyncHandler(async (req, res) => {
     };
   }
 
-  // 4. Create the post (Starts with 1 upvote from the author)
+  // 4. Automod evaluation
+  const automodEvaluation = await evaluateContent({
+    title: cleanTitle,
+    content: cleanContent,
+    communityDoc: community,
+  });
+
+  const isQuarantined = automodEvaluation.flagged && automodEvaluation.action === 'quarantine';
+  const initialStatus = isQuarantined ? 'hidden' : 'active';
+
+  // 5. Create the post (Starts with 1 upvote from the author)
   const post = await Post.create({
     author: authorId,
     community: communityId,
@@ -84,6 +95,7 @@ const createPost = asyncHandler(async (req, res) => {
     downvoteCount: 0,
     score: 1,
     hotRank: 0,
+    status: initialStatus,
   });
 
   // Calculate and store initial hot rank
@@ -104,14 +116,24 @@ const createPost = asyncHandler(async (req, res) => {
   // Increment community postsCount atomically
   await Community.findByIdAndUpdate(communityId, { $inc: { postsCount: 1 } });
 
-  // Process @mentions in title and content
-  const mentionText = `${post.title || ''} ${post.content || ''}`;
-  processMentions({
-    text: mentionText,
-    author: req.user,
-    isAnonymous: Boolean(isAnonymous),
-    postId: post._id,
-  }).catch((err) => console.error('[Mentions] Error processing post mentions:', err.message));
+  // If quarantined by automod, create automated triage report and skip broadcast/mentions
+  if (isQuarantined) {
+    await recordAutomodReport({
+      targetType: 'post',
+      targetId: post._id,
+      communityId,
+      evaluation: automodEvaluation,
+    });
+  } else {
+    // Process @mentions in title and content
+    const mentionText = `${post.title || ''} ${post.content || ''}`;
+    processMentions({
+      text: mentionText,
+      author: req.user,
+      isAnonymous: Boolean(isAnonymous),
+      postId: post._id,
+    }).catch((err) => console.error('[Mentions] Error processing post mentions:', err.message));
+  }
 
   // Populates details for response
   const populated = await Post.findById(post._id)
@@ -120,14 +142,20 @@ const createPost = asyncHandler(async (req, res) => {
 
   const [enriched] = await enrichPosts([populated], authorId);
 
-  // Broadcast the new post event globally to active socket clients
-  try {
-    broadcastNewPost(enriched);
-  } catch (err) {
-    // Silently ignore socket broadcast failures in controller
+  // Broadcast the new post event globally to active socket clients only if active
+  if (!isQuarantined) {
+    try {
+      broadcastNewPost(enriched);
+    } catch (err) {
+      // Silently ignore socket broadcast failures in controller
+    }
   }
 
-  sendResponse(res, 201, 'Post created successfully', { post: enriched });
+  const successMessage = isQuarantined
+    ? 'Post submitted and queued for moderation review due to community filters.'
+    : 'Post created successfully';
+
+  sendResponse(res, 201, successMessage, { post: enriched });
 });
 
 // ─── Get Single Post By ID ─────────────────────────────────────────────────────

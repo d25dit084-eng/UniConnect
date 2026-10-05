@@ -59,7 +59,7 @@ const getStats = asyncHandler(async (req, res) => {
 
 // ─── Admin: Get Reports ───────────────────────────────────────────────────────
 const getReports = asyncHandler(async (req, res) => {
-  let { status, targetType, page = 1, limit = 20 } = req.query;
+  let { status, targetType, isAutomod, page = 1, limit = 20 } = req.query;
 
   page = Math.max(1, parseInt(page, 10) || 1);
   limit = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
@@ -67,17 +67,61 @@ const getReports = asyncHandler(async (req, res) => {
   const filter = {};
   if (status) filter.status = status;
   if (targetType) filter.targetType = targetType;
+  if (isAutomod !== undefined) filter.isAutomod = isAutomod === 'true';
 
   const total = await Report.countDocuments(filter);
-  const reports = await Report.find(filter)
+  const rawReports = await Report.find(filter)
     .populate('reporter', 'username email') // Admin gets reporter info
     .populate('reviewedBy', 'username')
+    .populate('community', 'name slug displayName')
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
     .limit(limit)
     .lean();
 
-  const pages = Math.ceil(total / limit);
+  // Enrich with target previews
+  const reports = await Promise.all(
+    rawReports.map(async (r) => {
+      let targetPreview = null;
+      try {
+        if (r.targetType === 'post') {
+          const postDoc = await Post.findById(r.targetId)
+            .select('title content status isAnonymous author')
+            .populate('author', 'username')
+            .lean();
+          if (postDoc) {
+            targetPreview = {
+              title: postDoc.title,
+              snippet: postDoc.content ? postDoc.content.slice(0, 200) : '',
+              status: postDoc.status,
+              isAnonymous: postDoc.isAnonymous,
+              authorName: postDoc.isAnonymous ? 'Anonymous Author' : postDoc.author?.username,
+            };
+          }
+        } else if (r.targetType === 'comment') {
+          const commentDoc = await Comment.findById(r.targetId)
+            .select('content status isAnonymous author post')
+            .populate('author', 'username')
+            .populate('post', 'title')
+            .lean();
+          if (commentDoc) {
+            targetPreview = {
+              title: commentDoc.post?.title || 'Comment',
+              snippet: commentDoc.content ? commentDoc.content.slice(0, 200) : '',
+              status: commentDoc.status,
+              isAnonymous: commentDoc.isAnonymous,
+              authorName: commentDoc.isAnonymous ? 'Anonymous Author' : commentDoc.author?.username,
+            };
+          }
+        }
+      } catch (err) {
+        // tolerate missing target
+      }
+      return { ...r, targetPreview };
+    })
+  );
+
+  const pages = Math.ceil(total / limit) || 1;
 
   sendResponse(res, 200, 'Reports retrieved', {
     reports,
@@ -105,7 +149,37 @@ const reviewReport = asyncHandler(async (req, res) => {
   report.reviewedAt = new Date();
   if (moderationNote !== undefined) report.moderationNote = moderationNote.trim();
 
+  // If dismissed and target was quarantined (hidden), restore to active
+  if (status === 'dismissed') {
+    if (report.targetType === 'post') {
+      const p = await Post.findById(report.targetId);
+      if (p && p.status === 'hidden') {
+        p.status = 'active';
+        await p.save();
+      }
+    } else if (report.targetType === 'comment') {
+      const c = await Comment.findById(report.targetId);
+      if (c && c.status === 'hidden') {
+        c.status = 'active';
+        await c.save();
+      }
+    }
+  }
+
   await report.save();
+
+  // Audit log entry
+  try {
+    await AuditLog.create({
+      admin: req.user._id,
+      action: 'review_report',
+      targetType: report.targetType === 'community' ? 'post' : report.targetType,
+      targetId: report.targetId,
+      reason: moderationNote || `Admin report review: ${status}`,
+    });
+  } catch (err) {
+    // Non-fatal
+  }
 
   sendResponse(res, 200, 'Report reviewed successfully', { report });
 });

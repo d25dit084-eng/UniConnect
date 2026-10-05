@@ -55,3 +55,30 @@ export const getCommunityMembers = async (slug, page = 1, limit = 10) => {
   });
   return res.data;
 };
+
+// ─── Community Moderation & Automod Endpoints ─────────────────────────────────
+export const getCommunityModReports = async (slug, status = '', page = 1, limit = 20) => {
+  const res = await api.get(`/communities/${slug}/mod/reports`, {
+    params: { status: status || undefined, page, limit },
+  });
+  return res.data;
+};
+
+export const actionCommunityModReport = async (slug, id, action, note = '') => {
+  const res = await api.post(`/communities/${slug}/mod/reports/${id}/action`, {
+    action,
+    note,
+  });
+  return res.data;
+};
+
+export const getCommunityModSettings = async (slug) => {
+  const res = await api.get(`/communities/${slug}/mod/settings`);
+  return res.data;
+};
+
+export const updateCommunityModSettings = async (slug, data) => {
+  const res = await api.put(`/communities/${slug}/mod/settings`, data);
+  return res.data;
+};
+

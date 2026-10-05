@@ -192,17 +192,89 @@ export const AdminPage = () => {
                   {reports.map((rep) => (
                     <tr key={rep._id} style={{ borderBottom: '1px dotted #ccc' }}>
                       <td style={{ padding: '6px' }}>
-                        {rep.reporter?.username ? `u/${rep.reporter.username}` : '[deleted]'}
-                        <br />
-                        <span style={{ fontSize: '9px', color: '#666' }}>
-                          {rep.reporter?.email}
-                        </span>
+                        {rep.isAutomod ? (
+                          <span
+                            style={{
+                              background: '#fef3c7',
+                              color: '#92400e',
+                              fontSize: '10px',
+                              fontWeight: '700',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              display: 'inline-block',
+                            }}
+                          >
+                            🤖 AUTOMOD
+                          </span>
+                        ) : rep.reporter?.username ? (
+                          <>
+                            u/{rep.reporter.username}
+                            <br />
+                            <span style={{ fontSize: '9px', color: '#666' }}>
+                              {rep.reporter?.email}
+                            </span>
+                          </>
+                        ) : (
+                          '[system]'
+                        )}
+                        {rep.community?.name && (
+                          <div style={{ fontSize: '10px', color: '#0284c7', marginTop: '2px' }}>
+                            c/{rep.community.name}
+                          </div>
+                        )}
                       </td>
-                      <td style={{ padding: '6px' }}>{rep.targetType}</td>
-                      <td style={{ padding: '6px', wordBreak: 'break-all' }}>{rep.targetId}</td>
+                      <td style={{ padding: '6px' }}>
+                        <strong>{rep.targetType}</strong>
+                        {rep.automodRule && (
+                          <div style={{ fontSize: '9px', color: '#92400e' }}>
+                            {rep.automodRule}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '6px', maxWidth: '240px' }}>
+                        {rep.targetPreview?.title && (
+                          <div style={{ fontWeight: '600', fontSize: '11px', color: '#0f172a' }}>
+                            {rep.targetPreview.title}
+                          </div>
+                        )}
+                        {rep.targetPreview?.snippet ? (
+                          <div
+                            style={{
+                              fontSize: '11px',
+                              color: '#475569',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            "{rep.targetPreview.snippet}"
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '10px', color: '#94a3b8' }}>ID: {rep.targetId}</span>
+                        )}
+                        {rep.targetPreview?.status === 'hidden' && (
+                          <span style={{ fontSize: '9px', color: '#dc2626', fontWeight: '700' }}>
+                            {' '}[QUARANTINED]
+                          </span>
+                        )}
+                      </td>
                       <td style={{ padding: '6px' }}>{rep.reason}</td>
                       <td style={{ padding: '6px' }}>{rep.description || '(none)'}</td>
-                      <td style={{ padding: '6px' }}>{rep.status}</td>
+                      <td style={{ padding: '6px' }}>
+                        <span
+                          style={{
+                            fontWeight: '600',
+                            color:
+                              rep.status === 'pending'
+                                ? '#d97706'
+                                : rep.status === 'actioned'
+                                ? '#dc2626'
+                                : '#16a34a',
+                          }}
+                        >
+                          {rep.status}
+                        </span>
+                      </td>
                       <td style={{ padding: '6px', textAlign: 'right' }}>
                         {rep.status === 'pending' ? (
                           <div style={{ display: 'flex', gap: '5px', justifyContent: 'flex-end' }}>

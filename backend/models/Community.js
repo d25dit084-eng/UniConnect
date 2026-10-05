@@ -70,6 +70,14 @@ const communitySchema = new mongoose.Schema(
         ref: 'User',
       },
     ],
+    automodKeywords: {
+      type: [String],
+      default: [],
+    },
+    automodEnabled: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true,
