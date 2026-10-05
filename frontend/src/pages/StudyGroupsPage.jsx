@@ -176,13 +176,15 @@ export const StudyGroupsPage = () => {
           marginBottom: '20px',
           flexWrap: 'wrap',
           gap: '12px',
+          borderBottom: '1px solid var(--glass-border)',
+          paddingBottom: '16px',
         }}
       >
         <div>
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 6px 0', color: 'var(--text-primary)' }}>
             👥 Campus Study Groups
           </h1>
-          <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>
+          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
             Form midterm prep pods, homework cohorts, and collaborative study sessions with peers.
           </p>
         </div>
@@ -190,16 +192,10 @@ export const StudyGroupsPage = () => {
         {isAuthenticated && (
           <button
             type="button"
+            className="btn-accent"
             onClick={() => setIsModalOpen(true)}
             style={{
               padding: '9px 18px',
-              backgroundColor: '#1d4ed8',
-              color: '#ffffff',
-              borderRadius: '6px',
-              border: 'none',
-              fontWeight: 600,
-              fontSize: '14px',
-              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
@@ -222,37 +218,26 @@ export const StudyGroupsPage = () => {
       >
         <input
           type="text"
+          className="glass-input-field"
           placeholder="Search by topic, group name, or subject..."
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
             setPage(1);
           }}
-          style={{
-            flex: '1 1 200px',
-            padding: '8px 14px',
-            borderRadius: '6px',
-            border: '1px solid #dcdcdc',
-            fontSize: '14px',
-          }}
+          style={{ flex: '1 1 200px' }}
         />
 
         <input
           type="text"
+          className="glass-input-field"
           placeholder="Course code (e.g. CS201)..."
           value={selectedCourse}
           onChange={(e) => {
             setSelectedCourse(e.target.value);
             setPage(1);
           }}
-          style={{
-            width: '180px',
-            padding: '8px 12px',
-            borderRadius: '6px',
-            border: '1px solid #dcdcdc',
-            fontSize: '14px',
-            textTransform: 'uppercase',
-          }}
+          style={{ width: '180px', textTransform: 'uppercase' }}
         />
       </div>
 
@@ -280,9 +265,10 @@ export const StudyGroupsPage = () => {
               fontSize: '13px',
               fontWeight: 500,
               whiteSpace: 'nowrap',
-              border: selectedMeetingType === fmt.id ? '1px solid #1d4ed8' : '1px solid #e0dfdb',
-              backgroundColor: selectedMeetingType === fmt.id ? '#eff6ff' : '#ffffff',
-              color: selectedMeetingType === fmt.id ? '#1d4ed8' : '#4b5563',
+              border: selectedMeetingType === fmt.id ? '1px solid var(--accent)' : '1px solid var(--glass-border)',
+              backgroundColor: selectedMeetingType === fmt.id ? 'rgba(139, 147, 255, 0.22)' : 'rgba(255, 255, 255, 0.05)',
+              color: selectedMeetingType === fmt.id ? '#ffffff' : 'var(--text-secondary)',
+              boxShadow: selectedMeetingType === fmt.id ? '0 0 12px rgba(139, 147, 255, 0.25)' : 'none',
               cursor: 'pointer',
               transition: 'all 0.15s ease',
             }}
@@ -296,10 +282,11 @@ export const StudyGroupsPage = () => {
       {error && (
         <div
           style={{
-            padding: '12px',
-            backgroundColor: '#fee2e2',
-            color: '#b91c1c',
-            borderRadius: '6px',
+            padding: '12px 16px',
+            backgroundColor: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            color: '#fca5a5',
+            borderRadius: 'var(--radius-ctl)',
             marginBottom: '16px',
           }}
         >
@@ -309,7 +296,7 @@ export const StudyGroupsPage = () => {
 
       {/* Loading state */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: '#666' }}>
+        <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary)' }}>
           Loading study groups...
         </div>
       ) : groups.length === 0 ? (
@@ -317,16 +304,18 @@ export const StudyGroupsPage = () => {
           style={{
             textAlign: 'center',
             padding: '60px 20px',
-            backgroundColor: '#faf9f6',
-            borderRadius: '8px',
-            border: '1px dashed #dcdcdc',
+            backgroundColor: 'var(--glass-bg)',
+            borderRadius: 'var(--radius-card)',
+            border: '1px dashed var(--glass-border)',
+            backdropFilter: 'var(--glass-blur)',
+            WebkitBackdropFilter: 'var(--glass-blur)',
           }}
         >
           <div style={{ fontSize: '32px', marginBottom: '8px' }}>👥</div>
-          <h3 style={{ margin: '0 0 6px 0', fontSize: '17px', color: '#1a1a1b' }}>
+          <h3 style={{ margin: '0 0 6px 0', fontSize: '17px', color: 'var(--text-primary)' }}>
             No study groups found
           </h3>
-          <p style={{ margin: 0, color: '#777', fontSize: '14px' }}>
+          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
             Start a study squad for your upcoming classes and invite peers!
           </p>
         </div>
@@ -355,15 +344,12 @@ export const StudyGroupsPage = () => {
             return (
               <div
                 key={grp._id}
+                className="glass-panel-card"
                 style={{
-                  backgroundColor: '#ffffff',
-                  borderRadius: '8px',
-                  border: '1px solid #e5e5e5',
-                  padding: '18px',
+                  padding: '20px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '12px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                  gap: '14px',
                 }}
               >
                 <div
@@ -371,7 +357,7 @@ export const StudyGroupsPage = () => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'flex-start',
-                    gap: '12px',
+                    gap: '14px',
                   }}
                 >
                   <div style={{ flex: 1 }}>
@@ -385,40 +371,23 @@ export const StudyGroupsPage = () => {
                       }}
                     >
                       {grp.courseCode && (
-                        <span
-                          style={{
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            padding: '2px 8px',
-                            borderRadius: '4px',
-                            backgroundColor: '#e0e7ff',
-                            color: '#3730a3',
-                          }}
-                        >
+                        <span className="glass-tag-course">
                           {grp.courseCode}
                         </span>
                       )}
-                      <span
-                        style={{
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          backgroundColor: '#f3f4f6',
-                          color: '#4b5563',
-                        }}
-                      >
+                      <span className="glass-tag-badge">
                         {formatMeetingType(grp.meetingType)}
                       </span>
                       {grp.topic && (
                         <span
                           style={{
                             fontSize: '11px',
-                            fontWeight: 500,
-                            padding: '2px 8px',
-                            borderRadius: '4px',
-                            backgroundColor: '#fef3c7',
-                            color: '#92400e',
+                            fontWeight: 600,
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                            border: '1px solid rgba(245, 158, 11, 0.3)',
+                            color: '#fbbf24',
                           }}
                         >
                           🎯 {grp.topic}
@@ -426,7 +395,7 @@ export const StudyGroupsPage = () => {
                       )}
                     </div>
 
-                    <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', color: '#111827' }}>
+                    <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
                       {grp.name}
                     </h3>
 
@@ -434,9 +403,9 @@ export const StudyGroupsPage = () => {
                       <p
                         style={{
                           margin: '0 0 10px 0',
-                          fontSize: '13px',
-                          color: '#4b5563',
-                          lineHeight: '1.4',
+                          fontSize: '13.5px',
+                          color: 'var(--text-secondary)',
+                          lineHeight: '1.5',
                         }}
                       >
                         {grp.description}
@@ -448,29 +417,29 @@ export const StudyGroupsPage = () => {
                       style={{
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '4px',
+                        gap: '6px',
                         fontSize: '13px',
-                        color: '#4b5563',
+                        color: 'var(--text-secondary)',
                       }}
                     >
                       {grp.meetingSchedule && (
                         <div>
-                          <strong>📅 Schedule:</strong> {grp.meetingSchedule}
+                          <strong style={{ color: 'var(--text-primary)' }}>📅 Schedule:</strong> {grp.meetingSchedule}
                         </div>
                       )}
                       {grp.location && (
                         <div>
-                          <strong>📍 Location:</strong> {grp.location}
+                          <strong style={{ color: 'var(--text-primary)' }}>📍 Location:</strong> {grp.location}
                         </div>
                       )}
                       {grp.meetingLink && grp.isMember && (
                         <div>
-                          <strong>🔗 Meeting Link:</strong>{' '}
+                          <strong style={{ color: 'var(--text-primary)' }}>🔗 Meeting Link:</strong>{' '}
                           <a
                             href={grp.meetingLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            style={{ color: '#2563eb' }}
+                            style={{ color: 'var(--accent)', textDecoration: 'underline' }}
                           >
                             {grp.meetingLink}
                           </a>
@@ -485,7 +454,7 @@ export const StudyGroupsPage = () => {
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'flex-end',
-                      gap: '8px',
+                      gap: '10px',
                     }}
                   >
                     {/* Capacity badge */}
@@ -493,10 +462,11 @@ export const StudyGroupsPage = () => {
                       style={{
                         fontSize: '12px',
                         fontWeight: 600,
-                        color: isFull ? '#dc2626' : '#2563eb',
-                        backgroundColor: isFull ? '#fee2e2' : '#eff6ff',
-                        padding: '3px 8px',
-                        borderRadius: '12px',
+                        color: isFull ? '#f87171' : 'var(--accent)',
+                        backgroundColor: isFull ? 'rgba(239, 68, 68, 0.15)' : 'rgba(139, 147, 255, 0.12)',
+                        border: isFull ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(139, 147, 255, 0.25)',
+                        padding: '3px 10px',
+                        borderRadius: 'var(--radius-pill)',
                       }}
                     >
                       👥 {grp.memberCount || 0} / {grp.maxMembers || 20} members
@@ -504,39 +474,35 @@ export const StudyGroupsPage = () => {
 
                     {/* Join / Leave / Chat Buttons */}
                     {grp.isMember ? (
-                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         {grp.conversation && (
                           <button
                             type="button"
                             onClick={() => navigate(`/chat/${grp.conversation}`)}
                             style={{
-                              padding: '6px 12px',
-                              backgroundColor: '#10b981',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '6px',
+                              padding: '6px 14px',
+                              backgroundColor: 'rgba(52, 211, 153, 0.2)',
+                              border: '1px solid rgba(52, 211, 153, 0.4)',
+                              color: '#34d399',
+                              borderRadius: 'var(--radius-ctl)',
                               fontSize: '13px',
                               fontWeight: 600,
                               cursor: 'pointer',
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '4px',
+                              gap: '6px',
                             }}
                           >
-                            <span>💬</span> Group Chat
+                            💬 Group Chat
                           </button>
                         )}
                         <button
                           type="button"
+                          className="btn-secondary"
                           onClick={() => handleLeave(grp)}
                           style={{
                             padding: '6px 12px',
-                            backgroundColor: '#fff',
-                            color: '#6b7280',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '6px',
                             fontSize: '13px',
-                            cursor: 'pointer',
                           }}
                         >
                           Leave
@@ -545,20 +511,17 @@ export const StudyGroupsPage = () => {
                     ) : (
                       <button
                         type="button"
+                        className="btn-accent"
                         onClick={() => handleJoin(grp)}
-                        disabled={isFull}
+                        disabled={isFull || !isAuthenticated}
                         style={{
-                          padding: '6px 16px',
-                          backgroundColor: isFull ? '#9ca3af' : '#1d4ed8',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: '6px',
+                          padding: '7px 18px',
                           fontSize: '13px',
-                          fontWeight: 600,
+                          opacity: isFull ? 0.6 : 1,
                           cursor: isFull ? 'not-allowed' : 'pointer',
                         }}
                       >
-                        {isFull ? 'Group Full' : 'Join Group'}
+                        {isFull ? 'Group Full' : 'Join Squad'}
                       </button>
                     )}
 
@@ -569,10 +532,10 @@ export const StudyGroupsPage = () => {
                         style={{
                           background: 'none',
                           border: 'none',
-                          color: '#dc2626',
+                          color: '#f87171',
                           cursor: 'pointer',
                           fontSize: '12px',
-                          padding: '2px 4px',
+                          padding: '2px 6px',
                         }}
                       >
                         Delete Group
@@ -587,17 +550,17 @@ export const StudyGroupsPage = () => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    borderTop: '1px solid #f3f4f6',
-                    paddingTop: '8px',
+                    borderTop: '1px solid var(--glass-border)',
+                    paddingTop: '10px',
                     fontSize: '12px',
-                    color: '#6b7280',
+                    color: 'var(--text-muted)',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span>Organized by</span>
                     <Link
                       to={`/u/${grp.creator?.username?.replace('u/', '') || 'deleted'}`}
-                      style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}
+                      style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}
                     >
                       {grp.creator?.username || '[deleted]'}
                     </Link>
@@ -623,32 +586,20 @@ export const StudyGroupsPage = () => {
         >
           <button
             type="button"
+            className="btn-secondary"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            style={{
-              padding: '6px 14px',
-              border: '1px solid #dcdcdc',
-              background: '#fff',
-              borderRadius: '4px',
-              cursor: page <= 1 ? 'not-allowed' : 'pointer',
-            }}
           >
             Previous
           </button>
-          <span style={{ fontSize: '13px', color: '#666' }}>
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
             Page {page} of {totalPages}
           </span>
           <button
             type="button"
+            className="btn-secondary"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            style={{
-              padding: '6px 14px',
-              border: '1px solid #dcdcdc',
-              background: '#fff',
-              borderRadius: '4px',
-              cursor: page >= totalPages ? 'not-allowed' : 'pointer',
-            }}
           >
             Next
           </button>
@@ -657,41 +608,21 @@ export const StudyGroupsPage = () => {
 
       {/* Create Study Group Modal */}
       {isModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '16px',
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: '#fff',
-              borderRadius: '8px',
-              maxWidth: '520px',
-              width: '100%',
-              padding: '24px',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-            }}
-          >
+        <div className="glass-modal-overlay" onClick={() => setIsModalOpen(false)}>
+          <div className="glass-modal-dialog" onClick={(e) => e.stopPropagation()}>
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '16px',
+                marginBottom: '18px',
+                borderBottom: '1px solid var(--glass-border)',
+                paddingBottom: '12px',
               }}
             >
-              <h2 style={{ margin: 0, fontSize: '18px' }}>Create Study Group</h2>
+              <h2 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)', fontWeight: 700 }}>
+                Create Study Group
+              </h2>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
@@ -699,7 +630,9 @@ export const StudyGroupsPage = () => {
                   background: 'none',
                   border: 'none',
                   fontSize: '18px',
+                  color: 'var(--text-muted)',
                   cursor: 'pointer',
+                  padding: '4px',
                 }}
               >
                 ✕
@@ -709,11 +642,12 @@ export const StudyGroupsPage = () => {
             {modalError && (
               <div
                 style={{
-                  padding: '8px 12px',
-                  backgroundColor: '#fee2e2',
-                  color: '#b91c1c',
-                  borderRadius: '4px',
-                  marginBottom: '12px',
+                  padding: '10px 14px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: '#fca5a5',
+                  borderRadius: 'var(--radius-ctl)',
+                  marginBottom: '14px',
                   fontSize: '13px',
                 }}
               >
@@ -722,57 +656,58 @@ export const StudyGroupsPage = () => {
             )}
 
             <form onSubmit={handleCreateSubmit}>
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
                   Group Name *
                 </label>
                 <input
                   type="text"
                   required
+                  className="glass-input-field"
                   placeholder="e.g. CS201 Algorithms Midterm Squad"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 180px' }}>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
                     Course Code
                   </label>
                   <input
                     type="text"
+                    className="glass-input-field"
                     placeholder="e.g. CS201"
                     value={courseCode}
                     onChange={(e) => setCourseCode(e.target.value.toUpperCase())}
-                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                   />
                 </div>
 
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+                <div style={{ flex: '1 1 180px' }}>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
                     Focus Topic
                   </label>
                   <input
                     type="text"
+                    className="glass-input-field"
                     placeholder="e.g. Dynamic Programming"
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
-                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                   />
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 180px' }}>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
                     Meeting Format
                   </label>
                   <select
+                    className="glass-input-field"
                     value={meetingType}
                     onChange={(e) => setMeetingType(e.target.value)}
-                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', backgroundColor: '#fff' }}
+                    style={{ cursor: 'pointer' }}
                   >
                     <option value="in_person">In-Person</option>
                     <option value="virtual">Virtual</option>
@@ -780,85 +715,76 @@ export const StudyGroupsPage = () => {
                   </select>
                 </div>
 
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+                <div style={{ flex: '1 1 180px' }}>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
                     Max Members
                   </label>
                   <input
                     type="number"
                     min={2}
                     max={50}
+                    className="glass-input-field"
                     value={maxMembers}
                     onChange={(e) => setMaxMembers(e.target.value)}
-                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                   />
                 </div>
               </div>
 
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
                   Schedule
                 </label>
                 <input
                   type="text"
+                  className="glass-input-field"
                   placeholder="e.g. Tuesdays & Thursdays at 6 PM"
                   value={meetingSchedule}
                   onChange={(e) => setMeetingSchedule(e.target.value)}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                 />
               </div>
 
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
                   Location / Meeting Link
                 </label>
                 <input
                   type="text"
+                  className="glass-input-field"
                   placeholder="e.g. Science Library Room 204 or Zoom link"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                 />
               </div>
 
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
                   Description
                 </label>
                 <textarea
                   rows="3"
+                  className="glass-input-field"
                   placeholder="What goals, prerequisites, or topics will this group focus on?"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  style={{ resize: 'vertical' }}
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                 <button
                   type="button"
+                  className="btn-secondary"
                   onClick={() => setIsModalOpen(false)}
                   disabled={isSubmitting}
-                  style={{
-                    padding: '8px 16px',
-                    border: '1px solid #dcdcdc',
-                    background: '#fff',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                  }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
+                  className="btn-accent"
                   disabled={isSubmitting}
                   style={{
-                    padding: '8px 18px',
-                    backgroundColor: '#1d4ed8',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontWeight: 600,
+                    padding: '8px 20px',
                     cursor: isSubmitting ? 'not-allowed' : 'pointer',
                   }}
                 >

@@ -43,10 +43,17 @@ export const leaveCommunity = async (id) => {
 };
 
 export const getCommunityPosts = async (slug, sort = 'hot', page = 1, limit = 10) => {
-  const res = await api.get(`/communities/${slug}/posts`, {
-    params: { sort, page, limit },
-  });
-  return res.data;
+  try {
+    const res = await api.get(`/posts/community/${slug}`, {
+      params: { sort, page, limit },
+    });
+    return res.data;
+  } catch (err) {
+    const res = await api.get(`/communities/${slug}/posts`, {
+      params: { sort, page, limit },
+    });
+    return res.data;
+  }
 };
 
 export const getCommunityMembers = async (slug, page = 1, limit = 10) => {

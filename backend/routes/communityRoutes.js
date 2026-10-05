@@ -28,11 +28,16 @@ router.get('/', optionalAuth, getCommunities);
 router.post('/', protect, createCommunity);
 router.get('/joined', protect, getJoinedCommunities);
 
+const { getCommunityPosts } = require('../controllers/postController');
+
 // Community Moderation Endpoints
 router.get('/:slug/mod/reports', protect, getCommunityModReports);
 router.post('/:slug/mod/reports/:id/action', protect, validateObjectId('id'), actionCommunityModReport);
 router.get('/:slug/mod/settings', protect, getCommunityModSettings);
 router.put('/:slug/mod/settings', protect, updateCommunityModSettings);
+
+// Community Posts sub-feed
+router.get('/:slug/posts', optionalAuth, getCommunityPosts);
 
 router.get('/:slug', optionalAuth, getCommunityBySlug);
 router.put('/:id', protect, validateObjectId(), updateCommunity);

@@ -182,13 +182,15 @@ export const ResourceLibraryPage = () => {
           marginBottom: '20px',
           flexWrap: 'wrap',
           gap: '12px',
+          borderBottom: '1px solid var(--glass-border)',
+          paddingBottom: '16px',
         }}
       >
         <div>
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 6px 0', color: 'var(--text-primary)' }}>
             📚 Academic Resource Library
           </h1>
-          <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>
+          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
             Lecture notes, past exams, study guides, and syllabus archive shared by campus peers.
           </p>
         </div>
@@ -196,16 +198,10 @@ export const ResourceLibraryPage = () => {
         {isAuthenticated && (
           <button
             type="button"
+            className="btn-accent"
             onClick={() => setIsModalOpen(true)}
             style={{
               padding: '9px 18px',
-              backgroundColor: '#1d4ed8',
-              color: '#ffffff',
-              borderRadius: '6px',
-              border: 'none',
-              fontWeight: 600,
-              fontSize: '14px',
-              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
@@ -228,52 +224,36 @@ export const ResourceLibraryPage = () => {
       >
         <input
           type="text"
+          className="glass-input-field"
           placeholder="Search by title, topic, or tag..."
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
             setPage(1);
           }}
-          style={{
-            flex: '1 1 200px',
-            padding: '8px 14px',
-            borderRadius: '6px',
-            border: '1px solid #dcdcdc',
-            fontSize: '14px',
-          }}
+          style={{ flex: '1 1 200px' }}
         />
 
         <input
           type="text"
+          className="glass-input-field"
           placeholder="Course code (e.g. CS101)..."
           value={selectedCourse}
           onChange={(e) => {
             setSelectedCourse(e.target.value);
             setPage(1);
           }}
-          style={{
-            width: '180px',
-            padding: '8px 12px',
-            borderRadius: '6px',
-            border: '1px solid #dcdcdc',
-            fontSize: '14px',
-            textTransform: 'uppercase',
-          }}
+          style={{ width: '180px', textTransform: 'uppercase' }}
         />
 
         <select
           value={sortBy}
+          className="glass-input-field"
           onChange={(e) => {
             setSortBy(e.target.value);
             setPage(1);
           }}
-          style={{
-            padding: '8px 12px',
-            borderRadius: '6px',
-            border: '1px solid #dcdcdc',
-            fontSize: '14px',
-            backgroundColor: '#fff',
-          }}
+          style={{ width: '170px', cursor: 'pointer' }}
         >
           <option value="recent">Most Recent</option>
           <option value="downloads">Most Downloaded</option>
@@ -305,9 +285,10 @@ export const ResourceLibraryPage = () => {
               fontSize: '13px',
               fontWeight: 500,
               whiteSpace: 'nowrap',
-              border: selectedCategory === cat.id ? '1px solid #1d4ed8' : '1px solid #e0dfdb',
-              backgroundColor: selectedCategory === cat.id ? '#eff6ff' : '#ffffff',
-              color: selectedCategory === cat.id ? '#1d4ed8' : '#4b5563',
+              border: selectedCategory === cat.id ? '1px solid var(--accent)' : '1px solid var(--glass-border)',
+              backgroundColor: selectedCategory === cat.id ? 'rgba(139, 147, 255, 0.22)' : 'rgba(255, 255, 255, 0.05)',
+              color: selectedCategory === cat.id ? '#ffffff' : 'var(--text-secondary)',
+              boxShadow: selectedCategory === cat.id ? '0 0 12px rgba(139, 147, 255, 0.25)' : 'none',
               cursor: 'pointer',
               transition: 'all 0.15s ease',
             }}
@@ -321,10 +302,11 @@ export const ResourceLibraryPage = () => {
       {error && (
         <div
           style={{
-            padding: '12px',
-            backgroundColor: '#fee2e2',
-            color: '#b91c1c',
-            borderRadius: '6px',
+            padding: '12px 16px',
+            backgroundColor: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            color: '#fca5a5',
+            borderRadius: 'var(--radius-ctl)',
             marginBottom: '16px',
           }}
         >
@@ -334,7 +316,7 @@ export const ResourceLibraryPage = () => {
 
       {/* Loading state */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: '#666' }}>
+        <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary)' }}>
           Loading resources...
         </div>
       ) : resources.length === 0 ? (
@@ -342,22 +324,24 @@ export const ResourceLibraryPage = () => {
           style={{
             textAlign: 'center',
             padding: '60px 20px',
-            backgroundColor: '#faf9f6',
-            borderRadius: '8px',
-            border: '1px dashed #dcdcdc',
+            backgroundColor: 'var(--glass-bg)',
+            borderRadius: 'var(--radius-card)',
+            border: '1px dashed var(--glass-border)',
+            backdropFilter: 'var(--glass-blur)',
+            WebkitBackdropFilter: 'var(--glass-blur)',
           }}
         >
           <div style={{ fontSize: '32px', marginBottom: '8px' }}>📂</div>
-          <h3 style={{ margin: '0 0 6px 0', fontSize: '17px', color: '#1a1a1b' }}>
+          <h3 style={{ margin: '0 0 6px 0', fontSize: '17px', color: 'var(--text-primary)' }}>
             No resources found
           </h3>
-          <p style={{ margin: 0, color: '#777', fontSize: '14px' }}>
+          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
             Be the first to share notes or exams for this subject!
           </p>
         </div>
       ) : (
         /* Resources List */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {resources.map((item) => {
             const isOwner =
               user &&
@@ -372,15 +356,12 @@ export const ResourceLibraryPage = () => {
             return (
               <div
                 key={item._id}
+                className="glass-panel-card"
                 style={{
-                  backgroundColor: '#ffffff',
-                  borderRadius: '8px',
-                  border: '1px solid #e5e5e5',
-                  padding: '16px',
+                  padding: '18px 20px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '10px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                  gap: '12px',
                 }}
               >
                 <div
@@ -388,7 +369,7 @@ export const ResourceLibraryPage = () => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'flex-start',
-                    gap: '12px',
+                    gap: '14px',
                   }}
                 >
                   <div style={{ flex: 1 }}>
@@ -397,55 +378,36 @@ export const ResourceLibraryPage = () => {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        marginBottom: '4px',
+                        marginBottom: '6px',
                         flexWrap: 'wrap',
                       }}
                     >
                       {item.courseCode && (
-                        <span
-                          style={{
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            padding: '2px 8px',
-                            borderRadius: '4px',
-                            backgroundColor: '#e0e7ff',
-                            color: '#3730a3',
-                          }}
-                        >
+                        <span className="glass-tag-course">
                           {item.courseCode}
                         </span>
                       )}
-                      <span
-                        style={{
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          backgroundColor: '#f3f4f6',
-                          color: '#4b5563',
-                          textTransform: 'capitalize',
-                        }}
-                      >
+                      <span className="glass-tag-badge" style={{ textTransform: 'capitalize' }}>
                         {item.category.replace('_', ' ')}
                       </span>
                       {item.semester && (
-                        <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                           • {item.semester}
                         </span>
                       )}
                     </div>
 
-                    <h3 style={{ margin: '0 0 6px 0', fontSize: '17px', color: '#111827' }}>
+                    <h3 style={{ margin: '0 0 6px 0', fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)' }}>
                       {item.title}
                     </h3>
 
                     {item.description && (
                       <p
                         style={{
-                          margin: '0 0 8px 0',
-                          fontSize: '13px',
-                          color: '#4b5563',
-                          lineHeight: '1.4',
+                          margin: '0 0 10px 0',
+                          fontSize: '13.5px',
+                          color: 'var(--text-secondary)',
+                          lineHeight: '1.5',
                         }}
                       >
                         {item.description}
@@ -459,10 +421,11 @@ export const ResourceLibraryPage = () => {
                             key={idx}
                             style={{
                               fontSize: '11px',
-                              color: '#2563eb',
-                              backgroundColor: '#eff6ff',
-                              padding: '1px 6px',
-                              borderRadius: '4px',
+                              color: 'var(--accent)',
+                              backgroundColor: 'rgba(139, 147, 255, 0.12)',
+                              border: '1px solid rgba(139, 147, 255, 0.25)',
+                              padding: '2px 8px',
+                              borderRadius: '6px',
                             }}
                           >
                             #{tag}
@@ -483,16 +446,11 @@ export const ResourceLibraryPage = () => {
                   >
                     <button
                       type="button"
+                      className="btn-accent"
                       onClick={() => handleDownload(item)}
                       style={{
-                        padding: '6px 14px',
-                        backgroundColor: '#2563eb',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '6px',
+                        padding: '7px 16px',
                         fontSize: '13px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '6px',
@@ -507,13 +465,13 @@ export const ResourceLibraryPage = () => {
                         onClick={() => handleVote(item._id)}
                         disabled={!isAuthenticated}
                         style={{
-                          background: 'none',
-                          border: '1px solid #e5e5e5',
-                          borderRadius: '4px',
-                          padding: '3px 8px',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid var(--glass-border)',
+                          borderRadius: 'var(--radius-ctl)',
+                          padding: '4px 10px',
                           cursor: isAuthenticated ? 'pointer' : 'default',
                           fontSize: '12px',
-                          color: '#4b5563',
+                          color: 'var(--text-primary)',
                           display: 'flex',
                           alignItems: 'center',
                           gap: '4px',
@@ -530,7 +488,7 @@ export const ResourceLibraryPage = () => {
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#dc2626',
+                            color: '#f87171',
                             cursor: 'pointer',
                             fontSize: '12px',
                             padding: '3px 6px',
@@ -549,22 +507,22 @@ export const ResourceLibraryPage = () => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    borderTop: '1px solid #f3f4f6',
-                    paddingTop: '8px',
+                    borderTop: '1px solid var(--glass-border)',
+                    paddingTop: '10px',
                     fontSize: '12px',
-                    color: '#6b7280',
+                    color: 'var(--text-muted)',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span>Shared by</span>
                     {isAnonymous ? (
-                      <span style={{ fontStyle: 'italic', color: '#6b7280' }}>
+                      <span style={{ fontStyle: 'italic', color: 'var(--text-secondary)' }}>
                         {authorDisplay}
                       </span>
                     ) : (
                       <Link
                         to={`/u/${item.author?.username?.replace('u/', '') || 'deleted'}`}
-                        style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}
+                        style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}
                       >
                         {authorDisplay}
                       </Link>
@@ -574,7 +532,7 @@ export const ResourceLibraryPage = () => {
 
                   <div>
                     <span>{item.downloadsCount || 0} downloads</span>
-                    <span style={{ marginLeft: '8px' }}>
+                    <span style={{ marginLeft: '8px', color: 'var(--text-secondary)' }}>
                       [{item.fileType?.toUpperCase() || 'FILE'}]
                     </span>
                   </div>
@@ -598,32 +556,20 @@ export const ResourceLibraryPage = () => {
         >
           <button
             type="button"
+            className="btn-secondary"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            style={{
-              padding: '6px 14px',
-              border: '1px solid #dcdcdc',
-              background: '#fff',
-              borderRadius: '4px',
-              cursor: page <= 1 ? 'not-allowed' : 'pointer',
-            }}
           >
             Previous
           </button>
-          <span style={{ fontSize: '13px', color: '#666' }}>
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
             Page {page} of {totalPages}
           </span>
           <button
             type="button"
+            className="btn-secondary"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            style={{
-              padding: '6px 14px',
-              border: '1px solid #dcdcdc',
-              background: '#fff',
-              borderRadius: '4px',
-              cursor: page >= totalPages ? 'not-allowed' : 'pointer',
-            }}
           >
             Next
           </button>
@@ -632,41 +578,21 @@ export const ResourceLibraryPage = () => {
 
       {/* Upload Resource Modal */}
       {isModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '16px',
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: '#fff',
-              borderRadius: '8px',
-              maxWidth: '540px',
-              width: '100%',
-              padding: '24px',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-            }}
-          >
+        <div className="glass-modal-overlay" onClick={() => setIsModalOpen(false)}>
+          <div className="glass-modal-dialog" onClick={(e) => e.stopPropagation()}>
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '16px',
+                marginBottom: '18px',
+                borderBottom: '1px solid var(--glass-border)',
+                paddingBottom: '12px',
               }}
             >
-              <h2 style={{ margin: 0, fontSize: '18px' }}>Upload Study Material</h2>
+              <h2 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)', fontWeight: 700 }}>
+                Upload Study Material
+              </h2>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
@@ -674,7 +600,9 @@ export const ResourceLibraryPage = () => {
                   background: 'none',
                   border: 'none',
                   fontSize: '18px',
+                  color: 'var(--text-muted)',
                   cursor: 'pointer',
+                  padding: '4px',
                 }}
               >
                 ✕
@@ -684,11 +612,12 @@ export const ResourceLibraryPage = () => {
             {modalError && (
               <div
                 style={{
-                  padding: '8px 12px',
-                  backgroundColor: '#fee2e2',
-                  color: '#b91c1c',
-                  borderRadius: '4px',
-                  marginBottom: '12px',
+                  padding: '10px 14px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: '#fca5a5',
+                  borderRadius: 'var(--radius-ctl)',
+                  marginBottom: '14px',
                   fontSize: '13px',
                 }}
               >
@@ -697,42 +626,43 @@ export const ResourceLibraryPage = () => {
             )}
 
             <form onSubmit={handleUploadSubmit}>
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
                   Title *
                 </label>
                 <input
                   type="text"
                   required
+                  className="glass-input-field"
                   placeholder="e.g. CS101 Midterm 2024 Exam & Solutions"
                   value={uploadTitle}
                   onChange={(e) => setUploadTitle(e.target.value)}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 180px' }}>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
                     Course Code
                   </label>
                   <input
                     type="text"
+                    className="glass-input-field"
                     placeholder="e.g. CS101"
                     value={uploadCourseCode}
                     onChange={(e) => setUploadCourseCode(e.target.value.toUpperCase())}
-                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                   />
                 </div>
 
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+                <div style={{ flex: '1 1 180px' }}>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
                     Category
                   </label>
                   <select
+                    className="glass-input-field"
                     value={uploadCategory}
                     onChange={(e) => setUploadCategory(e.target.value)}
-                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', backgroundColor: '#fff' }}
+                    style={{ cursor: 'pointer' }}
                   >
                     <option value="lecture_notes">Lecture Notes</option>
                     <option value="past_exam">Past Exam</option>
@@ -744,28 +674,29 @@ export const ResourceLibraryPage = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 180px' }}>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
                     Semester
                   </label>
                   <input
                     type="text"
+                    className="glass-input-field"
                     placeholder="e.g. Fall 2025"
                     value={uploadSemester}
                     onChange={(e) => setUploadSemester(e.target.value)}
-                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                   />
                 </div>
 
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+                <div style={{ flex: '1 1 180px' }}>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
                     File Format
                   </label>
                   <select
+                    className="glass-input-field"
                     value={uploadFileType}
                     onChange={(e) => setUploadFileType(e.target.value)}
-                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', backgroundColor: '#fff' }}
+                    style={{ cursor: 'pointer' }}
                   >
                     <option value="pdf">PDF (.pdf)</option>
                     <option value="docx">Word (.docx)</option>
@@ -775,57 +706,58 @@ export const ResourceLibraryPage = () => {
                 </div>
               </div>
 
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
                   File Name *
                 </label>
                 <input
                   type="text"
                   required
+                  className="glass-input-field"
                   placeholder="e.g. CS101_Midterm_Solutions.pdf"
                   value={uploadFileName}
                   onChange={(e) => setUploadFileName(e.target.value)}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                 />
               </div>
 
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
                   File URL or Link *
                 </label>
                 <input
                   type="text"
                   required
+                  className="glass-input-field"
                   placeholder="https://drive.google.com/... or /uploads/sample.pdf"
                   value={uploadFileUrl}
                   onChange={(e) => setUploadFileUrl(e.target.value)}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
-                />
-              </div>
-
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
-                  Tags (comma-separated)
-                </label>
-                <input
-                  type="text"
-                  placeholder="midterm, exam, graphs, solutions"
-                  value={uploadTags}
-                  onChange={(e) => setUploadTags(e.target.value)}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
                 />
               </div>
 
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                  Tags (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  className="glass-input-field"
+                  placeholder="midterm, exam, graphs, solutions"
+                  value={uploadTags}
+                  onChange={(e) => setUploadTags(e.target.value)}
+                />
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
                   Description / Study Tips (Optional)
                 </label>
                 <textarea
                   rows="3"
+                  className="glass-input-field"
                   placeholder="Add tips or details about this material..."
                   value={uploadDescription}
                   onChange={(e) => setUploadDescription(e.target.value)}
-                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  style={{ resize: 'vertical' }}
                 />
               </div>
 
@@ -834,11 +766,12 @@ export const ResourceLibraryPage = () => {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
-                  padding: '8px 12px',
-                  backgroundColor: '#f9fafb',
-                  borderRadius: '6px',
-                  marginBottom: '18px',
+                  gap: '10px',
+                  padding: '10px 14px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid var(--glass-border)',
+                  borderRadius: 'var(--radius-ctl)',
+                  marginBottom: '20px',
                 }}
               >
                 <input
@@ -846,44 +779,34 @@ export const ResourceLibraryPage = () => {
                   id="resource-anon-toggle"
                   checked={uploadAnonymous}
                   onChange={(e) => setUploadAnonymous(e.target.checked)}
-                  style={{ cursor: 'pointer' }}
+                  style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--accent)' }}
                 />
                 <label
                   htmlFor="resource-anon-toggle"
                   style={{ fontSize: '13px', cursor: 'pointer', margin: 0 }}
                 >
-                  <span style={{ fontWeight: 600 }}>Share anonymously</span>
-                  <span style={{ display: 'block', fontSize: '11px', color: '#6b7280' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Share anonymously</span>
+                  <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)' }}>
                     Your username will be masked with a pseudonym alias.
                   </span>
                 </label>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                 <button
                   type="button"
+                  className="btn-secondary"
                   onClick={() => setIsModalOpen(false)}
                   disabled={isSubmitting}
-                  style={{
-                    padding: '8px 16px',
-                    border: '1px solid #dcdcdc',
-                    background: '#fff',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                  }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
+                  className="btn-accent"
                   disabled={isSubmitting}
                   style={{
-                    padding: '8px 18px',
-                    backgroundColor: '#1d4ed8',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontWeight: 600,
+                    padding: '8px 20px',
                     cursor: isSubmitting ? 'not-allowed' : 'pointer',
                   }}
                 >

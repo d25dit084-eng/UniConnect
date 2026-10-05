@@ -40,10 +40,13 @@ export const CommunityPage = () => {
     setPostsLoading(true);
     try {
       const res = await getCommunityPosts(slug, sort, page, 10);
-      setPosts(res.data.posts || []);
-      setTotalPages(res.data.pagination?.pages || 1);
+      const postList = res?.data?.posts || res?.posts || (Array.isArray(res?.data) ? res.data : []);
+      const totalP = res?.data?.pagination?.pages || res?.pagination?.pages || 1;
+      setPosts(postList);
+      setTotalPages(totalP);
     } catch (err) {
       console.error('[CommunityPage] Failed to load posts:', err.message);
+      setPosts([]);
     } finally {
       setPostsLoading(false);
     }
@@ -54,10 +57,8 @@ export const CommunityPage = () => {
   }, [slug]);
 
   useEffect(() => {
-    if (community) {
-      fetchPosts();
-    }
-  }, [community, sort, page]);
+    fetchPosts();
+  }, [slug, sort, page]);
 
   const handleJoinToggle = async () => {
     if (!isAuthenticated) return;
@@ -102,23 +103,24 @@ export const CommunityPage = () => {
       <div className="community-header">
         <div className="community-header-inner">
           <div className="community-header-info">
-            <h2 style={{ fontSize: '20px' }}>c/{community.name}</h2>
+            <h2 style={{ fontSize: '20px', color: 'var(--text-primary)' }}>c/{community.name}</h2>
             <div
               style={{
                 fontSize: '13px',
                 fontWeight: 'bold',
                 margin: '4px 0',
+                color: 'var(--text-primary)',
                 overflowWrap: 'break-word',
               }}
             >
               {community.displayName}
             </div>
-            <p style={{ fontSize: '13px', margin: '8px 0', overflowWrap: 'break-word' }}>
+            <p style={{ fontSize: '13px', margin: '8px 0', color: 'var(--text-secondary)', overflowWrap: 'break-word' }}>
               {community.description}
             </p>
-            <div style={{ fontSize: '11px', color: '#666666' }}>
-              <strong>{community.membersCount}</strong> member(s) •{' '}
-              <strong>{community.postsCount}</strong> post(s) • Visibility: {community.visibility}
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>{community.membersCount}</strong> member(s) •{' '}
+              <strong style={{ color: 'var(--text-primary)' }}>{community.postsCount}</strong> post(s) • Visibility: {community.visibility}
             </div>
           </div>
 
@@ -126,12 +128,8 @@ export const CommunityPage = () => {
             {isAuthenticated && (
               <button
                 type="button"
+                className={community.isJoined ? 'btn-secondary' : 'btn-accent'}
                 onClick={handleJoinToggle}
-                style={{
-                  background: community.isJoined ? '#ffffff' : '#1a1a1a',
-                  color: community.isJoined ? '#1a1a1a' : '#ffffff',
-                  border: community.isJoined ? '1px solid #d2cfc9' : '1px solid #1a1a1a',
-                }}
               >
                 {community.isJoined ? 'Leave' : 'Join'}
               </button>
@@ -140,6 +138,7 @@ export const CommunityPage = () => {
             {isAuthenticated && (
               <button
                 type="button"
+                className="btn-accent"
                 onClick={() =>
                   navigate('/create-post', {
                     state: { communityId: community._id, name: community.name },
@@ -162,12 +161,12 @@ export const CommunityPage = () => {
 
         {/* Rules */}
         {community.rules && community.rules.length > 0 && (
-          <div style={{ marginTop: '15px', borderTop: '1px solid #e2e0db', paddingTop: '10px' }}>
-            <strong style={{ fontSize: '12px' }}>Community Rules:</strong>
-            <ol style={{ fontSize: '11px', paddingLeft: '20px', marginTop: '4px' }}>
+          <div style={{ marginTop: '16px', borderTop: '1px solid var(--glass-border)', paddingTop: '12px' }}>
+            <strong style={{ fontSize: '12px', color: 'var(--text-primary)' }}>Community Rules:</strong>
+            <ol style={{ fontSize: '12px', paddingLeft: '20px', marginTop: '6px', color: 'var(--text-secondary)' }}>
               {community.rules.map((rule, idx) => (
-                <li key={rule._id || idx}>
-                  <strong>{rule.title}</strong>: {rule.description}
+                <li key={rule._id || idx} style={{ marginBottom: '4px' }}>
+                  <strong style={{ color: 'var(--text-primary)' }}>{rule.title}</strong>: {rule.description}
                 </li>
               ))}
             </ol>

@@ -237,6 +237,7 @@ export default function EventsPage() {
   return (
     <div style={{ maxWidth: '980px', margin: '0 auto', padding: '24px 16px' }}>
       {/* Header Banner */}
+      {/* Top Header */}
       <div
         style={{
           display: 'flex',
@@ -246,31 +247,27 @@ export default function EventsPage() {
           gap: '16px',
           marginBottom: '24px',
           paddingBottom: '20px',
-          borderBottom: '1px solid #e2e0db',
+          borderBottom: '1px solid var(--glass-border)',
         }}
       >
         <div>
-          <h1 style={{ margin: '0 0 6px 0', fontSize: '26px', fontWeight: '800' }}>
+          <h1 style={{ margin: '0 0 6px 0', fontSize: '26px', fontWeight: '800', color: 'var(--text-primary)' }}>
             📅 Campus Events & Activities
           </h1>
-          <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>
+          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
             Discover campus workshops, hackathons, club meetups, and social gatherings.
           </p>
         </div>
 
         {isAuthenticated ? (
           <button
+            type="button"
+            className="btn-accent"
             onClick={() => setShowModal(true)}
             style={{
               padding: '10px 18px',
-              backgroundColor: '#1a1a1a',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              fontWeight: '600',
               fontSize: '14px',
               cursor: 'pointer',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
             }}
           >
             + Host an Event
@@ -278,12 +275,10 @@ export default function EventsPage() {
         ) : (
           <Link
             to="/login"
+            className="btn-secondary"
             style={{
               padding: '10px 18px',
-              backgroundColor: '#f3f2ee',
-              color: '#1a1a1a',
-              border: '1px solid #d4d2cc',
-              borderRadius: '8px',
+              borderRadius: 'var(--radius-ctl)',
               textDecoration: 'none',
               fontWeight: '600',
               fontSize: '14px',
@@ -306,19 +301,19 @@ export default function EventsPage() {
         }}
       >
         {/* Timeframe Switcher */}
-        <div style={{ display: 'flex', background: '#f0eee6', padding: '3px', borderRadius: '8px' }}>
+        <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--glass-border)', padding: '3px', borderRadius: 'var(--radius-ctl)' }}>
           <button
             onClick={() => setTimeframe('upcoming')}
             style={{
               padding: '6px 16px',
               borderRadius: '6px',
-              border: 'none',
+              border: timeframe === 'upcoming' ? '1px solid var(--accent)' : '1px solid transparent',
               fontSize: '13px',
               fontWeight: '600',
               cursor: 'pointer',
-              background: timeframe === 'upcoming' ? '#ffffff' : 'transparent',
-              color: timeframe === 'upcoming' ? '#1a1a1a' : '#666',
-              boxShadow: timeframe === 'upcoming' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              background: timeframe === 'upcoming' ? 'rgba(139, 147, 255, 0.22)' : 'transparent',
+              color: timeframe === 'upcoming' ? '#ffffff' : 'var(--text-secondary)',
+              boxShadow: timeframe === 'upcoming' ? '0 0 10px rgba(139, 147, 255, 0.25)' : 'none',
             }}
           >
             Upcoming Events
@@ -328,13 +323,13 @@ export default function EventsPage() {
             style={{
               padding: '6px 16px',
               borderRadius: '6px',
-              border: 'none',
+              border: timeframe === 'past' ? '1px solid var(--accent)' : '1px solid transparent',
               fontSize: '13px',
               fontWeight: '600',
               cursor: 'pointer',
-              background: timeframe === 'past' ? '#ffffff' : 'transparent',
-              color: timeframe === 'past' ? '#1a1a1a' : '#666',
-              boxShadow: timeframe === 'past' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              background: timeframe === 'past' ? 'rgba(139, 147, 255, 0.22)' : 'transparent',
+              color: timeframe === 'past' ? '#ffffff' : 'var(--text-secondary)',
+              boxShadow: timeframe === 'past' ? '0 0 10px rgba(139, 147, 255, 0.25)' : 'none',
             }}
           >
             Past Events
@@ -345,32 +340,19 @@ export default function EventsPage() {
         <div style={{ flex: '1', minWidth: '220px', maxWidth: '340px' }}>
           <input
             type="text"
+            className="glass-input-field"
             placeholder="Search events, venues..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              fontSize: '13px',
-              borderRadius: '8px',
-              border: '1px solid #d4d2cc',
-              backgroundColor: '#faf9f5',
-            }}
           />
         </div>
 
         {/* Format Filter */}
         <select
           value={selectedFormat}
+          className="glass-input-field"
           onChange={(e) => setSelectedFormat(e.target.value)}
-          style={{
-            padding: '8px 12px',
-            fontSize: '13px',
-            borderRadius: '8px',
-            border: '1px solid #d4d2cc',
-            backgroundColor: '#faf9f5',
-            cursor: 'pointer',
-          }}
+          style={{ width: '150px', cursor: 'pointer' }}
         >
           {FORMATS.map((fmt) => (
             <option key={fmt.key} value={fmt.key}>
@@ -385,18 +367,19 @@ export default function EventsPage() {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: '8px',
               fontSize: '13px',
               cursor: 'pointer',
               userSelect: 'none',
               fontWeight: '500',
+              color: 'var(--text-secondary)',
             }}
           >
             <input
               type="checkbox"
               checked={myRsvpsOnly}
               onChange={(e) => setMyRsvpsOnly(e.target.checked)}
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: 'pointer', accentColor: 'var(--accent)' }}
             />
             My RSVPs only
           </label>
@@ -426,9 +409,10 @@ export default function EventsPage() {
                 padding: '6px 14px',
                 borderRadius: '20px',
                 border: '1px solid',
-                borderColor: isActive ? '#1a1a1a' : '#d4d2cc',
-                backgroundColor: isActive ? '#1a1a1a' : '#ffffff',
-                color: isActive ? '#ffffff' : '#333333',
+                borderColor: isActive ? 'var(--accent)' : 'var(--glass-border)',
+                backgroundColor: isActive ? 'rgba(139, 147, 255, 0.22)' : 'rgba(255, 255, 255, 0.05)',
+                color: isActive ? '#ffffff' : 'var(--text-secondary)',
+                boxShadow: isActive ? '0 0 12px rgba(139, 147, 255, 0.25)' : 'none',
                 fontSize: '13px',
                 fontWeight: isActive ? '600' : '400',
                 cursor: 'pointer',
@@ -445,7 +429,7 @@ export default function EventsPage() {
 
       {/* Content Stream */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: '#666' }}>
+        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-secondary)' }}>
           <div style={{ fontSize: '28px', marginBottom: '8px' }}>⏳</div>
           <p>Loading campus events...</p>
         </div>
@@ -453,9 +437,10 @@ export default function EventsPage() {
         <div
           style={{
             padding: '16px',
-            backgroundColor: '#fee2e2',
-            color: '#b91c1c',
-            borderRadius: '8px',
+            backgroundColor: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            color: '#fca5a5',
+            borderRadius: 'var(--radius-ctl)',
             textAlign: 'center',
           }}
         >
@@ -466,14 +451,18 @@ export default function EventsPage() {
           style={{
             textAlign: 'center',
             padding: '60px 20px',
-            background: '#ffffff',
-            borderRadius: '12px',
-            border: '1px dashed #d4d2cc',
+            background: 'var(--glass-bg)',
+            borderRadius: 'var(--radius-card)',
+            border: '1px dashed var(--glass-border)',
+            backdropFilter: 'var(--glass-blur)',
+            WebkitBackdropFilter: 'var(--glass-blur)',
           }}
         >
           <div style={{ fontSize: '40px', marginBottom: '12px' }}>🗓️</div>
-          <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>No events found</h3>
-          <p style={{ margin: '0 0 16px 0', color: '#666', fontSize: '14px' }}>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: 'var(--text-primary)', fontWeight: 700 }}>
+            No events found
+          </h3>
+          <p style={{ margin: '0 0 16px 0', color: 'var(--text-secondary)', fontSize: '14px' }}>
             {searchQuery || selectedCategory !== 'all' || selectedFormat !== 'all'
               ? 'Try relaxing your search or category filters.'
               : timeframe === 'upcoming'
@@ -483,15 +472,10 @@ export default function EventsPage() {
           {isAuthenticated && (
             <button
               onClick={() => setShowModal(true)}
+              className="btn-accent"
               style={{
-                padding: '8px 16px',
-                backgroundColor: '#1a1a1a',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '6px',
+                padding: '8px 18px',
                 fontSize: '13px',
-                fontWeight: '600',
-                cursor: 'pointer',
               }}
             >
               + Host an Event
@@ -509,56 +493,19 @@ export default function EventsPage() {
             return (
               <div
                 key={ev._id}
+                className="glass-panel-card"
                 style={{
                   display: 'flex',
                   gap: '20px',
-                  background: '#ffffff',
-                  border: '1px solid #e2e0db',
-                  borderRadius: '12px',
-                  padding: '18px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                  transition: 'box-shadow 0.15s ease',
+                  padding: '20px',
                 }}
               >
                 {/* Date Calendar Box */}
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '68px',
-                    minWidth: '68px',
-                    height: '76px',
-                    borderRadius: '10px',
-                    backgroundColor: '#faf8f5',
-                    border: '1px solid #e2e0db',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '100%',
-                      background: '#1a1a1a',
-                      color: '#ffffff',
-                      fontSize: '11px',
-                      fontWeight: '800',
-                      textAlign: 'center',
-                      padding: '3px 0',
-                      letterSpacing: '0.5px',
-                    }}
-                  >
+                <div className="glass-date-box">
+                  <div className="glass-date-box-month">
                     {month}
                   </div>
-                  <div
-                    style={{
-                      fontSize: '24px',
-                      fontWeight: '800',
-                      color: '#1a1a1a',
-                      lineHeight: '1.2',
-                      marginTop: '2px',
-                    }}
-                  >
+                  <div className="glass-date-box-day">
                     {day}
                   </div>
                 </div>
@@ -575,31 +522,12 @@ export default function EventsPage() {
                     }}
                   >
                     {/* Category */}
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        backgroundColor: '#e0e7ff',
-                        color: '#3730a3',
-                        fontWeight: '600',
-                        textTransform: 'capitalize',
-                      }}
-                    >
+                    <span className="glass-tag-badge" style={{ textTransform: 'capitalize' }}>
                       {ev.category}
                     </span>
 
                     {/* Format */}
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        backgroundColor: '#f3f4f6',
-                        color: '#4b5563',
-                        fontWeight: '500',
-                      }}
-                    >
+                    <span className="glass-tag-badge">
                       {ev.format === 'in_person'
                         ? '📍 In-Person'
                         : ev.format === 'virtual'
@@ -613,9 +541,10 @@ export default function EventsPage() {
                         style={{
                           fontSize: '11px',
                           padding: '2px 8px',
-                          borderRadius: '4px',
-                          backgroundColor: isFull ? '#fee2e2' : '#f0fdf4',
-                          color: isFull ? '#b91c1c' : '#15803d',
+                          borderRadius: '6px',
+                          backgroundColor: isFull ? 'rgba(239, 68, 68, 0.15)' : 'rgba(52, 211, 153, 0.15)',
+                          color: isFull ? '#f87171' : '#34d399',
+                          border: isFull ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(52, 211, 153, 0.3)',
                           fontWeight: '600',
                         }}
                       >
@@ -628,8 +557,8 @@ export default function EventsPage() {
                       <Link
                         to={`/c/${ev.community.slug}`}
                         style={{
-                          fontSize: '11px',
-                          color: '#4f46e5',
+                          fontSize: '11.5px',
+                          color: 'var(--accent)',
                           textDecoration: 'none',
                           fontWeight: '600',
                         }}
@@ -642,9 +571,9 @@ export default function EventsPage() {
                   <h3
                     style={{
                       margin: '0 0 6px 0',
-                      fontSize: '17px',
+                      fontSize: '18px',
                       fontWeight: '700',
-                      color: '#1a1a1a',
+                      color: 'var(--text-primary)',
                     }}
                   >
                     {ev.title}
@@ -653,9 +582,9 @@ export default function EventsPage() {
                   <p
                     style={{
                       margin: '0 0 12px 0',
-                      fontSize: '13px',
-                      color: '#555',
-                      lineHeight: '1.45',
+                      fontSize: '13.5px',
+                      color: 'var(--text-secondary)',
+                      lineHeight: '1.5',
                       display: '-webkit-box',
                       WebkitLineClamp: 2,
                       WebkitBoxOrient: 'vertical',
@@ -671,8 +600,8 @@ export default function EventsPage() {
                       display: 'flex',
                       flexWrap: 'wrap',
                       gap: '16px',
-                      fontSize: '12px',
-                      color: '#666',
+                      fontSize: '12.5px',
+                      color: 'var(--text-muted)',
                       alignItems: 'center',
                     }}
                   >
@@ -691,7 +620,7 @@ export default function EventsPage() {
                         target="_blank"
                         rel="noreferrer"
                         style={{
-                          color: '#2563eb',
+                          color: 'var(--accent)',
                           textDecoration: 'underline',
                           display: 'flex',
                           alignItems: 'center',
@@ -705,13 +634,13 @@ export default function EventsPage() {
                     {ev.organizer && (
                       <div>
                         Hosted by{' '}
-                        <strong style={{ color: '#1a1a1a' }}>
+                        <strong style={{ color: 'var(--text-primary)' }}>
                           {ev.organizer.username}
                         </strong>
                       </div>
                     )}
 
-                    <div style={{ color: '#059669', fontWeight: '600' }}>
+                    <div style={{ color: 'var(--success)', fontWeight: '600' }}>
                       👥 {ev.attendeeCount || 0} attending
                     </div>
                   </div>
@@ -736,14 +665,14 @@ export default function EventsPage() {
                           disabled={isFull && ev.userRsvpStatus !== 'going'}
                           style={{
                             padding: '6px 12px',
-                            borderRadius: '6px',
+                            borderRadius: 'var(--radius-ctl)',
                             border: '1px solid',
                             borderColor:
-                              ev.userRsvpStatus === 'going' ? '#15803d' : '#d4d2cc',
+                              ev.userRsvpStatus === 'going' ? 'rgba(52, 211, 153, 0.6)' : 'var(--glass-border)',
                             backgroundColor:
-                              ev.userRsvpStatus === 'going' ? '#dcfce7' : '#ffffff',
+                              ev.userRsvpStatus === 'going' ? 'rgba(52, 211, 153, 0.22)' : 'rgba(255, 255, 255, 0.05)',
                             color:
-                              ev.userRsvpStatus === 'going' ? '#15803d' : '#1a1a1a',
+                              ev.userRsvpStatus === 'going' ? '#34d399' : 'var(--text-primary)',
                             fontWeight: '600',
                             fontSize: '12px',
                             cursor:
@@ -761,14 +690,14 @@ export default function EventsPage() {
                           onClick={() => handleRsvp(ev._id, 'maybe')}
                           style={{
                             padding: '6px 10px',
-                            borderRadius: '6px',
+                            borderRadius: 'var(--radius-ctl)',
                             border: '1px solid',
                             borderColor:
-                              ev.userRsvpStatus === 'maybe' ? '#b45309' : '#d4d2cc',
+                              ev.userRsvpStatus === 'maybe' ? 'rgba(245, 158, 11, 0.6)' : 'var(--glass-border)',
                             backgroundColor:
-                              ev.userRsvpStatus === 'maybe' ? '#fef3c7' : '#ffffff',
+                              ev.userRsvpStatus === 'maybe' ? 'rgba(245, 158, 11, 0.22)' : 'rgba(255, 255, 255, 0.05)',
                             color:
-                              ev.userRsvpStatus === 'maybe' ? '#b45309' : '#666',
+                              ev.userRsvpStatus === 'maybe' ? '#fbbf24' : 'var(--text-secondary)',
                             fontWeight: '600',
                             fontSize: '12px',
                             cursor: 'pointer',
@@ -784,7 +713,7 @@ export default function EventsPage() {
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#999',
+                            color: 'var(--text-muted)',
                             fontSize: '11px',
                             cursor: 'pointer',
                             textDecoration: 'underline',
@@ -798,12 +727,9 @@ export default function EventsPage() {
                   ) : (
                     <Link
                       to="/login"
+                      className="btn-secondary"
                       style={{
-                        padding: '6px 12px',
-                        backgroundColor: '#f3f2ee',
-                        color: '#1a1a1a',
-                        border: '1px solid #d4d2cc',
-                        borderRadius: '6px',
+                        padding: '6px 14px',
                         fontSize: '12px',
                         textDecoration: 'none',
                         fontWeight: '600',
@@ -819,7 +745,7 @@ export default function EventsPage() {
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#ef4444',
+                        color: '#f87171',
                         fontSize: '11px',
                         cursor: 'pointer',
                         padding: '2px 0',
@@ -837,49 +763,31 @@ export default function EventsPage() {
 
       {/* Host Event Modal */}
       {showModal && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '16px',
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: '#ffffff',
-              borderRadius: '12px',
-              maxWidth: '560px',
-              width: '100%',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              padding: '24px',
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
-            }}
-          >
+        <div className="glass-modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="glass-modal-dialog" onClick={(e) => e.stopPropagation()}>
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '16px',
+                marginBottom: '18px',
+                borderBottom: '1px solid var(--glass-border)',
+                paddingBottom: '12px',
               }}
             >
-              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '800' }}>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: 'var(--text-primary)' }}>
                 🎉 Host a Campus Event
               </h2>
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
                 style={{
                   background: 'none',
                   border: 'none',
                   fontSize: '20px',
                   cursor: 'pointer',
-                  color: '#999',
+                  color: 'var(--text-muted)',
+                  padding: '4px',
                 }}
               >
                 ✕
@@ -890,11 +798,12 @@ export default function EventsPage() {
               <div
                 style={{
                   padding: '10px 14px',
-                  backgroundColor: '#fee2e2',
-                  color: '#b91c1c',
-                  borderRadius: '6px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: '#fca5a5',
+                  borderRadius: 'var(--radius-ctl)',
                   fontSize: '13px',
-                  marginBottom: '14px',
+                  marginBottom: '16px',
                 }}
               >
                 {modalError}
@@ -907,9 +816,10 @@ export default function EventsPage() {
                 <label
                   style={{
                     display: 'block',
-                    fontSize: '13px',
+                    fontSize: '12.5px',
                     fontWeight: '600',
-                    marginBottom: '4px',
+                    marginBottom: '6px',
+                    color: 'var(--text-secondary)',
                   }}
                 >
                   Event Title *
@@ -917,18 +827,12 @@ export default function EventsPage() {
                 <input
                   type="text"
                   required
+                  className="glass-input-field"
                   placeholder="e.g. AI Hackathon Kickoff & Team Matching"
                   value={formData.title}
                   onChange={(e) =>
                     setFormData({ ...formData, title: e.target.value })
                   }
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    border: '1px solid #d4d2cc',
-                    fontSize: '14px',
-                  }}
                 />
               </div>
 
@@ -945,25 +849,21 @@ export default function EventsPage() {
                   <label
                     style={{
                       display: 'block',
-                      fontSize: '13px',
+                      fontSize: '12.5px',
                       fontWeight: '600',
-                      marginBottom: '4px',
+                      marginBottom: '6px',
+                      color: 'var(--text-secondary)',
                     }}
                   >
                     Category
                   </label>
                   <select
+                    className="glass-input-field"
                     value={formData.category}
                     onChange={(e) =>
                       setFormData({ ...formData, category: e.target.value })
                     }
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid #d4d2cc',
-                      fontSize: '14px',
-                    }}
+                    style={{ cursor: 'pointer' }}
                   >
                     {CATEGORIES.filter((c) => c.key !== 'all').map((c) => (
                       <option key={c.key} value={c.key}>
@@ -977,25 +877,21 @@ export default function EventsPage() {
                   <label
                     style={{
                       display: 'block',
-                      fontSize: '13px',
+                      fontSize: '12.5px',
                       fontWeight: '600',
-                      marginBottom: '4px',
+                      marginBottom: '6px',
+                      color: 'var(--text-secondary)',
                     }}
                   >
                     Meeting Format
                   </label>
                   <select
+                    className="glass-input-field"
                     value={formData.format}
                     onChange={(e) =>
                       setFormData({ ...formData, format: e.target.value })
                     }
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid #d4d2cc',
-                      fontSize: '14px',
-                    }}
+                    style={{ cursor: 'pointer' }}
                   >
                     <option value="in_person">📍 In-Person</option>
                     <option value="virtual">🌐 Virtual</option>
@@ -1017,9 +913,10 @@ export default function EventsPage() {
                   <label
                     style={{
                       display: 'block',
-                      fontSize: '13px',
+                      fontSize: '12.5px',
                       fontWeight: '600',
-                      marginBottom: '4px',
+                      marginBottom: '6px',
+                      color: 'var(--text-secondary)',
                     }}
                   >
                     Start Date & Time *
@@ -1027,17 +924,11 @@ export default function EventsPage() {
                   <input
                     type="datetime-local"
                     required
+                    className="glass-input-field"
                     value={formData.startDate}
                     onChange={(e) =>
                       setFormData({ ...formData, startDate: e.target.value })
                     }
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid #d4d2cc',
-                      fontSize: '14px',
-                    }}
                   />
                 </div>
 
@@ -1045,26 +936,21 @@ export default function EventsPage() {
                   <label
                     style={{
                       display: 'block',
-                      fontSize: '13px',
+                      fontSize: '12.5px',
                       fontWeight: '600',
-                      marginBottom: '4px',
+                      marginBottom: '6px',
+                      color: 'var(--text-secondary)',
                     }}
                   >
                     End Date & Time (Optional)
                   </label>
                   <input
                     type="datetime-local"
+                    className="glass-input-field"
                     value={formData.endDate}
                     onChange={(e) =>
                       setFormData({ ...formData, endDate: e.target.value })
                     }
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid #d4d2cc',
-                      fontSize: '14px',
-                    }}
                   />
                 </div>
               </div>
@@ -1082,27 +968,22 @@ export default function EventsPage() {
                   <label
                     style={{
                       display: 'block',
-                      fontSize: '13px',
+                      fontSize: '12.5px',
                       fontWeight: '600',
-                      marginBottom: '4px',
+                      marginBottom: '6px',
+                      color: 'var(--text-secondary)',
                     }}
                   >
                     Location / Venue
                   </label>
                   <input
                     type="text"
+                    className="glass-input-field"
                     placeholder="e.g. Student Union Rm 302"
                     value={formData.location}
                     onChange={(e) =>
                       setFormData({ ...formData, location: e.target.value })
                     }
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid #d4d2cc',
-                      fontSize: '14px',
-                    }}
                   />
                 </div>
 
@@ -1110,27 +991,22 @@ export default function EventsPage() {
                   <label
                     style={{
                       display: 'block',
-                      fontSize: '13px',
+                      fontSize: '12.5px',
                       fontWeight: '600',
-                      marginBottom: '4px',
+                      marginBottom: '6px',
+                      color: 'var(--text-secondary)',
                     }}
                   >
                     Virtual Link
                   </label>
                   <input
                     type="url"
+                    className="glass-input-field"
                     placeholder="https://zoom.us/j/..."
                     value={formData.virtualLink}
                     onChange={(e) =>
                       setFormData({ ...formData, virtualLink: e.target.value })
                     }
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid #d4d2cc',
-                      fontSize: '14px',
-                    }}
                   />
                 </div>
               </div>
@@ -1148,9 +1024,10 @@ export default function EventsPage() {
                   <label
                     style={{
                       display: 'block',
-                      fontSize: '13px',
+                      fontSize: '12.5px',
                       fontWeight: '600',
-                      marginBottom: '4px',
+                      marginBottom: '6px',
+                      color: 'var(--text-secondary)',
                     }}
                   >
                     Capacity (0 = unlimited)
@@ -1158,17 +1035,11 @@ export default function EventsPage() {
                   <input
                     type="number"
                     min="0"
+                    className="glass-input-field"
                     value={formData.capacity}
                     onChange={(e) =>
                       setFormData({ ...formData, capacity: e.target.value })
                     }
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid #d4d2cc',
-                      fontSize: '14px',
-                    }}
                   />
                 </div>
 
@@ -1176,27 +1047,22 @@ export default function EventsPage() {
                   <label
                     style={{
                       display: 'block',
-                      fontSize: '13px',
+                      fontSize: '12.5px',
                       fontWeight: '600',
-                      marginBottom: '4px',
+                      marginBottom: '6px',
+                      color: 'var(--text-secondary)',
                     }}
                   >
                     Tags (comma separated)
                   </label>
                   <input
                     type="text"
+                    className="glass-input-field"
                     placeholder="ai, networking, pizza"
                     value={formData.tags}
                     onChange={(e) =>
                       setFormData({ ...formData, tags: e.target.value })
                     }
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid #d4d2cc',
-                      fontSize: '14px',
-                    }}
                   />
                 </div>
               </div>
@@ -1206,9 +1072,10 @@ export default function EventsPage() {
                 <label
                   style={{
                     display: 'block',
-                    fontSize: '13px',
+                    fontSize: '12.5px',
                     fontWeight: '600',
-                    marginBottom: '4px',
+                    marginBottom: '6px',
+                    color: 'var(--text-secondary)',
                   }}
                 >
                   Description *
@@ -1216,19 +1083,13 @@ export default function EventsPage() {
                 <textarea
                   rows="4"
                   required
+                  className="glass-input-field"
                   placeholder="Tell students about the agenda, speakers, refreshments, or what to bring..."
                   value={formData.description}
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
                   }
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    border: '1px solid #d4d2cc',
-                    fontSize: '14px',
-                    resize: 'vertical',
-                  }}
+                  style={{ resize: 'vertical' }}
                 />
               </div>
 
@@ -1242,32 +1103,18 @@ export default function EventsPage() {
               >
                 <button
                   type="button"
+                  className="btn-secondary"
                   onClick={() => setShowModal(false)}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#f3f2ee',
-                    border: '1px solid #d4d2cc',
-                    borderRadius: '6px',
-                    fontWeight: '600',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                  }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
+                  className="btn-accent"
                   disabled={modalSubmitting}
                   style={{
-                    padding: '8px 18px',
-                    background: '#1a1a1a',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontWeight: '600',
-                    fontSize: '13px',
+                    padding: '8px 20px',
                     cursor: modalSubmitting ? 'not-allowed' : 'pointer',
-                    opacity: modalSubmitting ? 0.7 : 1,
                   }}
                 >
                   {modalSubmitting ? 'Publishing...' : 'Publish Event'}

@@ -2311,3 +2311,141 @@ tr {
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 25%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.04) 75%);
   background-size: 200% 100%;
 }
+
+/* ─── Apple Glassmorphism Shared Card & Component System ─────────── */
+.glass-panel-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--glass-shadow), var(--glass-highlight);
+  color: var(--text-primary);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+.glass-panel-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+  pointer-events: none;
+}
+.glass-panel-card:hover {
+  background: var(--glass-bg-hover);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), var(--glass-highlight);
+  transform: translateY(-2px);
+}
+
+.glass-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.glass-modal-dialog {
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--blur-lg);
+  -webkit-backdrop-filter: var(--blur-lg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-card);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), var(--glass-highlight);
+  color: var(--text-primary);
+  max-width: 560px;
+  width: 100%;
+  padding: 24px 28px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.glass-input-field {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius-ctl);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  font-size: 13.5px;
+  transition: all 0.15s ease;
+  outline: none;
+}
+.glass-input-field:focus {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+.glass-input-field::placeholder {
+  color: var(--text-muted);
+}
+
+.glass-tag-course {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(139, 147, 255, 0.18);
+  border: 1px solid rgba(139, 147, 255, 0.35);
+  color: #c7d2fe;
+  letter-spacing: 0.3px;
+}
+
+.glass-tag-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+}
+
+.glass-date-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  min-width: 68px;
+  height: 76px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  overflow: hidden;
+  box-shadow: var(--glass-highlight);
+}
+.glass-date-box-month {
+  width: 100%;
+  background: rgba(139, 147, 255, 0.22);
+  border-bottom: 1px solid rgba(139, 147, 255, 0.3);
+  color: #f5f5f7;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+  padding: 3px 0;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.glass-date-box-day {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
