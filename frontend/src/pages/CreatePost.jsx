@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import gsap from 'gsap';
 import { getJoinedCommunities } from '../api/communityApi';
 import { createPost } from '../api/postApi';
 
 export const CreatePost = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const cardRef = useRef(null);
 
   const [communities, setCommunities] = useState([]);
   const [selectedCommunityId, setSelectedCommunityId] = useState('');
@@ -19,6 +21,16 @@ export const CreatePost = () => {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (cardRef.current) {
+      gsap.fromTo(
+        cardRef.current,
+        { opacity: 0, y: 16, scale: 0.99 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: 'power2.out' }
+      );
+    }
+  }, []);
 
   useEffect(() => {
     const fetchJoined = async () => {
@@ -107,7 +119,7 @@ export const CreatePost = () => {
   };
 
   return (
-    <div className="create-post-card">
+    <div ref={cardRef} className="create-post-card">
       <h2>Create Post</h2>
       {error && <div className="error-indicator">{error}</div>}
 

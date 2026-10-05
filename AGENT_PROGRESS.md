@@ -343,6 +343,14 @@
   - Built community moderation endpoints in `communityModController.js` and `communityRoutes.js` (`GET/POST /api/communities/:slug/mod/reports`, `GET/PUT /api/communities/:slug/mod/settings`) enabling community moderators to review flagged content, approve/restore quarantined items, permanently remove violations, issue author warnings, and manage custom banned keywords.
   - Updated global `AdminPage.jsx` and built collegiate moderation center in `CommunityModPage.jsx` with rich report previews, status filters, and action controls.
   - Created Jest test suite `backend/tests/automod.test.js` verifying clean post approval, automod quarantine, custom keyword triggers, mod triage actions, and permission enforcement (16/16 test suites passing, 74/74 tests).
+- [x] **UI Task — U1: Tokens (Dark Glassmorphism Design System Tokens)**:
+  - Defined canonical tokens once in `:root` in `frontend/src/index.css` (`--bg-base`, `--bg-gradient`, `--glass-bg`, `--glass-bg-hover`, `--glass-border`, `--glass-highlight`, `--glass-shadow`, `--glass-blur`, `--text-primary`, `--text-secondary`, `--text-muted`, `--radius-card`, `--radius-pill`, `--vote-idle`, `--vote-hover`, `--vote-up-active`, `--vote-down-active`, etc.).
+  - Provided complete light theme parity via matching tokens under `[data-theme='light']`.
+  - Positioned fixed background gradient pseudo-element on `body::before` (avoiding mobile scroll jank from `background-attachment: fixed`).
+  - Added solid fallback background via `@supports not (backdrop-filter: blur(1px))`.
+  - Configured mobile blur reduction via `--glass-blur: var(--glass-blur-mobile)`.
+  - Applied design tokens to post cards, post details, create post forms, and vote controls.
+  - Verified with `npm run build` and `npm run lint` (0 errors), and confirmed chat-bench numbers remain within budget (delivery p50 = 1.89ms, p95 = 4.25ms, persisted p95 = 27.37ms).
 
 ---
 
@@ -537,6 +545,17 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 5.9 Onboarding
 - [x] 5.10 Notification preferences & digest
 - [x] 5.11 Automod & moderation reports
+
+### UI Task: Dark Glassmorphism Theme + GSAP Motion
+- [x] U1: Tokens (defined in :root, light theme parity, backdrop fallback, fixed gradient pseudo-element)
+- [ ] U2: Global background (OGL ambient layer, mesh/particles, prefers-reduced-motion & mobile checks)
+- [ ] U3: Navbar and shell (sticky glass navbar, glass sidebars, dropdowns, modals, toasts, glass inputs & buttons)
+- [ ] U4: Post cards and comments (all post cards to dark grey glass, hover lift, no nested filters, clean comment lines)
+- [ ] U5: Vote controls (inline SVG 20px chevron arrows, dark white off-white shades, tabular numbers, active state glow)
+- [ ] U6: GSAP motion (fade+rise page transitions, feed first-load stagger, vote click bounce, prefers-reduced-motion)
+- [ ] U7: Polish (CSS shimmer skeleton loaders, 8px spacing scale, thin scrollbars, restyled auth/admin pages)
+- [ ] U8: Verify (build & lint pass, chat-bench numbers preserved, CLS < 0.05, contrast audit, 375/768/1440px checks)
+
 - [ ] 5.12 Lost & Found and marketplace
 
 ### Q6: Final Polish

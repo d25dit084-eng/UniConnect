@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import gsap from 'gsap';
 import { useAuth } from '../context/AuthContext';
 import { votePoll } from '../api/postApi';
 
@@ -9,6 +10,8 @@ export const PollCard = ({ post, onPollUpdated }) => {
   const [userVotedOptionId, setUserVotedOptionId] = useState(post.userVotedOptionId || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const pollRef = useRef(null);
+  const submitBtnRef = useRef(null);
 
   if (!poll || !Array.isArray(poll.options) || poll.options.length === 0) {
     return null;
@@ -36,6 +39,14 @@ export const PollCard = ({ post, onPollUpdated }) => {
       return;
     }
     if (!selectedOptionId || isSubmitting) return;
+
+    if (submitBtnRef.current) {
+      gsap.fromTo(
+        submitBtnRef.current,
+        { scale: 0.9 },
+        { scale: 1.05, duration: 0.15, yoyo: true, repeat: 1, ease: 'power2.out' }
+      );
+    }
 
     setIsSubmitting(true);
     setError('');
@@ -82,27 +93,8 @@ export const PollCard = ({ post, onPollUpdated }) => {
   };
 
   return (
-    <div
-      className="poll-container"
-      style={{
-        margin: '12px 0',
-        padding: '14px 16px',
-        borderRadius: '8px',
-        border: '1px solid #e2e0db',
-        backgroundColor: '#faf9f6',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          fontWeight: 600,
-          fontSize: '15px',
-          marginBottom: '12px',
-          color: '#1a1a1b',
-        }}
-      >
+    <div ref={pollRef} className="poll-container">
+      <div className="poll-question">
         <span>📊</span>
         <span>{poll.question || post.title}</span>
       </div>
@@ -111,11 +103,12 @@ export const PollCard = ({ post, onPollUpdated }) => {
         <div
           style={{
             fontSize: '12px',
-            color: '#d32f2f',
-            marginBottom: '8px',
-            padding: '4px 8px',
-            backgroundColor: '#ffebee',
-            borderRadius: '4px',
+            color: '#f87171',
+            marginBottom: '10px',
+            padding: '6px 10px',
+            backgroundColor: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: '6px',
           }}
         >
           {error}
@@ -133,31 +126,12 @@ export const PollCard = ({ post, onPollUpdated }) => {
             return (
               <div
                 key={opt._id}
-                style={{
-                  position: 'relative',
-                  overflow: 'hidden',
-                  padding: '10px 14px',
-                  borderRadius: '6px',
-                  border: isMyVote ? '1.5px solid #3b82f6' : '1px solid #e5e5e5',
-                  backgroundColor: '#ffffff',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  fontSize: '14px',
-                }}
+                className={`poll-option-result ${isMyVote ? 'my-vote' : ''}`}
               >
                 {/* Background progress fill */}
                 <div
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    bottom: 0,
-                    width: `${pct}%`,
-                    backgroundColor: isMyVote ? 'rgba(59, 130, 246, 0.18)' : 'rgba(0, 0, 0, 0.06)',
-                    transition: 'width 0.4s ease',
-                    zIndex: 0,
-                  }}
+                  className="poll-progress-fill"
+                  style={{ width: `${pct}%` }}
                 />
 
                 {/* Option text and badges */}
@@ -169,19 +143,19 @@ export const PollCard = ({ post, onPollUpdated }) => {
                     alignItems: 'center',
                     gap: '8px',
                     fontWeight: isMyVote ? 600 : 500,
-                    color: isMyVote ? '#1d4ed8' : '#262626',
+                    color: isMyVote ? '#93c5fd' : '#e2e8f0',
                   }}
                 >
                   <span>{opt.text}</span>
                   {isMyVote && (
                     <span
                       style={{
-                        fontSize: '11px',
+                        fontSize: '10.5px',
                         padding: '1px 6px',
-                        borderRadius: '10px',
+                        borderRadius: '9999px',
                         backgroundColor: '#3b82f6',
                         color: '#ffffff',
-                        fontWeight: 600,
+                        fontWeight: 700,
                       }}
                     >
                       ✓ Your vote
@@ -196,12 +170,12 @@ export const PollCard = ({ post, onPollUpdated }) => {
                     zIndex: 1,
                     fontWeight: 600,
                     fontSize: '13px',
-                    color: '#555',
+                    color: isMyVote ? '#bfdbfe' : '#94a3b8',
                     textAlign: 'right',
                   }}
                 >
                   <span>{pct}%</span>
-                  <span style={{ fontSize: '11px', color: '#888', marginLeft: '6px' }}>
+                  <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '6px' }}>
                     ({count})
                   </span>
                 </div>
@@ -213,40 +187,27 @@ export const PollCard = ({ post, onPollUpdated }) => {
         // Voting Form View
         <form onSubmit={handleVoteSubmit}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {poll.options.map((opt) => (
-              <label
-                key={opt._id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '10px 14px',
-                  borderRadius: '6px',
-                  border:
-                    selectedOptionId === opt._id.toString()
-                      ? '1.5px solid #3b82f6'
-                      : '1px solid #e0dfdb',
-                  backgroundColor:
-                    selectedOptionId === opt._id.toString() ? '#eff6ff' : '#ffffff',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  fontSize: '14px',
-                  color: '#262626',
-                }}
-              >
-                <input
-                  type="radio"
-                  name={`poll-${post._id}`}
-                  value={opt._id}
-                  checked={selectedOptionId === opt._id.toString()}
-                  onChange={() => setSelectedOptionId(opt._id.toString())}
-                  style={{ cursor: 'pointer' }}
-                />
-                <span style={{ fontWeight: selectedOptionId === opt._id.toString() ? 600 : 400 }}>
-                  {opt.text}
-                </span>
-              </label>
-            ))}
+            {poll.options.map((opt) => {
+              const isSelected = selectedOptionId === opt._id.toString();
+              return (
+                <label
+                  key={opt._id}
+                  className={`poll-option-label ${isSelected ? 'selected' : ''}`}
+                >
+                  <input
+                    type="radio"
+                    name={`poll-${post._id}`}
+                    value={opt._id}
+                    checked={isSelected}
+                    onChange={() => setSelectedOptionId(opt._id.toString())}
+                    style={{ cursor: 'pointer', accentColor: '#3b82f6' }}
+                  />
+                  <span style={{ fontWeight: isSelected ? 600 : 400 }}>
+                    {opt.text}
+                  </span>
+                </label>
+              );
+            })}
           </div>
 
           <div
@@ -258,18 +219,19 @@ export const PollCard = ({ post, onPollUpdated }) => {
             }}
           >
             <button
+              ref={submitBtnRef}
               type="submit"
               disabled={!selectedOptionId || isSubmitting}
               style={{
-                backgroundColor: selectedOptionId ? '#3b82f6' : '#9ca3af',
-                color: '#ffffff',
+                backgroundColor: selectedOptionId ? '#3b82f6' : 'rgba(255, 255, 255, 0.1)',
+                color: selectedOptionId ? '#ffffff' : '#64748b',
                 border: 'none',
                 padding: '6px 18px',
-                borderRadius: '20px',
+                borderRadius: '9999px',
                 fontWeight: 600,
                 fontSize: '13px',
                 cursor: selectedOptionId && !isSubmitting ? 'pointer' : 'not-allowed',
-                transition: 'background-color 0.2s',
+                transition: 'all 0.2s ease',
               }}
             >
               {isSubmitting ? 'Voting...' : 'Vote'}
@@ -279,18 +241,7 @@ export const PollCard = ({ post, onPollUpdated }) => {
       )}
 
       {/* Footer Info */}
-      <div
-        style={{
-          marginTop: '10px',
-          paddingTop: '8px',
-          borderTop: '1px solid #ebe9e3',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          fontSize: '12px',
-          color: '#777',
-        }}
-      >
+      <div className="poll-footer">
         <span>
           {totalVotes} {totalVotes === 1 ? 'vote' : 'votes'}
         </span>

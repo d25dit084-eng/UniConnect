@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import gsap from 'gsap';
 import { getPostDetails, deletePost } from '../api/postApi';
 import {
   createComment,
@@ -167,24 +168,68 @@ const CommentNode = ({ comment, onCommentAction, depth = 0 }) => {
           <div className="vote-buttons" style={{ display: 'inline-flex' }}>
             <button
               type="button"
-              className={`vote-btn ${comment.voteStatus === 1 ? 'active' : ''}`}
-              onClick={() => handleVote(1)}
+              className={`vote-btn upvote ${comment.voteStatus === 1 ? 'active' : ''}`}
+              onClick={(e) => {
+                if (e.currentTarget) {
+                  gsap.fromTo(
+                    e.currentTarget,
+                    { scale: 0.75 },
+                    { scale: 1.25, duration: 0.12, yoyo: true, repeat: 1, ease: 'power2.out' }
+                  );
+                }
+                handleVote(1);
+              }}
               disabled={!isAuthenticated}
-              style={{ fontSize: '11px', padding: '1px 4px' }}
+              style={{ fontSize: '11px', padding: '2px 4px' }}
+              title={isAuthenticated ? 'Upvote comment' : 'Log in to vote'}
+              aria-label="Upvote comment"
             >
-              ▲
+              <svg
+                className="vote-arrow"
+                style={{ width: '12px', height: '12px' }}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="18 15 12 9 6 15" />
+              </svg>
             </button>
-            <span style={{ fontSize: '11px', margin: '0 4px', color: '#1a1a1a' }}>
+            <span className="vote-score" style={{ fontSize: '11px', minWidth: '18px' }}>
               {comment.score}
             </span>
             <button
               type="button"
-              className={`vote-btn ${comment.voteStatus === -1 ? 'active' : ''}`}
-              onClick={() => handleVote(-1)}
+              className={`vote-btn downvote ${comment.voteStatus === -1 ? 'active' : ''}`}
+              onClick={(e) => {
+                if (e.currentTarget) {
+                  gsap.fromTo(
+                    e.currentTarget,
+                    { scale: 0.75 },
+                    { scale: 1.25, duration: 0.12, yoyo: true, repeat: 1, ease: 'power2.out' }
+                  );
+                }
+                handleVote(-1);
+              }}
               disabled={!isAuthenticated}
-              style={{ fontSize: '11px', padding: '1px 4px' }}
+              style={{ fontSize: '11px', padding: '2px 4px' }}
+              title={isAuthenticated ? 'Downvote comment' : 'Log in to vote'}
+              aria-label="Downvote comment"
             >
-              ▼
+              <svg
+                className="vote-arrow"
+                style={{ width: '12px', height: '12px' }}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
             </button>
           </div>
 
@@ -345,8 +390,41 @@ export const PostDetailPage = () => {
     fetchPostAndComments();
   }, [id]);
 
+  const detailCardRef = useRef(null);
+  const postUpBtnRef = useRef(null);
+  const postDownBtnRef = useRef(null);
+  const postScoreRef = useRef(null);
+  const postSaveBtnRef = useRef(null);
+
+  useEffect(() => {
+    if (detailCardRef.current) {
+      gsap.fromTo(
+        detailCardRef.current,
+        { opacity: 0, y: 14, scale: 0.99 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: 'power2.out' }
+      );
+    }
+  }, [post?._id]);
+
   const handlePostVote = async (value) => {
     if (!isAuthenticated || !post) return;
+
+    // Trigger smooth micro-animation on arrow and score with GSAP
+    const targetBtn = value === 1 ? postUpBtnRef.current : postDownBtnRef.current;
+    if (targetBtn) {
+      gsap.fromTo(
+        targetBtn,
+        { scale: 0.75 },
+        { scale: 1.25, duration: 0.12, yoyo: true, repeat: 1, ease: 'power2.out' }
+      );
+    }
+    if (postScoreRef.current) {
+      gsap.fromTo(
+        postScoreRef.current,
+        { y: value === 1 ? -4 : 4, scale: 1.15 },
+        { y: 0, scale: 1, duration: 0.22, ease: 'back.out(2)' }
+      );
+    }
 
     // Snapshot current state for rollback
     const prevScore = post.score || 0;
@@ -386,6 +464,15 @@ export const PostDetailPage = () => {
 
   const handleSaveToggle = async () => {
     if (!isAuthenticated || !post) return;
+
+    // GSAP micro-interaction on save toggle
+    if (postSaveBtnRef.current) {
+      gsap.fromTo(
+        postSaveBtnRef.current,
+        { scale: 0.8 },
+        { scale: 1.15, duration: 0.15, yoyo: true, repeat: 1, ease: 'back.out(2)' }
+      );
+    }
 
     // Snapshot current state for rollback
     const prevSaved = isSaved;
@@ -450,50 +537,31 @@ export const PostDetailPage = () => {
 
   return (
     <div>
-      {/* Post Detail Body */}
-      <div className="post-detail-card">
+      {/* Post Detail Body (Dark Grey Glassmorphism) */}
+      <div ref={detailCardRef} className="post-detail-card">
         <div className="post-meta">
           {post.community && (
-            <Link to={`/c/${post.community.slug}`} style={{ fontWeight: 'bold' }}>
-              c/{post.community.name}
-            </Link>
+            <>
+              <Link to={`/c/${post.community.slug}`} className="post-community-badge">
+                c/{post.community.name}
+              </Link>
+              <span>•</span>
+            </>
           )}
-          {' • '}Posted by{' '}
+          <span>Posted by</span>
           {isPostAnonymous ? (
-            <span style={{ fontStyle: 'italic', color: '#888' }}>
+            <span style={{ fontStyle: 'italic', color: '#94a3b8' }}>
               {postAuthorDisplay}
-              {isPostOP && (
-                <span
-                  style={{
-                    marginLeft: '4px',
-                    fontSize: '10px',
-                    fontWeight: 700,
-                    color: '#4f8ef7',
-                    letterSpacing: '0.5px',
-                  }}
-                >
-                  [OP]
-                </span>
-              )}
-              {isPostMine && (
-                <span
-                  style={{
-                    marginLeft: '4px',
-                    fontSize: '10px',
-                    color: '#6c6',
-                    fontWeight: 700,
-                  }}
-                >
-                  [you]
-                </span>
-              )}
+              {isPostOP && <span className="post-badge-op">[OP]</span>}
+              {isPostMine && <span className="post-badge-you">[you]</span>}
             </span>
           ) : (
             <Link to={`/u/${post.author?.username?.replace('u/', '') || 'deleted'}`}>
               {postAuthorDisplay}
             </Link>
-          )}{' '}
-          • {new Date(post.createdAt).toLocaleString()}
+          )}
+          <span>•</span>
+          <span>{new Date(post.createdAt).toLocaleString()}</span>
         </div>
 
         <h2
@@ -502,6 +570,7 @@ export const PostDetailPage = () => {
             margin: '8px 0',
             overflowWrap: 'break-word',
             wordBreak: 'break-word',
+            color: '#f8fafc',
           }}
         >
           {post.title}
@@ -515,6 +584,8 @@ export const PostDetailPage = () => {
               margin: '15px 0',
               overflowWrap: 'break-word',
               wordBreak: 'break-word',
+              color: '#cbd5e1',
+              lineHeight: 1.6,
             }}
           >
             {renderContentWithMentions(post.content)}
@@ -522,28 +593,21 @@ export const PostDetailPage = () => {
         )}
 
         {post.type === 'link' && post.url && (
-          <div style={{ margin: '15px 0', overflowWrap: 'break-word', wordBreak: 'break-all' }}>
-            🔗{' '}
-            <a href={post.url} target="_blank" rel="noopener noreferrer">
-              {post.url}
+          <div style={{ margin: '15px 0' }}>
+            <a
+              href={post.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="post-link-pill"
+            >
+              <span>🔗</span>
+              <span>{post.url}</span>
             </a>
           </div>
         )}
 
         {post.type === 'image' && post.media && post.media.length > 0 && (
-          <div
-            style={{
-              margin: '15px auto',
-              width: '100%',
-              maxWidth: '800px',
-              aspectRatio: '16/9',
-              maxHeight: '500px',
-              background: '#f5f4f0',
-              overflow: 'hidden',
-              border: '1px solid #e2e0db',
-              textAlign: 'center',
-            }}
-          >
+          <div className="post-media-container" style={{ maxWidth: '800px', margin: '15px auto' }}>
             <img
               src={
                 post.media[0].startsWith('http')
@@ -575,40 +639,64 @@ export const PostDetailPage = () => {
         <div className="post-detail-actions">
           <div className="vote-buttons">
             <button
+              ref={postUpBtnRef}
               type="button"
-              className={`vote-btn ${post.voteStatus === 1 ? 'active' : ''}`}
+              className={`vote-btn upvote ${post.voteStatus === 1 ? 'active' : ''}`}
               onClick={() => handlePostVote(1)}
               disabled={!isAuthenticated}
+              title={isAuthenticated ? 'Upvote post' : 'Log in to vote'}
+              aria-label="Upvote post"
             >
-              ▲
+              <svg
+                className="vote-arrow"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="18 15 12 9 6 15" />
+              </svg>
             </button>
-            <span style={{ fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>
-              {post.score}
+            <span ref={postScoreRef} className="vote-score">
+              {post.score || 0}
             </span>
             <button
+              ref={postDownBtnRef}
               type="button"
-              className={`vote-btn ${post.voteStatus === -1 ? 'active' : ''}`}
+              className={`vote-btn downvote ${post.voteStatus === -1 ? 'active' : ''}`}
               onClick={() => handlePostVote(-1)}
               disabled={!isAuthenticated}
+              title={isAuthenticated ? 'Downvote post' : 'Log in to vote'}
+              aria-label="Downvote post"
             >
-              ▼
+              <svg
+                className="vote-arrow"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
             </button>
           </div>
 
-          <span style={{ fontSize: '12px' }}>👁️ {post.viewCount || 0} View(s)</span>
+          <span className="post-action-btn" style={{ cursor: 'default' }}>
+            👁️ {post.viewCount || 0} View(s)
+          </span>
 
           {isAuthenticated && (
             <button
+              ref={postSaveBtnRef}
               type="button"
               onClick={handleSaveToggle}
-              style={{
-                border: 'none',
-                background: 'none',
-                textDecoration: 'underline',
-                padding: 0,
-              }}
+              className="post-action-btn"
             >
-              {isSaved ? 'Unsave Post' : 'Save Post'}
+              {isSaved ? '🔖 Unsave Post' : '🔖 Save Post'}
             </button>
           )}
 
@@ -616,15 +704,9 @@ export const PostDetailPage = () => {
             <button
               type="button"
               onClick={handlePostDelete}
-              style={{
-                color: '#c00',
-                border: 'none',
-                background: 'none',
-                textDecoration: 'underline',
-                padding: 0,
-              }}
+              className="post-action-btn delete-btn"
             >
-              Delete Post
+              🗑️ Delete Post
             </button>
           )}
         </div>

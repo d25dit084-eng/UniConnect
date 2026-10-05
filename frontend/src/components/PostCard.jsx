@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import gsap from 'gsap';
 import { useAuth } from '../context/AuthContext';
 import { votePost } from '../api/voteApi';
 import { savePost, unsavePost } from '../api/savedApi';
@@ -14,6 +15,12 @@ export const PostCard = ({ post: initialPost, onPostDeleted }) => {
   const isVotingRef = useRef(false);
   const isSavingRef = useRef(false);
 
+  const cardRef = useRef(null);
+  const upBtnRef = useRef(null);
+  const downBtnRef = useRef(null);
+  const scoreRef = useRef(null);
+  const saveBtnRef = useRef(null);
+
   useEffect(() => {
     setPost(initialPost);
     if (initialPost.savedByMe !== undefined) {
@@ -21,10 +28,38 @@ export const PostCard = ({ post: initialPost, onPostDeleted }) => {
     }
   }, [initialPost]);
 
+  // GSAP card entrance animation
+  useEffect(() => {
+    if (cardRef.current) {
+      gsap.fromTo(
+        cardRef.current,
+        { opacity: 0, y: 14, scale: 0.99 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: 'power2.out' }
+      );
+    }
+  }, []);
+
   const handleVote = async (value) => {
     if (!isAuthenticated) return;
     if (isVotingRef.current) return;
     isVotingRef.current = true;
+
+    // Trigger smooth micro-animation on arrow and score with GSAP
+    const targetBtn = value === 1 ? upBtnRef.current : downBtnRef.current;
+    if (targetBtn) {
+      gsap.fromTo(
+        targetBtn,
+        { scale: 0.75 },
+        { scale: 1.25, duration: 0.12, yoyo: true, repeat: 1, ease: 'power2.out' }
+      );
+    }
+    if (scoreRef.current) {
+      gsap.fromTo(
+        scoreRef.current,
+        { y: value === 1 ? -4 : 4, scale: 1.15 },
+        { y: 0, scale: 1, duration: 0.22, ease: 'back.out(2)' }
+      );
+    }
 
     // Snapshot current state for rollback
     const prevScore = post.score || 0;
@@ -68,6 +103,15 @@ export const PostCard = ({ post: initialPost, onPostDeleted }) => {
     if (!isAuthenticated) return;
     if (isSavingRef.current) return;
     isSavingRef.current = true;
+
+    // GSAP micro-interaction on save toggle
+    if (saveBtnRef.current) {
+      gsap.fromTo(
+        saveBtnRef.current,
+        { scale: 0.8 },
+        { scale: 1.15, duration: 0.15, yoyo: true, repeat: 1, ease: 'back.out(2)' }
+      );
+    }
 
     // Snapshot current state for rollback
     const prevSaved = isSaved;
@@ -122,55 +166,33 @@ export const PostCard = ({ post: initialPost, onPostDeleted }) => {
   const isMine = Boolean(post.author?.isMine) || isOwner;
 
   return (
-    <div className="post-card">
+    <div ref={cardRef} className="post-card">
       <div className="post-meta">
         {post.community && (
           <>
             <Link
               to={`/c/${post.community.slug || post.community.name}`}
-              style={{ fontWeight: 'bold' }}
+              className="post-community-badge"
             >
               c/{post.community.name}
             </Link>
-            {' • '}
+            <span>•</span>
           </>
         )}
-        Posted by{' '}
+        <span>Posted by</span>
         {isAnonymous ? (
-          <span style={{ fontStyle: 'italic', color: '#888' }}>
+          <span style={{ fontStyle: 'italic', color: '#94a3b8' }}>
             {authorDisplay}
-            {isOP && (
-              <span
-                style={{
-                  marginLeft: '4px',
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  color: '#4f8ef7',
-                  letterSpacing: '0.5px',
-                }}
-              >
-                [OP]
-              </span>
-            )}
-            {isMine && (
-              <span
-                style={{
-                  marginLeft: '4px',
-                  fontSize: '10px',
-                  color: '#6c6',
-                  fontWeight: 700,
-                }}
-              >
-                [you]
-              </span>
-            )}
+            {isOP && <span className="post-badge-op">[OP]</span>}
+            {isMine && <span className="post-badge-you">[you]</span>}
           </span>
         ) : (
           <Link to={`/u/${post.author?.username?.replace('u/', '') || 'deleted'}`}>
             {authorDisplay}
           </Link>
-        )}{' '}
-        • {formatTime(post.createdAt)}
+        )}
+        <span>•</span>
+        <span>{formatTime(post.createdAt)}</span>
       </div>
 
       <div className="post-title">
@@ -186,25 +208,21 @@ export const PostCard = ({ post: initialPost, onPostDeleted }) => {
       )}
 
       {post.type === 'link' && post.url && (
-        <div style={{ margin: '8px 0' }}>
-          <a href={post.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '13px' }}>
-            🔗 {post.url}
+        <div>
+          <a
+            href={post.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="post-link-pill"
+          >
+            <span>🔗</span>
+            <span>{post.url}</span>
           </a>
         </div>
       )}
 
       {post.type === 'image' && post.media && post.media.length > 0 && (
-        <div
-          style={{
-            margin: '10px 0',
-            width: '100%',
-            aspectRatio: '16/9',
-            maxHeight: '400px',
-            background: '#f5f4f0',
-            overflow: 'hidden',
-            border: '1px solid #e2e0db',
-          }}
-        >
+        <div className="post-media-container">
           <img
             src={
               post.media[0].startsWith('http')
@@ -230,35 +248,62 @@ export const PostCard = ({ post: initialPost, onPostDeleted }) => {
       <div className="post-actions">
         <div className="vote-buttons">
           <button
+            ref={upBtnRef}
             type="button"
-            className={`vote-btn ${post.voteStatus === 1 ? 'active' : ''}`}
+            className={`vote-btn upvote ${post.voteStatus === 1 ? 'active' : ''}`}
             onClick={() => handleVote(1)}
             disabled={!isAuthenticated}
+            title={isAuthenticated ? 'Upvote' : 'Log in to vote'}
+            aria-label="Upvote"
           >
-            ▲
+            <svg
+              className="vote-arrow"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="18 15 12 9 6 15" />
+            </svg>
           </button>
-          <span style={{ minWidth: '20px', textAlign: 'center', fontWeight: 'bold' }}>
-            {post.score}
+          <span ref={scoreRef} className="vote-score">
+            {post.score || 0}
           </span>
           <button
+            ref={downBtnRef}
             type="button"
-            className={`vote-btn ${post.voteStatus === -1 ? 'active' : ''}`}
+            className={`vote-btn downvote ${post.voteStatus === -1 ? 'active' : ''}`}
             onClick={() => handleVote(-1)}
             disabled={!isAuthenticated}
+            title={isAuthenticated ? 'Downvote' : 'Log in to vote'}
+            aria-label="Downvote"
           >
-            ▼
+            <svg
+              className="vote-arrow"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
           </button>
         </div>
 
-        <Link to={`/post/${post._id}`} style={{ textDecoration: 'none' }}>
-          💬 {post.commentCount || 0} Comment(s)
+        <Link to={`/post/${post._id}`} className="post-action-btn">
+          💬 {post.commentCount || 0} {post.commentCount === 1 ? 'Comment' : 'Comments'}
         </Link>
 
         {isAuthenticated && (
           <button
+            ref={saveBtnRef}
             type="button"
             onClick={handleSaveToggle}
-            style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}
+            className="post-action-btn"
           >
             {isSaved ? '🔖 Saved' : '🔖 Save'}
           </button>
@@ -268,15 +313,9 @@ export const PostCard = ({ post: initialPost, onPostDeleted }) => {
           <button
             type="button"
             onClick={handleDelete}
-            style={{
-              color: '#aa2d00',
-              border: 'none',
-              background: 'none',
-              textDecoration: 'underline',
-              padding: 0,
-            }}
+            className="post-action-btn delete-btn"
           >
-            Delete
+            🗑️ Delete
           </button>
         )}
 
@@ -291,9 +330,9 @@ export const PostCard = ({ post: initialPost, onPostDeleted }) => {
                 })
               );
             }}
-            style={{ border: 'none', background: 'none', textDecoration: 'underline', padding: 0 }}
+            className="post-action-btn"
           >
-            Report
+            🚩 Report
           </button>
         )}
       </div>
