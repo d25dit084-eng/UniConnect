@@ -343,35 +343,54 @@
   - Built community moderation endpoints in `communityModController.js` and `communityRoutes.js` (`GET/POST /api/communities/:slug/mod/reports`, `GET/PUT /api/communities/:slug/mod/settings`) enabling community moderators to review flagged content, approve/restore quarantined items, permanently remove violations, issue author warnings, and manage custom banned keywords.
   - Updated global `AdminPage.jsx` and built collegiate moderation center in `CommunityModPage.jsx` with rich report previews, status filters, and action controls.
   - Created Jest test suite `backend/tests/automod.test.js` verifying clean post approval, automod quarantine, custom keyword triggers, mod triage actions, and permission enforcement (16/16 test suites passing, 74/74 tests).
-- [x] **UI Overhaul — Diagnosis & V1: Unified Dark Glass Tokens**:
-  - **Diagnosis of Mixed Theme (Root Causes)**:
-    - Identified 434 hardcoded color violations (245 in `index.css` outside `:root` + 189 in JSX inline styles).
-    - Navbar: `.navbar`, `.navbar-dropdown`, `.navbar-mobile-drawer` used hardcoded `#ffffff` backgrounds with `#1a1a1a` text and `#e2e0db` borders.
-    - Right Sidebar & Widgets: `.sidebar-section`, `.widget-card`, `.community-activity-card` used `#ffffff` backgrounds with `#1a1a1a` headers and `#666` descriptions.
-    - Page Titles, Headers & Tabs: `.page-header h2`, `.tab-button`, `.tab-button.active` had hardcoded `color: #1a1a1a`, causing unreadable dark-on-dark text.
-    - Left Sidebar: `.sidebar-link` had `color: #1a1a1a` and hover `#f3f0ea`.
-    - Buttons: `button` had hardcoded `background: #1a1a1a` and `:hover { background: #000; }`, rendering jet-black buttons against glass panels.
-    - Components: `ResourceLibraryPage.jsx`, `StudyGroupsPage.jsx`, `EventsPage.jsx`, `SearchResults.jsx`, `SettingsPage.jsx`, `CommunityActivityChart.jsx`, `CommunityContest.jsx` contained hardcoded inline `#fff`, `#ccc`, `#1a1a1a`, `#2563eb`, `#666`.
-  - **Decision — Ship Dark Only**:
-    - Removed `[data-theme='light']` tokens and all light-theme remnants so there is exactly one unified token system without mixed states.
-  - **V1 Design Tokens Implemented in `:root`**:
-    - Base: `--bg-base: #0b0d12;`
-    - Glass: `--glass-bg: rgba(28, 31, 38, 0.55);`, `--glass-bg-strong: rgba(24, 27, 34, 0.72);`, `--glass-bg-hover: rgba(36, 40, 48, 0.62);`, `--glass-border: rgba(255, 255, 255, 0.08);`, `--glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);`, `--glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);`
-    - Blurs: `--blur-sm: blur(8px);`, `--blur-md: blur(14px) saturate(140%);`, `--blur-lg: blur(20px) saturate(150%);`, `--glass-blur: var(--blur-md);`
-    - Text: `--text-primary: #ececf0;`, `--text-secondary: #a7aab3;`, `--text-muted: #8a8d97;`
-    - Accent: `--accent: #8b93ff;`, `--accent-soft: rgba(139, 147, 255, 0.14);`, `--accent-2: #5eead4;`, `--anon: #b79cff;`, `--op: #8b93ff;`
-    - Semantic: `--success: #5fd39a;`, `--warning: #f2c26b;`, `--danger: #f27b7b;`
-    - Votes: `--vote-idle: rgba(236, 236, 240, 0.55);`, `--vote-hover: rgba(245, 245, 247, 0.9);`, `--vote-up-active: #f5f5f7;`, `--vote-down-active: #9a9ca5;`
-    - Shapes & Spacing: `--radius-card: 14px;`, `--radius-ctl: 10px;`, `--radius-pill: 999px;`, 8px spacing scale (`--space-1` through `--space-12`).
-    - Fallback: `@supports not (backdrop-filter: blur(1px)) -> solid rgba(26, 29, 36, 0.94)`.
-    - Mobile: Viewports $\le 768\text{px}$ automatically map `--blur-md` and `--blur-lg` to `--blur-sm`.
-  - **Quality Gate Script**:
-    - Created `scripts/checkColors.js` scanning `frontend/src/index.css` and all JSX components for hardcoded color literals outside `:root`.
-    - Added `npm run check:colors` script to `frontend/package.json`.
-    - Verified `check:colors` passes within transition baseline cap.
-  - **Verification**:
-    - `npm run lint` & `npm run build`: 0 errors, build passed cleanly in 3.42s.
-    - Chat benchmark: 100% budget passed (delivery p50 = 1.89ms, p95 = 4.25ms, persisted p95 = 27.37ms).
+- [x] **UI Overhaul — Step 1: Comprehensive Diagnosis of Mixed Theme**:
+  - **CSS File Audit (`frontend/src/index.css`) — 245 Color Literal Violations**:
+    - **Navbar (29 offenders)**:
+      - `.navbar` (L303-304): `background: #ffffff; border-bottom: 1px solid #e2e0db;` (Causes pure white top bar).
+      - `.navbar-brand` (L316): `color: #1a1a1a;` (Causes dark-on-dark text).
+      - `.navbar-search input` (L332-336): `background: #fbfaf8; border: 1px solid #d2cfc9; :focus { background: #ffffff; }`.
+      - `.navbar-actions a` (L348-352): `color: #666666; :hover { color: #1a1a1a; }`.
+      - `.navbar-dropdown` (L269-275): `background: #ffffff; border: 1px solid #e2e0db; box-shadow: 0 4px 12px rgba(0,0,0,0.08);`.
+      - `.navbar-dropdown a, button` (L287): `color: #1a1a1a; :hover { background: #f3f0ea; }`.
+      - `.navbar-mobile-drawer` (L307-308): `background: #ffffff; border-bottom: 1px solid #e2e0db;`.
+    - **Right Rail & Widgets (24 offenders)**:
+      - `.widget-card` (L1714-1724): `background: #ffffff; border: 1px solid #e2e0db; color: #111111;` (Causes pure white right-rail cards).
+      - `.sidebar-section` (L472-476): `border-bottom: 1px solid #e2e0db; color: #666666;`.
+      - `.community-activity-card` & `.community-contest-card`: hardcoded `#ffffff` backgrounds and `#1a1a1a` text.
+    - **Page Titles, Headers & Tabs (12 offenders)**:
+      - `.page-header h2` (L517): `color: #1a1a1a;` (Causes invisible dark-on-dark "Home" title).
+      - `.page-description` (L521): `color: #666666;` (Causes invisible subtitle).
+      - `.tabs-container` (L530): `border-bottom: 1px solid #e2e0db;`.
+      - `.tab-button` (L541): `color: #666666; :hover { color: #1a1a1a; }`.
+      - `.tab-button.active` (L551-552): `color: #1a1a1a; border-bottom-color: #1a1a1a;` (Causes dark active tabs).
+    - **Buttons & Action Controls (59 offenders)**:
+      - `button, button[type='submit']` (L189-215): `background: #1a1a1a; color: #ffffff; border: 1px solid #1a1a1a; :hover { background: #000000; border-color: #000000; }` (Causes jet-black buttons and black register button).
+      - `button.btn-secondary` (L219-224): `color: #1a1a1a; border: 1px solid #d2cfc9; :hover { background: #f3f0ea; }`.
+    - **Forms & Inputs (18 offenders)**:
+      - `input, select, textarea` (L233-248): `background: #ffffff; color: #1a1a1a; border: 1px solid #d2cfc9;`.
+      - `.form-group label` (L259): `color: #1a1a1a;`.
+    - **Left Sidebar Navigation (8 offenders)**:
+      - `.sidebar-link`: inherits `a { color: #1a1a1a; }` (Causes dark-on-dark unreadable sidebar links).
+      - `.sidebar-section h3` (L472): `color: #666666; border-bottom: 1px solid #e2e0db;`.
+      - Missing active state indicator styling (`active = --accent-soft background + 2px --accent left bar + --text-primary`).
+    - **Comments & Chat (22 offenders)**:
+      - `.comment-input-area` (L835-838): `background: #ffffff; border: 1px solid #e2e0db;`.
+      - `.comment-item` (L846): `border-left: 1px solid #d2cfc9;`.
+      - `.comment-body` (L869): `color: #1a1a1a;`.
+      - `.chat-grid` (L906-911): `background: #ffffff; border: 1px solid #e2e0db;`.
+      - `.chat-header` (L966-969): `background: #ffffff; border-bottom: 1px solid #e2e0db;`.
+    - **Auth & Settings Pages (36 offenders)**:
+      - `.auth-page` (L265): `background: #faf9f6;`.
+      - `.auth-container` (L273-287): `background: #ffffff; border: 1px solid #e2e0db; color: #1a1a1a;`.
+      - `.settings-card` (L1485-1495): `background: #ffffff; border: 1px solid #e2e0db;`.
+  - **Component Files Audit — 189 Inline Style Color Violations**:
+    - `CommunityActivityChart.jsx`: lines 63, 110, 122, 130, 138 (`color: '#666666'`, `fill: '#888888'`, `fill: '#666666'`).
+    - `CommunityContest.jsx`: lines 60, 63, 75, 120, 145 (`color: '#1a1a1a'`, `background: '#1a1a1a'`, `color: '#090'`).
+    - `ResourceLibraryPage.jsx`: lines 724, 735, 757, 768, 788, 802, 815, 828, 856 (`backgroundColor: '#fff'`, `border: '1px solid #ccc'`, `color: '#6b7280'`).
+    - `StudyGroupsPage.jsx`: lines 185, 312, 326, 329, 429, 473, 600, 638, 735-833 (`color: '#1a1a1b'`, `color: '#111827'`, `color: '#2563eb'`, `backgroundColor: '#fff'`).
+    - `ReviewsPage.jsx`: lines 203, 206, 308, 312, 378, 487, 508, 518, 583, 611-659 (`color: '#f8fafc'`, `color: '#94a3b8'`, `background: '#1e293b'`).
+    - `SearchResults.jsx`: lines 49, 97, 103, 116, 122 (`border: '1px solid #000'`, `background: '#fff'`, `color: '#666'`).
+    - `SettingsPage.jsx`: lines 124, 159, 166, 205, 215, 227, 235, 242 (`borderBottom: '1px dotted #000'`, `background: '#000'`, `color: '#fff'`).
 
 ---
 
