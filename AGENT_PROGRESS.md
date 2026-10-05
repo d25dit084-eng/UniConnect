@@ -39,6 +39,11 @@
 
 ## 2. Done Log
 
+- [x] **Production Deployment Setup (Vercel + Render)**:
+  - [x] Root `vercel.json` and root `package.json` created for single-click Vercel monorepo deployment with SPA rewrites.
+  - [x] `main` branch synchronized and fast-forwarded with `hardening` on GitHub (`https://github.com/d25dit084-eng/UniConnect.git`).
+  - [x] Backend `render.yaml` Blueprint validated with auto-generated JWT secrets, environment variable schema, and CORS wildcard support for `*.vercel.app`.
+  - [x] Frontend build verified locally (`npm run build` passing cleanly in 3.28s).
 - [x] Initialized project dev environment (Backend running on port 5000 with MongoDB, Frontend running on Vite port 5173).
 - [x] Verified database connectivity to `mongodb://127.0.0.1:27017/uniconnect`.
 - [x] Created quick-access project briefs (`PROJECT_BRIEF.txt`, `PROJECT_BRIEF.md`, `PROJECT_BRIEF_PAD.html`).
