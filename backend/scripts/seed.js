@@ -34,8 +34,8 @@ const parsedUri = new URL(MONGO_URI.replace('mongodb://', 'http://').replace('mo
 const dbHost = parsedUri.hostname;
 console.log(`🔒 [Safety Guard] Connecting to host: ${dbHost}`);
 
-if (dbHost !== '127.0.0.1' && dbHost !== 'localhost' && !dbHost.includes('dev')) {
-  console.error(`❌ [Safety Guard] Aborting: Database host "${dbHost}" is not localhost or a dev database!`);
+if (dbHost !== '127.0.0.1' && dbHost !== 'localhost' && !dbHost.includes('dev') && !process.argv.includes('--allow-atlas')) {
+  console.error(`❌ [Safety Guard] Aborting: Database host "${dbHost}" is not localhost or a dev database! (Use --allow-atlas to seed your cloud cluster)`);
   process.exit(1);
 }
 

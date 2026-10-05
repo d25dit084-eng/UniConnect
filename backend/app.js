@@ -35,6 +35,7 @@ const requestId = require('./middleware/requestId');
 const requestLogger = require('./middleware/requestLogger');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // ─── Request Identification & Structured Telemetry ────────────────────────────
 app.use(requestId);

@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
+import api from '../api/axios';
 
 const SocketContext = createContext(null);
 const PresenceContext = createContext(null);
@@ -153,8 +154,9 @@ export const SocketProvider = ({ children }) => {
   }, []);
 
   /**
-   * Backlog A.2 & A.3 & A.10:
-   * Send message with clientMsgId, immediate ack response, and offline queue fallback.
+   * Send message with clientMsgId:
+   * Uses WebSocket if connected, otherwise immediately uses HTTP REST fallback.
+   * Guarantees messages never get stuck in offline queue.
    */
   const emitSendMessage = useCallback((conversationId, content, clientMsgId) => {
     const effectiveMsgId =
@@ -172,22 +174,45 @@ export const SocketProvider = ({ children }) => {
           },
           (response) => {
             if (response && response.error) {
-              reject(new Error(response.error));
+              // Try HTTP fallback on socket error
+              api
+                .post(`/chat/conversations/${conversationId}/messages`, {
+                  content,
+                  clientMsgId: effectiveMsgId,
+                })
+                .then((res) => {
+                  resolve({
+                    status: 'sent',
+                    messageId: res.data?.data?._id || effectiveMsgId,
+                    clientMsgId: effectiveMsgId,
+                    ...(res.data?.data || {}),
+                  });
+                })
+                .catch((err) => reject(err));
             } else {
               resolve(response || { status: 'sent', clientMsgId: effectiveMsgId });
             }
           }
         );
       } else {
-        // Enqueue offline message to flush upon reconnect
-        offlineQueueRef.current.push({
-          conversationId,
-          content,
-          clientMsgId: effectiveMsgId,
-          resolve,
-          reject,
-        });
-        resolve({ status: 'queued_offline', clientMsgId: effectiveMsgId });
+        // Immediate HTTP REST fallback
+        api
+          .post(`/chat/conversations/${conversationId}/messages`, {
+            content,
+            clientMsgId: effectiveMsgId,
+          })
+          .then((res) => {
+            resolve({
+              status: 'sent',
+              messageId: res.data?.data?._id || effectiveMsgId,
+              clientMsgId: effectiveMsgId,
+              ...(res.data?.data || {}),
+            });
+          })
+          .catch((err) => {
+            console.error('[SocketContext] HTTP fallback send error:', err);
+            reject(err);
+          });
       }
     });
   }, []);

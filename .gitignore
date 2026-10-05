@@ -57,3 +57,5 @@ backend/uploads/*
 .cache/
 .parcel-cache/
 *.tsbuildinfo
+
+.vercel

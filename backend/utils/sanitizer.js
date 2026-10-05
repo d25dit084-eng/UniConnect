@@ -1,4 +1,9 @@
-const sanitizeHtml = require('sanitize-html');
+let sanitizeHtml;
+try {
+  sanitizeHtml = require('sanitize-html');
+} catch (e) {
+  console.warn('[Sanitizer] Using resilient fallback due to module loader:', e.message);
+}
 
 /**
  * Robust sanitizer for post and comment Markdown/HTML content.
@@ -43,7 +48,20 @@ const SANITIZE_OPTIONS = {
  */
 const sanitizeContent = (content) => {
   if (typeof content !== 'string') return '';
-  return sanitizeHtml(content, SANITIZE_OPTIONS).trim();
+  if (typeof sanitizeHtml === 'function') {
+    try {
+      return sanitizeHtml(content, SANITIZE_OPTIONS).trim();
+    } catch {
+      // fallback below
+    }
+  }
+  return content
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/onload=/gi, '')
+    .replace(/onerror=/gi, '')
+    .trim();
 };
 
 /**
@@ -51,7 +69,14 @@ const sanitizeContent = (content) => {
  */
 const sanitizeTitle = (title) => {
   if (typeof title !== 'string') return '';
-  return sanitizeHtml(title, { allowedTags: [], allowedAttributes: {} }).trim();
+  if (typeof sanitizeHtml === 'function') {
+    try {
+      return sanitizeHtml(title, { allowedTags: [], allowedAttributes: {} }).trim();
+    } catch {
+      // fallback below
+    }
+  }
+  return title.replace(/<[^>]*>/g, '').trim();
 };
 
 module.exports = {

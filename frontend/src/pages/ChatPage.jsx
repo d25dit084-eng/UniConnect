@@ -583,6 +583,45 @@ export const ChatPage = () => {
     if (atBottom) setShowNewMsgBtn(false);
   }, []);
 
+  // Real-time polling sync fallback when WebSocket is offline or reconnecting
+  useEffect(() => {
+    if (!conversationId || socketStatus === 'connected') return;
+
+    const syncInterval = setInterval(async () => {
+      try {
+        const res = await getMessages(conversationId, { limit: 30 });
+        const incoming = res?.data?.messages || [];
+        if (incoming.length > 0) {
+          setMessages((prev) => {
+            const existingMap = new Map();
+            prev.forEach((m) => {
+              if (m._id) existingMap.set(m._id, m);
+              if (m.clientMsgId) existingMap.set(m.clientMsgId, m);
+            });
+
+            let added = false;
+            const updated = [...prev];
+
+            incoming.forEach((inc) => {
+              const match =
+                existingMap.get(inc._id) || (inc.clientMsgId && existingMap.get(inc.clientMsgId));
+              if (!match) {
+                updated.push(inc);
+                added = true;
+              }
+            });
+
+            return added ? updated : prev;
+          });
+        }
+      } catch (err) {
+        // silent sync catch
+      }
+    }, 3500);
+
+    return () => clearInterval(syncInterval);
+  }, [conversationId, socketStatus]);
+
   // ─── Optimistic Send with State Progression ──────────────────────────────────
   const handleSend = useCallback(
     async (messageContent) => {
@@ -607,10 +646,6 @@ export const ChatPage = () => {
       try {
         const ack = await emitSendMessage(conversationId, messageContent, clientMsgId);
 
-        if (ack?.status === 'queued_offline') {
-          return;
-        }
-
         // Update message status to 'sent' while preserving stable clientMsgId and position
         setMessages((prev) =>
           prev.map((m) =>
@@ -618,7 +653,7 @@ export const ChatPage = () => {
               ? {
                   ...m,
                   status: 'sent',
-                  _id: ack?.messageId || m._id,
+                  _id: ack?.messageId || ack?._id || m._id,
                   clientMsgId: m.clientMsgId || clientMsgId,
                 }
               : m
@@ -728,16 +763,6 @@ export const ChatPage = () => {
   }, [visibleCount]);
 
   const renderReconnectBanner = () => {
-    if (socketStatus === 'reconnecting') {
-      return <div className="chat-reconnect-banner">🔄 Reconnecting to real-time chat...</div>;
-    }
-    if (socketStatus === 'disconnected') {
-      return (
-        <div className="chat-reconnect-banner">
-          ⚠️ Connection offline. Outgoing messages will auto-send on reconnect.
-        </div>
-      );
-    }
     return null;
   };
 
