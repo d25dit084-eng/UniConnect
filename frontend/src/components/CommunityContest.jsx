@@ -32,47 +32,36 @@ export const CommunityContest = () => {
 
   return (
     <div>
-      <div
-        style={{
-          border: '1px solid #e0e0e0',
-          padding: '16px',
-          background: '#ffffff',
-          borderRadius: '4px',
-          marginBottom: '20px',
-        }}
-      >
-        <h4
-          style={{
-            fontSize: '12px',
-            textTransform: 'uppercase',
-            color: '#111111',
-            fontWeight: 'bold',
-            marginBottom: '12px',
-            letterSpacing: '0.05em',
-          }}
-        >
-          Community Challenges
-        </h4>
+      <div className="widget-card">
+        <h4>Community Challenges</h4>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {challenges.map((c) => (
             <div key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#1a1a1a' }}>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>
                 {c.title}
               </div>
-              <div style={{ fontSize: '11px', color: '#666666' }}>{c.subtitle}</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{c.subtitle}</div>
 
               {/* Thin horizontal progress bar */}
               <div
                 style={{
-                  height: '4px',
-                  background: '#f0f0f0',
-                  borderRadius: '2px',
+                  height: '5px',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  borderRadius: '999px',
                   overflow: 'hidden',
                   width: '100%',
                 }}
               >
-                <div style={{ height: '100%', width: `${c.percentage}%`, background: '#1a1a1a' }} />
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${c.percentage}%`,
+                    background: 'linear-gradient(90deg, var(--accent), var(--accent-2))',
+                    borderRadius: '999px',
+                    boxShadow: '0 0 8px rgba(94, 234, 212, 0.4)',
+                  }}
+                />
               </div>
 
               <button
@@ -82,9 +71,10 @@ export const CommunityContest = () => {
                 style={{
                   alignSelf: 'flex-start',
                   fontSize: '11px',
-                  padding: '3px 8px',
+                  padding: '4px 10px',
                   height: 'auto',
-                  marginTop: '2px',
+                  marginTop: '4px',
+                  borderRadius: '6px',
                 }}
               >
                 {c.btnLabel}

@@ -93,12 +93,14 @@ export const Navbar = () => {
             {isAuthenticated ? (
               <>
                 <Link to="/create-post" style={{ textDecoration: 'none' }}>
-                  <button type="button">Create</button>
+                  <button type="button" className="btn-accent" style={{ background: 'var(--accent)', color: '#0b0d12', fontWeight: '600', border: 'none', borderRadius: '999px', padding: '6px 16px' }}>
+                    + Create
+                  </button>
                 </Link>
-                <Link to="/chat" style={{ textDecoration: 'none', color: '#666' }}>
+                <Link to="/chat" style={{ textDecoration: 'none', color: 'var(--text-primary)', fontWeight: '500' }}>
                   Chat
                 </Link>
-                <Link to="/notifications" style={{ textDecoration: 'none', color: '#666' }}>
+                <Link to="/notifications" style={{ textDecoration: 'none', color: 'var(--text-primary)', fontWeight: '500' }}>
                   🔔{unreadCount > 0 ? ` ${unreadCount}` : ''}
                 </Link>
 
@@ -108,7 +110,7 @@ export const Navbar = () => {
                     type="button"
                     id="user-menu-btn"
                     onClick={() => setShowDropdown(!showDropdown)}
-                    style={{ fontWeight: 'bold' }}
+                    style={{ fontWeight: '600', color: 'var(--text-primary)' }}
                     aria-haspopup="true"
                     aria-expanded={showDropdown}
                   >
@@ -152,11 +154,24 @@ export const Navbar = () => {
               </>
             ) : (
               <>
-                <Link to="/login" style={{ textDecoration: 'none', color: '#666' }}>
+                <Link to="/login" style={{ textDecoration: 'none', color: 'var(--text-primary)', fontWeight: '500', padding: '6px 12px' }}>
                   Login
                 </Link>
                 <Link to="/register" style={{ textDecoration: 'none' }}>
-                  <button type="button">Register</button>
+                  <button
+                    type="button"
+                    className="btn-accent"
+                    style={{
+                      background: 'var(--accent)',
+                      color: '#0b0d12',
+                      fontWeight: '600',
+                      border: 'none',
+                      borderRadius: '999px',
+                      padding: '7px 18px',
+                    }}
+                  >
+                    Register
+                  </button>
                 </Link>
               </>
             )}

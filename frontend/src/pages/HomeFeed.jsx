@@ -37,7 +37,7 @@ export const HomeFeed = () => {
       >
         <div>
           <h2>Home</h2>
-          <div style={{ fontSize: '11px', color: '#666666' }}>Posts from your communities</div>
+          <div className="page-description">Posts from your communities</div>
         </div>
         {isRevalidating && (
           <span

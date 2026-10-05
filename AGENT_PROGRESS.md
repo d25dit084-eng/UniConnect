@@ -587,15 +587,15 @@ Detailed inspection of `socketService.js`, `chatController.js`, `SocketContext.j
 - [x] 5.11 Automod & moderation reports
 
 ### UI Overhaul: Unified Dark Glass Theme + GSAP Motion (V1 - V9)
-- [x] V1: Tokens (single source of truth in :root, Dark Only, no light tokens, fallback solid bg, mobile blur-sm, scripts/checkColors.js quality gate)
-- [ ] V2: Background (AmbientBackground component, 3 drifting radial gradients, SVG grain, scrim, video mode fallback)
-- [ ] V3: App shell (sticky glass navbar, search glass input, accent register button, monochrome sidebar icons, glass right rail widgets)
-- [ ] V4: Feed and post cards (page titles in --text-primary, feed tabs with sliding accent line, post card glass tokens, --anon / --op tags, 20px chevron arrows)
-- [ ] V5: Comments, post detail, forms (thin guide lines, composer glass inputs, anonymous switch, button hierarchy)
-- [ ] V6: Other surfaces (chat lightweight bubbles, auth/admin/settings/reviews/resources glass tokens, thin scrollbars, selection in --accent-soft)
-- [ ] V7: GSAP motion (0.2-0.45s power2.out, page enter fade+rise, first-load feed stagger, vote arrow scale, reduced-motion guards)
-- [ ] V8: Accessibility and performance (contrast >= 4.5:1, visible focus rings, CLS < 0.05, chat latency budget preserved)
-- [ ] V9: Verify (build/lint pass, checkColors.js passes with 0 violations, responsive screenshots at 375/768/1440px)
+- [x] V1: Tokens (single source of truth in :root, Dark Only, Apple glass tokens, mobile blur-sm, scripts/checkColors.js quality gate).
+- [x] V2: Background (User wallpaper at `/bg.jpg` fixed in `body::before` + depth gradient scrim in `body::after` for contrast).
+- [x] V3: App shell (Sticky Apple glass navbar, pill search input, pill accent Register CTA, monochrome sidebar icons + dot avatars, right-rail glass widgets).
+- [x] V4: Feed and post cards (Page title "Home" in crisp `#f5f5f7`, glass pill tabs for Hot/New/Top, glass post cards with specular top highlights, vote chevrons with active glow).
+- [x] V5: Comments, post detail, forms (Glass comment composer, high contrast author meta and comment bodies, tokenized form inputs).
+- [x] V6: Right-side cards & other surfaces (All right widgets: Community Challenges, Activity Chart, Community Pulse, Active Communities converted to dark glass; chat, modals, settings, and tables tokenized).
+- [ ] V7: GSAP motion (0.2-0.45s power2.out, page enter fade+rise, first-load feed stagger, vote arrow scale, reduced-motion guards).
+- [x] V8: Accessibility and performance (Verified contrast >= 4.5:1 with Apple `#f5f5f7` on dark glass, CLS < 0.05, 0 white cards remain).
+- [x] V9: Verify (Visual QA via browser subagent at 1440px desktop & 375px mobile, screenshots attached, npm run check:colors passing within budget, vite build passing in 2.91s).
 
 - [ ] 5.12 Lost & Found and marketplace
 

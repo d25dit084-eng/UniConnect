@@ -42,30 +42,12 @@ export const RightSidebar = () => {
       <CommunityPulse />
 
       {/* 4. Active Communities Card */}
-      <div
-        style={{
-          border: '1px solid #e0e0e0',
-          padding: '16px',
-          background: '#ffffff',
-          borderRadius: '4px',
-        }}
-      >
-        <h4
-          style={{
-            fontSize: '12px',
-            textTransform: 'uppercase',
-            color: '#111111',
-            fontWeight: 'bold',
-            marginBottom: '12px',
-            letterSpacing: '0.05em',
-          }}
-        >
-          Active Communities
-        </h4>
+      <div className="widget-card">
+        <h4>Active Communities</h4>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {loading ? (
-            <div style={{ fontSize: '11px', color: '#888' }}>Loading...</div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Loading...</div>
           ) : activeCommunities.length > 0 ? (
             activeCommunities.map((item) => (
               <div
@@ -75,19 +57,19 @@ export const RightSidebar = () => {
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   fontSize: '12px',
-                  paddingBottom: '6px',
-                  borderBottom: '1px dashed #e0e0e0',
+                  paddingBottom: '8px',
+                  borderBottom: '1px solid var(--glass-border)',
                 }}
               >
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ color: '#888888', fontFamily: 'monospace' }}>{item.rank}</span>
-                  <Link to={`/c/${item.slug}`} style={{ fontWeight: '500', color: '#1a1a1a' }}>
+                  <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace' }}>{item.rank}</span>
+                  <Link to={`/c/${item.slug}`} style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
                     {item.name}
                   </Link>
                 </div>
                 <span
                   style={{
-                    color: '#090',
+                    color: 'var(--success)',
                     fontFamily: 'monospace',
                     fontSize: '11px',
                     fontWeight: '500',
@@ -98,7 +80,7 @@ export const RightSidebar = () => {
               </div>
             ))
           ) : (
-            <div style={{ fontSize: '11px', color: '#888', fontStyle: 'italic' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
               No active communities yet
             </div>
           )}
@@ -107,9 +89,9 @@ export const RightSidebar = () => {
         <div style={{ marginTop: '12px', textAlign: 'center' }}>
           <Link
             to="/communities"
-            style={{ fontSize: '11px', textDecoration: 'underline', color: '#666666' }}
+            style={{ fontSize: '12px', textDecoration: 'none', color: 'var(--accent)', fontWeight: '500' }}
           >
-            Explore All Communities
+            Explore All Communities →
           </Link>
         </div>
       </div>

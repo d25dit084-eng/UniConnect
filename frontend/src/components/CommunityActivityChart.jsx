@@ -39,41 +39,29 @@ export const CommunityActivityChart = () => {
   }, '');
 
   return (
-    <div
-      style={{
-        border: '1px solid #e0e0e0',
-        padding: '16px',
-        background: '#ffffff',
-        borderRadius: '4px',
-        marginBottom: '20px',
-      }}
-    >
-      <h4
-        style={{
-          fontSize: '12px',
-          textTransform: 'uppercase',
-          color: '#111111',
-          fontWeight: 'bold',
-          marginBottom: '4px',
-          letterSpacing: '0.05em',
-        }}
-      >
-        Community Activity
-      </h4>
-      <p style={{ fontSize: '11px', color: '#666666', marginBottom: '15px' }}>
+    <div className="widget-card">
+      <h4>Community Activity</h4>
+      <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
         Weekly posts & comments activity
       </p>
 
       {/* SVG Line Graph */}
       <div style={{ position: 'relative', width: '100%', height: `${height}px` }}>
         <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: '100%' }}>
+          <defs>
+            <linearGradient id="activityGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.28" />
+              <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.0" />
+            </linearGradient>
+          </defs>
+
           {/* Horizontal Grid lines */}
           <line
             x1={paddingLeft}
             y1={paddingTop}
             x2={width - paddingRight}
             y2={paddingTop}
-            stroke="#e0e0e0"
+            stroke="rgba(255, 255, 255, 0.08)"
             strokeWidth="0.5"
             strokeDasharray="3"
           />
@@ -82,7 +70,7 @@ export const CommunityActivityChart = () => {
             y1={paddingTop + chartHeight / 2}
             x2={width - paddingRight}
             y2={paddingTop + chartHeight / 2}
-            stroke="#e0e0e0"
+            stroke="rgba(255, 255, 255, 0.08)"
             strokeWidth="0.5"
             strokeDasharray="3"
           />
@@ -91,12 +79,18 @@ export const CommunityActivityChart = () => {
             y1={paddingTop + chartHeight}
             x2={width - paddingRight}
             y2={paddingTop + chartHeight}
-            stroke="#e0e0e0"
+            stroke="rgba(255, 255, 255, 0.12)"
             strokeWidth="0.5"
           />
 
+          {/* Activity Area Fill */}
+          <path
+            d={`${pathD} L ${points[points.length - 1].x} ${paddingTop + chartHeight} L ${points[0].x} ${paddingTop + chartHeight} Z`}
+            fill="url(#activityGrad)"
+          />
+
           {/* Activity Line */}
-          <path d={pathD} fill="none" stroke="#1a1a1a" strokeWidth="1.5" />
+          <path d={pathD} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
 
           {/* Axis Labels */}
           {data.map((d, i) => {
@@ -107,7 +101,7 @@ export const CommunityActivityChart = () => {
                 x={x}
                 y={height - 2}
                 textAnchor="middle"
-                style={{ fontSize: '7px', fill: '#666666', fontFamily: 'monospace' }}
+                style={{ fontSize: '8px', fill: 'var(--text-muted)', fontFamily: 'system-ui, sans-serif' }}
               >
                 {d.label}
               </text>
@@ -119,7 +113,7 @@ export const CommunityActivityChart = () => {
             x={paddingLeft - 4}
             y={paddingTop + 4}
             textAnchor="end"
-            style={{ fontSize: '6px', fill: '#888888', fontFamily: 'monospace' }}
+            style={{ fontSize: '7px', fill: 'var(--text-muted)', fontFamily: 'system-ui, sans-serif' }}
           >
             80
           </text>
@@ -127,7 +121,7 @@ export const CommunityActivityChart = () => {
             x={paddingLeft - 4}
             y={paddingTop + chartHeight / 2 + 3}
             textAnchor="end"
-            style={{ fontSize: '6px', fill: '#888888', fontFamily: 'monospace' }}
+            style={{ fontSize: '7px', fill: 'var(--text-muted)', fontFamily: 'system-ui, sans-serif' }}
           >
             40
           </text>
@@ -135,7 +129,7 @@ export const CommunityActivityChart = () => {
             x={paddingLeft - 4}
             y={paddingTop + chartHeight + 2}
             textAnchor="end"
-            style={{ fontSize: '6px', fill: '#888888', fontFamily: 'monospace' }}
+            style={{ fontSize: '7px', fill: 'var(--text-muted)', fontFamily: 'system-ui, sans-serif' }}
           >
             0
           </text>

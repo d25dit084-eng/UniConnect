@@ -15,55 +15,40 @@ export const CommunityPulse = () => {
   };
 
   return (
-    <div
-      style={{
-        border: '1px solid #e0e0e0',
-        padding: '16px',
-        background: '#ffffff',
-        borderRadius: '4px',
-        marginBottom: '20px',
-      }}
-    >
-      <h4
-        style={{
-          fontSize: '12px',
-          textTransform: 'uppercase',
-          color: '#111111',
-          fontWeight: 'bold',
-          marginBottom: '10px',
-          letterSpacing: '0.05em',
-        }}
-      >
-        Community Pulse
-      </h4>
+    <div className="widget-card">
+      <h4>Community Pulse</h4>
 
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: '8px',
-          fontSize: '12px',
-          color: '#1a1a1a',
+          gap: '10px',
+          fontSize: '13px',
+          color: 'var(--text-primary)',
         }}
       >
         {/* State Toggle indicator */}
         <div
           onClick={cycleState}
           style={{
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
-            gap: '6px',
+            gap: '8px',
             cursor: 'pointer',
             userSelect: 'none',
-            fontWeight: 'bold',
+            fontWeight: '600',
             alignSelf: 'flex-start',
+            padding: '4px 10px',
+            borderRadius: '999px',
+            background: 'rgba(255, 255, 255, 0.06)',
+            border: '1px solid var(--glass-border)',
           }}
           title="Click to cycle status mode"
         >
-          <span style={{ color: currentState.color, fontSize: '10px' }}>●</span>
+          <span style={{ color: currentState.color, fontSize: '12px' }}>●</span>
           <span>{currentState.label}</span>
-          <span style={{ fontSize: '9px', color: '#888888', fontWeight: 'normal' }}>
-            (click to cycle)
+          <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 'normal' }}>
+            (tap to cycle)
           </span>
         </div>
 
@@ -71,20 +56,20 @@ export const CommunityPulse = () => {
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: '4px',
-            marginTop: '4px',
-            fontSize: '11px',
-            color: '#666666',
+            gap: '6px',
+            marginTop: '2px',
+            fontSize: '12px',
+            color: 'var(--text-secondary)',
           }}
         >
           <div>
-            👥 <strong>{currentState.browsing}</strong> people browsing
+            👥 <strong style={{ color: 'var(--text-primary)' }}>{currentState.browsing}</strong> people browsing
           </div>
           <div>
-            📝 <strong>{currentState.posts}</strong> posts today
+            📝 <strong style={{ color: 'var(--text-primary)' }}>{currentState.posts}</strong> posts today
           </div>
           <div>
-            💬 <strong>{currentState.comments}</strong> comments today
+            💬 <strong style={{ color: 'var(--text-primary)' }}>{currentState.comments}</strong> comments today
           </div>
         </div>
       </div>
